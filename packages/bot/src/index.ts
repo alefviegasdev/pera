@@ -17,6 +17,7 @@ if (!token || !geminiKey || !supabaseUrl || !supabaseKey) {
 
 const bot = new Bot(token);
 const supabase = createClient(supabaseUrl, supabaseKey);
+const pendingConfirmations = new Map<string, string>();
 
 const SYSTEM_PROMPT = `
 Você é um assistente financeiro inteligente chamado Pera.
@@ -116,18 +117,39 @@ bot.on("message:text", async (ctx) => {
       }
       
       if (data) {
-        // 1. Limpa qualquer outro perfil que use este mesmo telegram_id
+        const isAlreadyPending = pendingConfirmations.get(userId) === text;
+
+        if (!isAlreadyPending) {
+          // Verifica se este Telegram já está vinculado a OUTRA conta
+          const { data: existingLink } = await supabase
+            .from('user_profiles')
+            .select('user_id')
+            .eq('telegram_id', userId)
+            .neq('user_id', data.user_id)
+            .maybeSingle();
+
+          if (existingLink) {
+            pendingConfirmations.set(userId, text);
+            await ctx.reply('⚠️ Este Telegram já está vinculado a outra conta Pera.\n\nAo continuar, a conta anterior será desvinculada automaticamente.\n\nEnvie o código novamente para confirmar. 🍐');
+            return;
+          }
+        }
+
+        // Se chegou aqui, ou não tinha vínculo anterior, ou já confirmou
+        pendingConfirmations.delete(userId);
+
+        // 1. Limpa qualquer outro perfil que use este mesmo telegram_id (cleanup)
         await supabase
           .from('user_profiles')
           .update({ telegram_id: null, linked_at: null })
-          .eq('telegram_id', ctx.from.id.toString())
+          .eq('telegram_id', userId)
           .neq('user_id', data.user_id);
 
         // 2. Atualiza estritamente a mesma linha localizada usando ID garantido do banco
         await supabase
           .from('user_profiles')
           .update({ 
-            telegram_id: ctx.from.id.toString(), 
+            telegram_id: userId, 
             linked_at: new Date().toISOString() 
           })
           .eq('id', data.id);
