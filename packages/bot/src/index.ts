@@ -101,22 +101,29 @@ bot.on("message:text", async (ctx) => {
   console.log(`Mensagem recebida: [${text}]`);
 
   try {
-    // 0. VÍNCULO TELEGRAM (6 dígitos)
+    // Verifica se é um código de vinculação (6 dígitos)
     if (/^\d{6}$/.test(text)) {
-      console.log("Tipo detectado: código de vínculo");
-      const { data, error } = await supabase.from("user_profiles").select("*").eq("link_code", text).maybeSingle();
-      if (error) throw error;
+      const userId = ctx.from.id.toString();
+      
+      // Busca o código na tabela user_profiles
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('link_code', text)
+        .single();
       
       if (data) {
-        await supabase.from("user_profiles").update({ 
-          telegram_id: userId, 
-          linked_at: new Date().toISOString() 
-        }).eq("id", data.id);
+        // Atualiza o telegram_id
+        await supabase
+          .from('user_profiles')
+          .update({ telegram_id: userId, linked_at: new Date().toISOString() })
+          .eq('link_code', text);
         
-        return ctx.reply("✅ Conta vinculada com sucesso! Agora posso registrar seus gastos.");
+        await ctx.reply('✅ Conta vinculada com sucesso! Agora posso registrar seus gastos. 🍐');
       } else {
-        return ctx.reply("❌ Código inválido ou expirado. Gere um novo no app Pera.");
+        await ctx.reply('❌ Código inválido ou expirado. Verifique o código no app e tente novamente.');
       }
+      return;
     }
 
     // 1. RECONHECIMENTO DE COMANDOS (IA-Driven)
