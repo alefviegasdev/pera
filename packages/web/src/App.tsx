@@ -16,9 +16,13 @@ const App = () => {
   const [loading, setLoading] = useState(true);
   const [needsTelegramLink, setNeedsTelegramLink] = useState(false);
 
-  useEffect(() => {
-    // 1. Garante inicialização usando getUser() real (bypass de cache de session)
+    const authTimeout = setTimeout(() => {
+      setLoading(false);
+      console.warn('Auth check timed out');
+    }, 5000);
+
     supabase.auth.getUser().then(async ({ data: { user } }) => {
+      clearTimeout(authTimeout);
       if (user?.id) {
         setUserId(user.id);
         await checkTelegramLink(user.id);
@@ -26,6 +30,22 @@ const App = () => {
         setUserId(null);
         setLoading(false);
       }
+    }).catch(() => {
+      // Se getUser falhar (ex: clock skew), tenta via getSession como fallback
+      supabase.auth.getSession().then(async ({ data: { session } }) => {
+        clearTimeout(authTimeout);
+        if (session?.user?.id) {
+          setUserId(session.user.id);
+          await checkTelegramLink(session.user.id);
+        } else {
+          setUserId(null);
+          setLoading(false);
+        }
+      }).catch(() => {
+        clearTimeout(authTimeout);
+        setUserId(null);
+        setLoading(false);
+      });
     });
     
     // Escuta mudanças de estado na autenticação
