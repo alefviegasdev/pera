@@ -41,30 +41,30 @@ const TelegramLink = ({ userId, onSkippedOrLinked }: TelegramLinkProps) => {
     setLoading(false);
   };
 
-  const handleCheckLink = async () => {
+  const startPolling = () => {
     setChecking(true);
     setErrorDesc('');
+
+    const interval = setInterval(async () => {
+      const { data } = await supabase
+        .from('user_profiles')
+        .select('telegram_id')
+        .eq('user_id', userId)
+        .single();
+      
+      if (data?.telegram_id) {
+        clearInterval(interval);
+        // redireciona para dashboard
+        onSkippedOrLinked();
+      }
+    }, 2000);
     
-    // Verifica se "telegram_id" já não é mais nulo
-    const { data, error } = await supabase
-      .from('user_profiles')
-      .select('telegram_id')
-      .eq('user_id', userId)
-      .single();
-
-    setChecking(false);
-
-    if (error) {
-      console.error(error);
-      setErrorDesc('Erro ao verificar o status de vínculo.');
-      return;
-    }
-
-    if (data?.telegram_id) {
-      onSkippedOrLinked();
-    } else {
-      setErrorDesc('O bot ainda não recebeu seu código. Envie e tente novamente.');
-    }
+    // Timeout de 5 minutos
+    setTimeout(() => {
+      clearInterval(interval);
+      setChecking(false);
+      setErrorDesc('O tempo se esgotou. Tente novamente.');
+    }, 300000);
   };
 
   return (
@@ -115,7 +115,7 @@ const TelegramLink = ({ userId, onSkippedOrLinked }: TelegramLinkProps) => {
           </div>
 
           <button
-            onClick={handleCheckLink}
+            onClick={startPolling}
             disabled={checking || loading}
             className="w-full flex items-center justify-between bg-[var(--primary)] text-[var(--on-primary)] py-4 px-6 rounded-[3rem] font-bold text-[17px] transition-transform active:scale-[0.98] disabled:opacity-70 shadow-sm"
           >
