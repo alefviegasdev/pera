@@ -54,13 +54,13 @@ const Settings = ({ userId, onUserChange }: { userId: string; onUserChange: (u: 
              <User />
           </div>
           <input
-            value={userId === '5637235532' ? 'Gabriel Santos' : userId}
+            value={userId || ''}
             onChange={e => onUserChange(e.target.value)}
-            className="text-center font-display text-xl bg-transparent outline-none border-b border-[var(--outline-variant)] pb-1 mb-1 focus:border-[var(--primary)] transition-colors w-full max-w-[200px]"
-            placeholder="Nome de Usuário"
+            disabled={true}
+            className="text-center font-display text-[15px] bg-transparent outline-none pb-1 mb-1 focus:border-[var(--primary)] transition-colors w-full max-w-[300px]"
           />
           <p className="text-xs font-semibold text-[var(--primary)] uppercase tracking-widest mt-2 bg-[rgba(93,63,211,0.1)] py-1 px-3 rounded-full">
-            Plano Premium Platinum
+            Conta Pro Habilitada
           </p>
         </div>
 

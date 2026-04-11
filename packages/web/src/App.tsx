@@ -17,11 +17,11 @@ const App = () => {
   const [needsTelegramLink, setNeedsTelegramLink] = useState(false);
 
   useEffect(() => {
-    // Verifica na inicialização
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        setUserId(session.user.id);
-        await checkTelegramLink(session.user.id);
+    // 1. Garante inicialização usando getUser() real (bypass de cache de session)
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (user?.id) {
+        setUserId(user.id);
+        await checkTelegramLink(user.id);
       } else {
         setUserId(null);
         setLoading(false);
