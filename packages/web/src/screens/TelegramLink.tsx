@@ -25,10 +25,14 @@ const TelegramLink = ({ userId, onSkippedOrLinked }: TelegramLinkProps) => {
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     setLinkCode(code);
 
+    console.log('user_id:', userId, 'link_code:', code);
+
     // Salva no banco "user_profiles"
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('user_profiles')
       .upsert({ user_id: userId, link_code: code }, { onConflict: 'user_id' });
+
+    console.log('resultado upsert:', data, error);
 
     if (error) {
       console.error('Falha real no upsert do gerador:', error);

@@ -103,7 +103,7 @@ bot.on("message:text", async (ctx) => {
   try {
     // Verifica se é um código de vinculação (6 dígitos)
     if (/^\d{6}$/.test(text)) {
-      console.log(`[DEBUG] Recebido possível código de vinculação: ${text}`);
+      console.log('código recebido:', text);
       const userId = ctx.from.id.toString();
       
       // Busca o código na tabela user_profiles
@@ -113,7 +113,7 @@ bot.on("message:text", async (ctx) => {
         .eq('link_code', text)
         .single();
         
-      console.log(`[DEBUG] Resultado da busca pelo código no Supabase:`, { data, error });
+      console.log('resultado busca:', data, error);
       
       if (data) {
         // Atualiza o telegram_id
