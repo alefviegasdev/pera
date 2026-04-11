@@ -13,9 +13,10 @@ const TelegramLink = ({ userId, onSkippedOrLinked }: TelegramLinkProps) => {
   const [checking, setChecking] = useState(false);
   const [errorDesc, setErrorDesc] = useState('');
 
-  // Gera código randômico assim que o componente monta
+  // Gera código randômico e inicia o polling assim que o componente monta
   React.useEffect(() => {
     generateCode();
+    startPolling();
   }, [userId]);
 
   const generateCode = async () => {
@@ -43,27 +44,29 @@ const TelegramLink = ({ userId, onSkippedOrLinked }: TelegramLinkProps) => {
 
   const startPolling = () => {
     setChecking(true);
-    setErrorDesc('');
-
     const interval = setInterval(async () => {
-      const { data } = await supabase
-        .from('user_profiles')
-        .select('telegram_id')
-        .eq('user_id', userId)
-        .single();
-      
-      if (data?.telegram_id) {
-        clearInterval(interval);
-        // redireciona para dashboard
-        onSkippedOrLinked();
+      try {
+        const { data, error } = await supabase
+          .from('user_profiles')
+          .select('telegram_id')
+          .eq('user_id', userId)
+          .maybeSingle();
+        
+        console.log('polling result:', data, error);
+        
+        if (data?.telegram_id) {
+          clearInterval(interval);
+          setChecking(false);
+          onSkippedOrLinked();
+        }
+      } catch (e) {
+        console.log('polling error:', e);
       }
     }, 2000);
-    
-    // Timeout de 5 minutos
+
     setTimeout(() => {
       clearInterval(interval);
       setChecking(false);
-      setErrorDesc('O tempo se esgotou. Tente novamente.');
     }, 300000);
   };
 
