@@ -116,16 +116,25 @@ bot.on("message:text", async (ctx) => {
       }
       
       if (data) {
-        // Atualiza estritamente a mesma linha localizada usando ID garantido do banco
-        await supabase
+        console.log('[LINK] Tentando vincular user_id:', data.user_id, 'telegram_id:', ctx.from.id.toString());
+        
+        // Atualiza usando user_id da tabela Auth
+        const { error: updateError } = await supabase
           .from('user_profiles')
           .update({ 
             telegram_id: ctx.from.id.toString(), 
             linked_at: new Date().toISOString() 
           })
-          .eq('id', data.id);
+          .eq('user_id', data.user_id);
+          
+        console.log('[LINK] Resultado do UPDATE:', updateError ?? 'sucesso');
         
-        await ctx.reply('✅ Conta vinculada com sucesso! Agora posso registrar seus gastos. 🍐');
+        if (updateError) {
+          console.error('[LINK] Erro no UPDATE:', updateError);
+          await ctx.reply('❌ Erro ao vincular conta. Tente novamente.');
+        } else {
+          await ctx.reply('✅ Conta vinculada com sucesso! Agora posso registrar seus gastos. 🍐');
+        }
       } else {
         await ctx.reply('❌ Código inválido ou expirado. Verifique no app e tente novamente.');
       }
