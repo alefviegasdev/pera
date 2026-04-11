@@ -16,6 +16,7 @@ const App = () => {
   const [loading, setLoading] = useState(true);
   const [needsTelegramLink, setNeedsTelegramLink] = useState(false);
 
+  useEffect(() => {
     const authTimeout = setTimeout(() => {
       setLoading(false);
       console.warn('Auth check timed out');
