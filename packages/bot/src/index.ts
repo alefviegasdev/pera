@@ -162,6 +162,19 @@ bot.on("message:text", async (ctx) => {
       return;
     }
 
+    // --- Lookup do UUID do Supabase (Obrigatório para transações) ---
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('user_id')
+      .eq('telegram_id', userId)
+      .maybeSingle();
+
+    if (!profile?.user_id) {
+      return ctx.reply('❌ Sua conta não está vinculada ou houve um erro na sincronização.\n\nAcesse "Ajustes > Vincular Telegram" no app e tente novamente. 🍐');
+    }
+
+    const supabaseUserId = profile.user_id;
+
     // 1. RECONHECIMENTO DE COMANDOS (IA-Driven)
     const cmdRegex = /^#?([a-zA-Z0-9]{4})(\s+.*|$)/i;
     const cmdMatch = text.match(cmdRegex);
@@ -185,8 +198,8 @@ bot.on("message:text", async (ctx) => {
       const aiData = JSON.parse(aiText);
 
       // --- Localizar registro em ambas as tabelas ---
-      const { data: tData } = await supabase.from("transactions").select("*").eq("short_code", code).eq("user_id", userId).single();
-      const { data: iData } = await supabase.from("installments").select("*").eq("short_code", code).eq("user_id", userId).single();
+      const { data: tData } = await supabase.from("transactions").select("*").eq("short_code", code).eq("user_id", supabaseUserId).single();
+      const { data: iData } = await supabase.from("installments").select("*").eq("short_code", code).eq("user_id", supabaseUserId).single();
 
       const record = tData || iData;
       const table = tData ? "transactions" : (iData ? "installments" : null);
@@ -226,7 +239,7 @@ Possíveis motivos:
            const instValue = finalValue / totalInstallments;
            
            const { error: insErr } = await supabase.from("installments").insert({
-             user_id: userId,
+             user_id: supabaseUserId,
              description: updates.description || record.description,
              total_value: finalValue,
              installment_value: instValue,
@@ -331,7 +344,7 @@ Exemplos que funcionam:
         const instValue = item.value / item.installment_count;
         
         const { error } = await supabase.from("installments").insert({
-          user_id: userId,
+          user_id: supabaseUserId,
           description: item.description,
           total_value: item.value,
           installment_value: instValue,
@@ -358,7 +371,7 @@ Exemplos que funcionam:
         const { data: bills, error: findError } = await supabase
           .from("monthly_bills")
           .select("*")
-          .eq("user_id", userId)
+          .eq("user_id", supabaseUserId)
           .eq("month", month)
           .eq("year", year)
           .ilike("name", `%${item.description}%`);
@@ -381,7 +394,7 @@ Exemplos que funcionam:
         }
       } else {
         const { error } = await supabase.from("transactions").insert({
-          user_id: userId,
+          user_id: supabaseUserId,
           value: item.value,
           type: item.type,
           category: item.category,
