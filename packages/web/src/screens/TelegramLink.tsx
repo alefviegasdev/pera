@@ -14,9 +14,12 @@ const TelegramLink = ({ userId, onSkippedOrLinked }: TelegramLinkProps) => {
   const [errorDesc, setErrorDesc] = useState('');
   const [copied, setCopied] = useState(false);
   const pollingRef = React.useRef<any>(null);
+  const hasGenerated = React.useRef(false);
 
   // Gera código randômico assim que o componente monta
   React.useEffect(() => {
+    if (hasGenerated.current) return;
+    hasGenerated.current = true;
     generateCode();
   }, [userId]);
 
