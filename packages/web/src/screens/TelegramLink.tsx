@@ -13,10 +13,9 @@ const TelegramLink = ({ userId, onSkippedOrLinked }: TelegramLinkProps) => {
   const [checking, setChecking] = useState(false);
   const [errorDesc, setErrorDesc] = useState('');
 
-  // Gera código randômico e inicia o polling assim que o componente monta
+  // Gera código randômico assim que o componente monta
   React.useEffect(() => {
     generateCode();
-    startPolling();
   }, [userId]);
 
   const generateCode = async () => {
