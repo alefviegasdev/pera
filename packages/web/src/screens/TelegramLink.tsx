@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { ArrowRight, ChevronRight, MessageCircle } from 'lucide-react';
+import { ArrowRight, ChevronRight, MessageCircle, Copy, CheckCheck } from 'lucide-react';
 
 interface TelegramLinkProps {
   userId: string;
@@ -12,6 +12,8 @@ const TelegramLink = ({ userId, onSkippedOrLinked }: TelegramLinkProps) => {
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(false);
   const [errorDesc, setErrorDesc] = useState('');
+  const [copied, setCopied] = useState(false);
+  const pollingRef = React.useRef<any>(null);
 
   // Gera código randômico assim que o componente monta
   React.useEffect(() => {
@@ -51,8 +53,10 @@ const TelegramLink = ({ userId, onSkippedOrLinked }: TelegramLinkProps) => {
 
   const startPolling = () => {
     console.log('[POLLING] userId sendo usado:', userId);
-    if (checking) return; // previne múltiplos cliques
+    if (pollingRef.current) clearInterval(pollingRef.current);
+    
     setChecking(true);
+    setErrorDesc('');
     let attempts = 0;
 
     const interval = setInterval(async () => {
@@ -68,10 +72,12 @@ const TelegramLink = ({ userId, onSkippedOrLinked }: TelegramLinkProps) => {
         
         if (data?.telegram_id) {
           clearInterval(interval);
+          pollingRef.current = null;
           setChecking(false);
           onSkippedOrLinked();
         } else if (attempts >= 60) {
           clearInterval(interval);
+          pollingRef.current = null;
           setChecking(false);
           setErrorDesc('O tempo se esgotou. Tente novamente.');
         }
@@ -79,6 +85,21 @@ const TelegramLink = ({ userId, onSkippedOrLinked }: TelegramLinkProps) => {
         console.log('polling error:', e);
       }
     }, 3000);
+    
+    pollingRef.current = interval;
+  };
+
+  const handleCopy = () => {
+    if (!linkCode) return;
+    navigator.clipboard.writeText(linkCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleRetry = () => {
+    if (pollingRef.current) clearInterval(pollingRef.current);
+    setChecking(false);
+    startPolling();
   };
 
   return (
@@ -107,9 +128,17 @@ const TelegramLink = ({ userId, onSkippedOrLinked }: TelegramLinkProps) => {
           ) : (
             <>
               <p className="text-center text-sm font-bold text-[var(--primary)] uppercase tracking-wide mb-2">Seu código de vínculo</p>
-              <p className="text-center font-display text-[48px] tracking-widest text-[var(--on-surface)] mb-6">
-                {linkCode}
-              </p>
+              <div 
+                onClick={handleCopy}
+                className="flex items-center justify-center gap-3 mb-6 cursor-pointer group hover:opacity-80 transition-opacity"
+              >
+                <p className="font-display text-[48px] tracking-widest text-[var(--on-surface)]">
+                  {linkCode}
+                </p>
+                <div className="w-8 h-8 rounded-full bg-[var(--surface-container-high)] flex items-center justify-center text-[var(--primary)]">
+                  {copied ? <CheckCheck size={18} /> : <Copy size={16} className="opacity-60 group-hover:opacity-100 transition-opacity" />}
+                </div>
+              </div>
             </>
           )}
 
@@ -136,6 +165,15 @@ const TelegramLink = ({ userId, onSkippedOrLinked }: TelegramLinkProps) => {
             <span>{checking ? 'Verificando...' : 'Já enviei o código'}</span>
             <ChevronRight size={22} />
           </button>
+
+          {checking && (
+            <button
+              onClick={handleRetry}
+              className="w-full mt-3 text-sm font-bold text-[var(--primary)] opacity-60 hover:opacity-100 transition-opacity py-2"
+            >
+              Tentar novamente
+            </button>
+          )}
 
           {errorDesc && (
             <p className="mt-4 text-center text-sm text-[var(--error)] font-bold">{errorDesc}</p>
