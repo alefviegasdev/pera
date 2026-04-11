@@ -20,7 +20,7 @@ const App = () => {
     const authTimeout = setTimeout(() => {
       setLoading(false);
       console.warn('Auth check timed out');
-    }, 5000);
+    }, 1000);
 
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       clearTimeout(authTimeout);
