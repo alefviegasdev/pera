@@ -101,6 +101,24 @@ bot.on("message:text", async (ctx) => {
   console.log(`Mensagem recebida: [${text}]`);
 
   try {
+    // 0. VÍNCULO TELEGRAM (6 dígitos)
+    if (/^\d{6}$/.test(text)) {
+      console.log("Tipo detectado: código de vínculo");
+      const { data, error } = await supabase.from("user_profiles").select("*").eq("link_code", text).maybeSingle();
+      if (error) throw error;
+      
+      if (data) {
+        await supabase.from("user_profiles").update({ 
+          telegram_id: userId, 
+          linked_at: new Date().toISOString() 
+        }).eq("id", data.id);
+        
+        return ctx.reply("✅ Conta vinculada com sucesso! Agora posso registrar seus gastos.");
+      } else {
+        return ctx.reply("❌ Código inválido ou expirado. Gere um novo no app Pera.");
+      }
+    }
+
     // 1. RECONHECIMENTO DE COMANDOS (IA-Driven)
     const cmdRegex = /^#?([a-zA-Z0-9]{4})(\s+.*|$)/i;
     const cmdMatch = text.match(cmdRegex);

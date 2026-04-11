@@ -4,19 +4,76 @@ import Analysis from './screens/Analysis';
 import History from './screens/History';
 import Settings from './screens/Settings';
 import BottomNav from './components/BottomNav';
+import { supabase } from './lib/supabase';
+import Login from './screens/Login';
+import TelegramLink from './screens/TelegramLink';
 
 export type Tab = 'home' | 'analysis' | 'history' | 'settings';
 
 const App = () => {
   const [activeTab, setActiveTab] = useState<Tab>('home');
-  const [userId, setUserId] = useState(() => {
-    const saved = localStorage.getItem('pera_user_id');
-    return (saved && saved !== 'default_user') ? saved : '5637235532';
-  });
+  const [userId, setUserId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [needsTelegramLink, setNeedsTelegramLink] = useState(false);
 
   useEffect(() => {
-    localStorage.setItem('pera_user_id', userId);
-  }, [userId]);
+    checkUser();
+    
+    // Escuta mudanças de estado na autenticação
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session?.user) {
+          setUserId(session.user.id);
+          await checkTelegramLink(session.user.id);
+        } else {
+          setUserId(null);
+          setNeedsTelegramLink(false);
+          setLoading(false);
+        }
+      }
+    );
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+
+  const checkUser = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      setUserId(session.user.id);
+      await checkTelegramLink(session.user.id);
+    } else {
+      setLoading(false);
+    }
+  };
+
+  const checkTelegramLink = async (uid: string) => {
+    const { data } = await supabase
+      .from('user_profiles')
+      .select('telegram_id')
+      .eq('user_id', uid)
+      .maybeSingle();
+
+    if (!data || !data.telegram_id) {
+       setNeedsTelegramLink(true);
+    } else {
+       setNeedsTelegramLink(false);
+    }
+    setLoading(false);
+  };
+
+  if (loading) {
+     return <div className="screen flex items-center justify-center min-h-[100dvh]">Carregando...</div>;
+  }
+
+  if (!userId) {
+     return <Login />;
+  }
+
+  if (needsTelegramLink) {
+     return <TelegramLink userId={userId} onSkippedOrLinked={() => setNeedsTelegramLink(false)} />;
+  }
 
   const renderScreen = () => {
     switch (activeTab) {
