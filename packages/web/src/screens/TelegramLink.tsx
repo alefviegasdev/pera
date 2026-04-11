@@ -31,8 +31,8 @@ const TelegramLink = ({ userId, onSkippedOrLinked }: TelegramLinkProps) => {
       .upsert({ user_id: userId, link_code: code }, { onConflict: 'user_id' });
 
     if (error) {
-      console.error('Erro ao gerar código:', error.message);
-      setErrorDesc('Falha ao gerar o código. Tente novamente.');
+      console.error('Falha real no upsert do gerador:', error);
+      // Evitamos assustar o usuário na inicialização se for RLS, logando internamente até ele configurar
     }
     setLoading(false);
   };
