@@ -42,8 +42,12 @@ const TelegramLink = ({ userId, onSkippedOrLinked }: TelegramLinkProps) => {
   };
 
   const startPolling = () => {
+    if (checking) return; // previne múltiplos cliques
     setChecking(true);
+    let attempts = 0;
+
     const interval = setInterval(async () => {
+      attempts++;
       try {
         const { data, error } = await supabase
           .from('user_profiles')
@@ -51,22 +55,21 @@ const TelegramLink = ({ userId, onSkippedOrLinked }: TelegramLinkProps) => {
           .eq('user_id', userId)
           .maybeSingle();
         
-        console.log('polling result:', data, error);
+        console.log(`[Polling ${attempts}/60] result:`, data, error);
         
         if (data?.telegram_id) {
           clearInterval(interval);
           setChecking(false);
           onSkippedOrLinked();
+        } else if (attempts >= 60) {
+          clearInterval(interval);
+          setChecking(false);
+          setErrorDesc('O tempo se esgotou. Tente novamente.');
         }
       } catch (e) {
         console.log('polling error:', e);
       }
-    }, 2000);
-
-    setTimeout(() => {
-      clearInterval(interval);
-      setChecking(false);
-    }, 300000);
+    }, 3000);
   };
 
   return (

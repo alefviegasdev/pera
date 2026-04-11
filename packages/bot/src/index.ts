@@ -103,28 +103,31 @@ bot.on("message:text", async (ctx) => {
   try {
     // Verifica se é um código de vinculação (6 dígitos)
     if (/^\d{6}$/.test(text)) {
-      console.log('código recebido:', text);
-      const userId = ctx.from.id.toString();
+      console.log(`[DEBUG] Recebido código de vínculo: ${text}`);
       
-      // Busca o código na tabela user_profiles
       const { data, error } = await supabase
         .from('user_profiles')
         .select('*')
         .eq('link_code', text)
-        .single();
-        
-      console.log('resultado busca:', data, error);
+        .maybeSingle();
+
+      if (error) {
+        throw error;
+      }
       
       if (data) {
-        // Atualiza o telegram_id
+        // Atualiza estritamente a mesma linha localizada usando ID garantido do banco
         await supabase
           .from('user_profiles')
-          .update({ telegram_id: userId, linked_at: new Date().toISOString() })
-          .eq('link_code', text);
+          .update({ 
+            telegram_id: ctx.from.id.toString(), 
+            linked_at: new Date().toISOString() 
+          })
+          .eq('id', data.id);
         
         await ctx.reply('✅ Conta vinculada com sucesso! Agora posso registrar seus gastos. 🍐');
       } else {
-        await ctx.reply('❌ Código inválido ou expirado. Verifique o código no app e tente novamente.');
+        await ctx.reply('❌ Código inválido ou expirado. Verifique no app e tente novamente.');
       }
       return;
     }
