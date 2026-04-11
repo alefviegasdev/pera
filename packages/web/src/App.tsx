@@ -17,10 +17,19 @@ const App = () => {
   const [needsTelegramLink, setNeedsTelegramLink] = useState(false);
 
   useEffect(() => {
-    checkUser();
+    // Verifica na inicialização
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        setUserId(session.user.id);
+        await checkTelegramLink(session.user.id);
+      } else {
+        setUserId(null);
+        setLoading(false);
+      }
+    });
     
     // Escuta mudanças de estado na autenticação
-    const { data: authListener } = supabase.auth.onAuthStateChange(
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (session?.user) {
           setUserId(session.user.id);
@@ -34,19 +43,9 @@ const App = () => {
     );
 
     return () => {
-      authListener.subscription.unsubscribe();
+      subscription.unsubscribe();
     };
   }, []);
-
-  const checkUser = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user) {
-      setUserId(session.user.id);
-      await checkTelegramLink(session.user.id);
-    } else {
-      setLoading(false);
-    }
-  };
 
   const checkTelegramLink = async (uid: string) => {
     const { data } = await supabase
