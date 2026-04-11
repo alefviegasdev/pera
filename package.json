@@ -1,0 +1,12 @@
+{
+  "name": "pera-monorepo",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:bot": "npm run dev -w packages/bot",
+    "dev:api": "npm run dev -w packages/api",
+    "dev:web": "npm run dev -w packages/web"
+  }
+}
