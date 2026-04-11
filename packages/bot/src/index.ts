@@ -2,6 +2,7 @@ import path from 'path'
 import dotenv from 'dotenv'
 import { Bot } from "grammy";
 import { createClient } from "@supabase/supabase-js";
+import http from "http";
 
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') })
 
@@ -355,3 +356,14 @@ O que você pode fazer:
 
 bot.start();
 console.log("Bot Pera rodando (Direct API mode)!");
+
+// Servidor HTTP mínimo para health check do Render
+const port = process.env.PORT || 3000;
+const server = http.createServer((req, res) => {
+  res.writeHead(200, { "Content-Type": "text/plain" });
+  res.end("OK");
+});
+
+server.listen(port, () => {
+  console.log(`Servidor HTTP rodando na porta ${port} para health check`);
+});
