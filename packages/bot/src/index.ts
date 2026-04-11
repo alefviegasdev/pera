@@ -129,6 +129,7 @@ bot.on("message:text", async (ctx) => {
             .maybeSingle();
 
           if (existingLink) {
+            console.log('[LINK] existingLink:', existingLink, 'userId:', userId, 'data.user_id:', data.user_id);
             pendingConfirmations.set(userId, text);
             await ctx.reply('⚠️ Este Telegram já está vinculado a outra conta Pera.\n\nAo continuar, a conta anterior será desvinculada automaticamente.\n\nEnvie o código novamente para confirmar. 🍐');
             return;
@@ -152,7 +153,7 @@ bot.on("message:text", async (ctx) => {
             telegram_id: userId, 
             linked_at: new Date().toISOString() 
           })
-          .eq('id', data.id);
+          .eq('user_id', data.user_id);
         
         await ctx.reply('✅ Conta vinculada com sucesso! Agora posso registrar seus gastos. 🍐');
       } else {
