@@ -50,6 +50,7 @@ const TelegramLink = ({ userId, onSkippedOrLinked }: TelegramLinkProps) => {
   };
 
   const startPolling = () => {
+    console.log('[POLLING] userId sendo usado:', userId);
     if (checking) return; // previne múltiplos cliques
     setChecking(true);
     let attempts = 0;
@@ -63,7 +64,7 @@ const TelegramLink = ({ userId, onSkippedOrLinked }: TelegramLinkProps) => {
           .eq('user_id', userId)
           .maybeSingle();
         
-        console.log(`[Polling ${attempts}/60] result:`, data, error);
+        console.log('[POLLING] data retornado:', JSON.stringify(data), 'error:', error);
         
         if (data?.telegram_id) {
           clearInterval(interval);

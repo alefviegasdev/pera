@@ -116,7 +116,14 @@ bot.on("message:text", async (ctx) => {
       }
       
       if (data) {
-        // Atualiza estritamente a mesma linha localizada usando ID garantido do banco
+        // 1. Limpa qualquer outro perfil que use este mesmo telegram_id
+        await supabase
+          .from('user_profiles')
+          .update({ telegram_id: null, linked_at: null })
+          .eq('telegram_id', ctx.from.id.toString())
+          .neq('user_id', data.user_id);
+
+        // 2. Atualiza estritamente a mesma linha localizada usando ID garantido do banco
         await supabase
           .from('user_profiles')
           .update({ 
