@@ -104,8 +104,8 @@ const Home = ({ userId, userMetadata }: { userId: string; userMetadata?: any }) 
             )}
           </div>
           <div>
-            <p className="text-on-surface-variant font-medium text-xs font-body">Olá, {userName}</p>
-            <p className="text-on-surface font-bold text-sm font-headline">{monthLabel}, {year}</p>
+            <p className="text-on-surface-variant font-medium text-xs font-body uppercase tracking-wider opacity-60">Seja bem-vindo</p>
+            <p className="text-on-surface font-black text-xl font-headline leading-tight">{userName}</p>
           </div>
         </div>
         <div className="flex items-center gap-4">
@@ -182,7 +182,7 @@ const Home = ({ userId, userMetadata }: { userId: string; userMetadata?: any }) 
         {/* ── CATEGORY HIGHLIGHTS ── */}
         <section className="space-y-4">
           <h2 className="text-on-surface font-extrabold text-xl font-headline">Onde você mais gasta</h2>
-          <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
+          <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
             {summary?.by_category?.length > 0 ? (
               summary.by_category.slice(0, 5).map((cat: any, idx: number) => (
                 <div key={cat.category} className={`min-w-[140px] ${idx === 0 ? 'bg-secondary-container' : 'bg-white'} p-5 rounded-[2rem] flex flex-col items-center text-center space-y-3 shadow-sm`}>

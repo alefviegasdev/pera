@@ -412,7 +412,7 @@ body {
   background: rgba(46, 47, 44, 0.5);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
-  z-index: 200;
+  z-index: 2000;
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -585,4 +585,13 @@ body {
   .fab {
     right: 16px;
   }
+}
+
+/* ── Scrollbar Hide Utility ── */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
 }
