@@ -2,9 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { catBg, catColor, catEmoji } from '../utils/categories';
 import TransactionModal from '../components/TransactionModal';
 import BillsModal from '../components/BillsModal';
-import { ArrowRight, ArrowUpRight, ArrowDownRight, AlertTriangle, CreditCard, ChevronRight, Zap, Wifi, Home as HomeIcon, Dumbbell, Pin, WarningOutlined } from 'lucide-react';
-// Note: lucide doesn't have WarningOutlined, using AlertTriangle for consistency or keeping it simple.
-import { AlertCircle, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, ArrowDownRight, AlertTriangle, CreditCard, ChevronRight, Zap, Wifi, Home as HomeIcon, Dumbbell, Pin, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
