@@ -92,7 +92,7 @@ const Home = ({
           subtype: 'fixed',
           urgency: 'planned',
           description: bill.name,
-          source: 'manual',
+          source: 'text',
           short_code: shortCode
         })
       });
