@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { catBg, catColor, catEmoji } from '../utils/categories';
 import TransactionModal from '../components/TransactionModal';
 import BillsModal from '../components/BillsModal';
-import { ArrowRight, ArrowUpRight, ArrowDownRight, AlertTriangle, CreditCard, ChevronRight, Zap, Wifi, Home as HomeIcon, Dumbbell, Pin, AlertCircle, CheckCircle2 } from 'lucide-react';
+import FixedDetailsModal from '../components/FixedDetailsModal';
+import { ArrowRight, ArrowUpRight, ArrowDownRight, AlertTriangle, CreditCard, ChevronRight, Zap, Wifi, Home as HomeIcon, Dumbbell, Pin, AlertCircle, CheckCircle2, Heart } from 'lucide-react';
 
 const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
@@ -27,15 +28,16 @@ const Home = ({
   const [loading, setLoading] = useState(true);
   const [selectedTx, setSelectedTx] = useState<any>(null);
   const [showBillsModal, setShowBillsModal] = useState(false);
+  const [showFixedModal, setShowFixedModal] = useState(false);
   const [billTab, setBillTab] = useState<'pending' | 'paid'>('pending');
 
   useEffect(() => {
-    if (selectedTx || showBillsModal) {
+    if (selectedTx || showBillsModal || showFixedModal) {
       onModalOpen?.();
     } else {
       onModalClose?.();
     }
-  }, [selectedTx, showBillsModal]);
+  }, [selectedTx, showBillsModal, showFixedModal]);
 
   useEffect(() => { fetchData(); }, [userId]);
   
@@ -165,19 +167,39 @@ const Home = ({
   const income = summary?.total_income ?? 0;
   const expense = summary?.total_expense ?? 0;
   
-  // Custom logic: projectedFixed = unpaid bills + active installments value + 10% tithing
-  const futureFixed = pendingBills.reduce((sum, b) => sum + Number(b.value), 0);
+  const totalBills = bills.reduce((sum, b) => sum + Number(b.value), 0);
+  const unpaidBillsVal = pendingBills.reduce((sum, b) => sum + Number(b.value), 0);
   const installmentTotal = installments.reduce((sum, i) => sum + Number(i.installment_value), 0);
   const tithing = income * 0.10;
-  const projectedFixed = futureFixed + installmentTotal + tithing;
+
+  // Values for the Total Card
+  const totalFixedVal = totalBills + installmentTotal + tithing;
+  const remainingFixedVal = unpaidBillsVal + installmentTotal + tithing;
   
-  const realAvailable = income - expense - projectedFixed;
+  const realAvailable = income - expense - remainingFixedVal;
   const isNegative = realAvailable < 0;
 
+  // Unified list for Vencimentos
+  const allPending = [
+    ...pendingBills.map(b => ({ ...b, itemType: 'bill' })),
+    ...installments.map(i => ({ 
+      id: i.id, 
+      name: i.description, 
+      value: i.installment_value, 
+      itemType: 'installment'
+    })),
+    ...(tithing > 0 ? [{ 
+      id: 'tithing', 
+      name: 'Dízimo do mês', 
+      value: tithing, 
+      itemType: 'tithing'
+    }] : [])
+  ];
+
   // Progress segments for the Real Available bar
-  const totalRelevant = Math.max(income, expense + projectedFixed);
+  const totalRelevant = Math.max(income, expense + remainingFixedVal);
   const spentPct = totalRelevant > 0 ? (expense / totalRelevant) * 100 : 0;
-  const fixedPct = totalRelevant > 0 ? (projectedFixed / totalRelevant) * 100 : 0;
+  const fixedPct = totalRelevant > 0 ? (remainingFixedVal / totalRelevant) * 100 : 0;
   const availPct = Math.max(0, 100 - spentPct - fixedPct);
 
   // Budget Alerts logic
@@ -259,16 +281,24 @@ const Home = ({
             </p>
           </div>
 
-          <div className="bg-secondary-container p-6 rounded-[2.5rem] space-y-4 shadow-sm relative overflow-hidden group transition-all hover:scale-[1.01]">
+          <div 
+            onClick={() => setShowFixedModal(true)}
+            className="bg-secondary-container p-6 rounded-[2.5rem] space-y-3 shadow-sm relative overflow-hidden group transition-all hover:scale-[1.01] cursor-pointer active:scale-95"
+          >
             <div className="flex items-center justify-between">
               <div className="w-8 h-8 rounded-full bg-white/30 flex items-center justify-center">
                 <Pin size={18} className="text-on-secondary-container" />
               </div>
               <span className="text-[9px] font-black uppercase tracking-[0.1em] text-on-secondary-container opacity-60">Custos Fixos</span>
             </div>
-            <p className="text-on-secondary-container font-headline font-black text-xl tracking-tight">
-              {fmt(projectedFixed)}
-            </p>
+            <div>
+              <p className="text-on-secondary-container font-headline font-black text-xl tracking-tight leading-tight">
+                {fmt(totalFixedVal)}
+              </p>
+              <p className="text-on-secondary-container/70 text-[10px] font-bold mt-1">
+                Falta pagar: {fmt(remainingFixedVal)}
+              </p>
+            </div>
           </div>
         </section>
 
@@ -323,7 +353,7 @@ const Home = ({
                   <div className="w-3 h-3 rounded-full bg-primary-container"></div>
                   <span className="opacity-80 uppercase tracking-widest text-[10px]">Contas fixas previstas</span>
                 </div>
-                <span className="text-on-surface font-black">− {fmt(projectedFixed)}</span>
+                <span className="text-on-surface font-black">− {fmt(remainingFixedVal)}</span>
               </div>
               <div className="pt-4 border-t border-surface-container-high flex items-center justify-between text-base font-black">
                 <span className="text-tertiary uppercase tracking-widest text-[11px]">Disponível para o mês</span>
@@ -389,29 +419,41 @@ const Home = ({
 
           <div className="space-y-4">
             {billTab === 'pending' ? (
-              pendingBills.slice(0, 3).map(b => {
-                const daysLeft = b.due_day - today;
+              allPending.slice(0, 4).map(b => {
+                const isMonthlyBill = b.itemType === 'bill';
+                const daysLeft = isMonthlyBill ? b.due_day - today : null;
+                
                 return (
                   <div key={b.id} className="bg-white p-7 rounded-[2.5rem] flex items-center justify-between border border-surface-container/50 shadow-sm transition-all hover:shadow-md hover:scale-[1.01]">
                     <div className="flex items-center gap-5">
                       <div className="w-14 h-14 bg-surface-container-low rounded-2xl flex items-center justify-center">
-                        {getBillIcon(b.name)}
+                        {b.itemType === 'installment' ? <CreditCard size={24} className="text-secondary" /> : 
+                         b.itemType === 'tithing' ? <Heart size={24} className="text-tertiary" fill="currentColor" /> : 
+                         getBillIcon(b.name)}
                       </div>
                       <div>
                         <p className="text-on-surface font-bold text-base font-headline">{b.name}</p>
-                        <p className={`text-sm mt-0.5 font-bold ${daysLeft <= 2 ? 'text-error' : 'text-on-surface-variant'}`}>
-                          {daysLeft === 0 ? 'Vence hoje' : daysLeft < 0 ? `Atrasado ${Math.abs(daysLeft)}d` : `Vence em ${daysLeft} dias`}
-                        </p>
+                        {isMonthlyBill ? (
+                          <p className={`text-sm mt-0.5 font-bold ${daysLeft !== null && daysLeft <= 2 ? 'text-error' : 'text-on-surface-variant'}`}>
+                            {daysLeft === 0 ? 'Vence hoje' : (daysLeft !== null && daysLeft < 0) ? `Atrasado ${Math.abs(daysLeft)}d` : `Vence em ${daysLeft} dias`}
+                          </p>
+                        ) : (
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest mt-1 inline-block ${b.itemType === 'installment' ? 'bg-secondary/10 text-secondary' : 'bg-tertiary/10 text-tertiary'}`}>
+                            {b.itemType === 'installment' ? 'Parcela' : 'Dízimo'}
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-3">
                       <p className="text-on-surface font-black text-lg tracking-tight">{fmt(b.value)}</p>
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); markAsPaid(b); }}
-                        className="bg-primary text-on-primary px-6 py-2.5 rounded-full text-[10px] font-black tracking-widest uppercase transition-all hover:brightness-110 active:scale-95 shadow-lg shadow-primary/10"
-                      >
-                        Pagar
-                      </button>
+                      {isMonthlyBill && (
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); markAsPaid(b); }}
+                          className="bg-primary text-on-primary px-6 py-2.5 rounded-full text-[10px] font-black tracking-widest uppercase transition-all hover:brightness-110 active:scale-95 shadow-lg shadow-primary/10"
+                        >
+                          Pagar
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -447,9 +489,9 @@ const Home = ({
               })
             )}
 
-            {billTab === 'pending' && pendingBills.length === 0 && (
+            {billTab === 'pending' && allPending.length === 0 && (
               <div className="p-10 text-center bg-white rounded-[2.5rem] border border-surface-container/30">
-                <p className="text-on-surface-variant font-medium opacity-60">Todas as contas do mês estão em dia!</p>
+                <p className="text-on-surface-variant font-medium opacity-60">Nenhum vencimento para o momento!</p>
               </div>
             )}
             {billTab === 'paid' && paidBills.length === 0 && (
@@ -531,6 +573,15 @@ const Home = ({
           bills={pendingBills}
           onClose={() => setShowBillsModal(false)}
           onPay={markAsPaid}
+        />
+      )}
+
+      {showFixedModal && (
+        <FixedDetailsModal
+          unpaidBills={pendingBills}
+          installments={installments}
+          tithingValue={tithing}
+          onClose={() => setShowFixedModal(false)}
         />
       )}
     </div>
