@@ -128,7 +128,7 @@ const Analysis = ({
   ];
 
   return (
-    <div className="screen bg-surface">
+    <div className="screen bg-surface scrollbar-hide">
       <header className="page-header pt-12 pb-6 px-6">
         <h1 className="text-4xl font-headline font-extrabold tracking-tight text-on-surface mb-2">Análise</h1>
         <p className="text-on-surface-variant font-body">Veja como seu dinheiro se moveu no período selecionado.</p>

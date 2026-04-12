@@ -227,17 +227,17 @@ const Home = ({
 
         {/* ── SUMMARY BENTO ── */}
         <section className="grid grid-cols-2 gap-4">
-          <div className="col-span-2 bg-tertiary-container p-7 rounded-[2.5rem] space-y-4 shadow-sm relative overflow-hidden group transition-all hover:scale-[1.01]">
+          <div className="col-span-2 bg-tertiary-container p-6 rounded-[2.5rem] flex flex-row items-center justify-between shadow-sm relative overflow-hidden group transition-all hover:scale-[1.01]">
             <div className="absolute -right-4 -top-4 w-24 h-24 bg-tertiary/10 rounded-full blur-2xl group-hover:scale-125 transition-transform" />
-            <div className="flex items-center justify-between relative z-10">
+            <div className="flex items-center gap-4 relative z-10">
               <div className="w-10 h-10 rounded-full bg-tertiary-fixed-dim flex items-center justify-center">
                 <ArrowDownRight size={22} className="text-on-tertiary-fixed" />
               </div>
-              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-on-tertiary-fixed opacity-70">Entradas</span>
+              <p className="text-on-tertiary-container font-headline font-black text-2xl tracking-tight">
+                {fmt(income)}
+              </p>
             </div>
-            <p className="text-on-tertiary-container font-headline font-black text-3xl tracking-tight relative z-10">
-              {fmt(income)}
-            </p>
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-on-tertiary-fixed opacity-70 relative z-10">Entradas</span>
           </div>
           
           <div className="bg-primary-container p-6 rounded-[2.5rem] space-y-4 shadow-sm relative overflow-hidden group transition-all hover:scale-[1.01]">
@@ -330,18 +330,18 @@ const Home = ({
         {budgetAlerts.length > 0 && (
           <section className="bg-error-container p-8 rounded-[2.5rem] flex items-start gap-5 shadow-lg shadow-error/5 relative overflow-hidden group">
             <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
-              <AlertTriangle size={80} />
+              <AlertTriangle size={80} className="text-white" />
             </div>
             <div className="bg-white/20 p-3 rounded-2xl relative z-10">
-              <AlertTriangle size={28} className="text-on-error" />
+              <AlertTriangle size={28} className="text-white" />
             </div>
             <div className="space-y-3 relative z-10">
-              <h3 className="text-on-error font-headline font-black text-xl tracking-tight">Alertas de Atenção</h3>
+              <h3 className="text-white font-headline font-black text-xl tracking-tight">Alertas de Atenção</h3>
               <div className="space-y-2">
-                <p className="text-on-error/80 text-[10px] font-black uppercase tracking-[0.2em]">Excedeu o limite em:</p>
+                <p className="text-white/80 text-[10px] font-black uppercase tracking-[0.2em]">Excedeu o limite em:</p>
                 <div className="space-y-1">
                   {budgetAlerts.map(alert => (
-                    <div key={alert.category} className="flex items-center gap-2 text-on-error font-bold text-sm">
+                    <div key={alert.category} className="flex items-center gap-2 text-white font-bold text-sm">
                       <span className="opacity-50">•</span>
                       <span>{alert.category}: {fmt(alert.excess)} acima</span>
                     </div>
