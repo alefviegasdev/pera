@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { catBg, catColor, catEmoji } from '../utils/categories';
 import TransactionModal from '../components/TransactionModal';
 import BillsModal from '../components/BillsModal';
-import { ArrowRight, ArrowUpRight, ArrowDownRight, AlertTriangle, CreditCard, ChevronRight, Plus, Zap, Wifi, Home as HomeIcon, Dumbbell } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, ArrowDownRight, AlertTriangle, CreditCard, ChevronRight, Zap, Wifi, Home as HomeIcon, Dumbbell } from 'lucide-react';
 
 const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
@@ -332,10 +332,7 @@ const Home = ({
         </section>
       </main>
 
-      {/* FAB */}
-      <button className="fixed bottom-32 right-6 w-14 h-14 bg-primary text-white rounded-2xl flex items-center justify-center shadow-lg active:scale-95 transition-transform z-40">
-        <Plus size={28} />
-      </button>
+      {/* FAB - REMOVED */}
 
       {/* MODALS */}
       {selectedTx && (
