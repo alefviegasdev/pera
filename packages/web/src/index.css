@@ -410,8 +410,8 @@ body {
   position: fixed;
   inset: 0;
   background: rgba(46, 47, 44, 0.5);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   z-index: 9999;
   display: flex;
   align-items: flex-end;

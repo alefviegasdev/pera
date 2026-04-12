@@ -23,7 +23,7 @@ const BillsModal: React.FC<BillsModalProps> = ({ bills, onClose, onPay }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-on-surface/40 backdrop-blur-sm flex flex-col justify-end" onClick={onClose} style={{ zIndex: 9999 }}>
+    <div className="fixed inset-0 bg-on-surface/50 flex flex-col justify-end" onClick={onClose} style={{ zIndex: 9999 }}>
       <div 
         className="bg-surface rounded-t-[2.5rem] w-full max-w-2xl mx-auto shadow-2xl flex flex-col max-h-[85vh] animate-in slide-in-from-bottom duration-500 ease-out"
         onClick={(e) => e.stopPropagation()}
