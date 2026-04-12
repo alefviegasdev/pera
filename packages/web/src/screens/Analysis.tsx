@@ -11,7 +11,15 @@ import {
 
 type ViewMode = 'subtype' | 'urgency' | 'category';
 
-const Analysis = ({ userId }: { userId: string }) => {
+const Analysis = ({ 
+  userId,
+  onModalOpen,
+  onModalClose
+}: { 
+  userId: string;
+  onModalOpen?: () => void;
+  onModalClose?: () => void;
+}) => {
   const [summary, setSummary] = useState<any>(null);
   const [txs, setTxs] = useState<any[]>([]);
   const [period, setPeriod] = useState('month');

@@ -6,13 +6,33 @@ import { ArrowRight, ArrowUpRight, ArrowDownRight, AlertTriangle, CreditCard, Ch
 
 const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
-const Home = ({ userId, userMetadata, onTabChange }: { userId: string; userMetadata?: any; onTabChange?: (tab: any) => void }) => {
+const Home = ({ 
+  userId, 
+  userMetadata, 
+  onTabChange, 
+  onModalOpen, 
+  onModalClose 
+}: { 
+  userId: string; 
+  userMetadata?: any; 
+  onTabChange?: (tab: any) => void;
+  onModalOpen?: () => void;
+  onModalClose?: () => void;
+}) => {
   const [summary, setSummary] = useState<any>(null);
   const [bills, setBills]     = useState<any[]>([]);
   const [txs, setTxs]         = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTx, setSelectedTx] = useState<any>(null);
   const [showBillsModal, setShowBillsModal] = useState(false);
+
+  useEffect(() => {
+    if (selectedTx || showBillsModal) {
+      onModalOpen?.();
+    } else {
+      onModalClose?.();
+    }
+  }, [selectedTx, showBillsModal]);
 
   useEffect(() => { fetchData(); }, [userId]);
 

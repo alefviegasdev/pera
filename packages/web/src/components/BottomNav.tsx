@@ -12,11 +12,13 @@ const TABS: { id: Tab; Icon: React.FC<any>; label: string }[] = [
 const BottomNav = ({
   activeTab,
   onTabChange,
+  hidden = false,
 }: {
   activeTab: Tab;
   onTabChange: (t: Tab) => void;
+  hidden?: boolean;
 }) => (
-  <nav className="bottom-nav">
+  <nav className={`bottom-nav ${hidden ? 'hidden' : ''}`}>
     {TABS.map(({ id, Icon, label }) => {
       const isActive = activeTab === id;
       return (

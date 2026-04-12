@@ -17,6 +17,8 @@ const App = () => {
   const [loading, setLoading] = useState(true);
   const [needsTelegramLink, setNeedsTelegramLink] = useState(false);
 
+  const [modalOpen, setModalOpen] = useState(false);
+
   useEffect(() => {
     const authTimeout = setTimeout(() => {
       setLoading(false);
@@ -112,19 +114,25 @@ const App = () => {
   }
 
   const renderScreen = () => {
+    const commonProps = {
+      userId: userId!,
+      onModalOpen: () => setModalOpen(true),
+      onModalClose: () => setModalOpen(false)
+    };
+
     switch (activeTab) {
-      case 'home':     return <Home userId={userId!} userMetadata={userMetadata} onTabChange={setActiveTab} />;
-      case 'analysis': return <Analysis userId={userId!} />;
-      case 'history':  return <History userId={userId!} />;
-      case 'settings': return <Settings userId={userId!} onUserChange={(id) => { setUserId(id); }} userMetadata={userMetadata} />;
-      default:         return <Home userId={userId!} userMetadata={userMetadata} onTabChange={setActiveTab} />;
+      case 'home':     return <Home {...commonProps} userMetadata={userMetadata} onTabChange={setActiveTab} />;
+      case 'analysis': return <Analysis {...commonProps} />;
+      case 'history':  return <History {...commonProps} />;
+      case 'settings': return <Settings {...commonProps} onUserChange={(id) => { setUserId(id); }} userMetadata={userMetadata} />;
+      default:         return <Home {...commonProps} userMetadata={userMetadata} onTabChange={setActiveTab} />;
     }
   };
 
   return (
     <div className="app-shell">
       {renderScreen()}
-      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} hidden={modalOpen} />
     </div>
   );
 };

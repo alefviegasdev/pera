@@ -20,10 +20,18 @@ const SectionHeader = ({ title, onAdd }: { title: string; onAdd?: () => void }) 
   </div>
 );
 
-const Settings = ({ userId, onUserChange, userMetadata }: { 
+const Settings = ({ 
+  userId, 
+  onUserChange, 
+  userMetadata,
+  onModalOpen,
+  onModalClose
+}: { 
   userId: string; 
   onUserChange: (u: string | null) => void;
   userMetadata?: { name?: string; avatar?: string } | null;
+  onModalOpen?: () => void;
+  onModalClose?: () => void;
 }) => {
   const [fixed,   setFixed]   = useState<any[]>([]);
   const [goals,   setGoals]   = useState<any[]>([]);
@@ -35,6 +43,14 @@ const Settings = ({ userId, onUserChange, userMetadata }: {
   const [showNewBill, setShowNewBill] = useState(false);
   const [showNewGoal, setShowNewGoal] = useState(false);
   const [showNewBudget, setShowNewBudget] = useState(false);
+
+  useEffect(() => {
+    if (showNewBill || showNewGoal || showNewBudget) {
+      onModalOpen?.();
+    } else {
+      onModalClose?.();
+    }
+  }, [showNewBill, showNewGoal, showNewBudget]);
 
   useEffect(() => { fetchData(); }, [userId]);
 

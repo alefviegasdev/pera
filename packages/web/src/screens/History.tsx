@@ -3,7 +3,15 @@ import { catColor, catEmoji } from '../utils/categories';
 import TransactionModal from '../components/TransactionModal';
 import InstallmentsModal from '../components/InstallmentsModal';
 
-const History = ({ userId }: { userId: string }) => {
+const History = ({ 
+  userId, 
+  onModalOpen, 
+  onModalClose 
+}: { 
+  userId: string; 
+  onModalOpen?: () => void;
+  onModalClose?: () => void;
+}) => {
   const [txs, setTxs] = useState<any[]>([]);
   const [insts, setInsts] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
@@ -11,6 +19,14 @@ const History = ({ userId }: { userId: string }) => {
   const [selectedTx, setSelectedTx] = useState<any>(null);
   const [showInstallments, setShowInstallments] = useState(false);
   const [period, setPeriod] = useState('month');
+
+  useEffect(() => {
+    if (selectedTx || showInstallments) {
+      onModalOpen?.();
+    } else {
+      onModalClose?.();
+    }
+  }, [selectedTx, showInstallments]);
 
   useEffect(() => { fetchAll(); }, [userId, period]);
 
