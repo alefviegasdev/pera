@@ -176,12 +176,12 @@ bot.on("message:text", async (ctx) => {
     const supabaseUserId = profile.user_id;
 
     // 1. RECONHECIMENTO DE COMANDOS (IA-Driven)
-    const cmdRegex = /^#?([a-zA-Z0-9]{4})(\s+.*|$)/i;
+    const cmdRegex = /^(#[a-zA-Z0-9]{4}|[a-zA-Z][a-zA-Z0-9]{3}|[a-zA-Z0-9]{3}[a-zA-Z])(\s+.*|$)/i;
     const cmdMatch = text.match(cmdRegex);
 
     if (cmdMatch) {
       console.log("Tipo detectado: comando/correção (IA)");
-      const code = cmdMatch[1].toUpperCase();
+      const code = cmdMatch[1].replace('#', '').toUpperCase();
       
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
       const response = await fetch(url, {
