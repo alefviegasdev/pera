@@ -117,16 +117,7 @@ const Analysis = ({
 
   const composition = getCompositionData();
 
-  const getConicGradient = () => {
-    let current = 0;
-    const parts = composition.map(c => {
-      const start = current;
-      current += c.percentage;
-      return `${c.color} ${start}% ${current}%`;
-    });
-    if (parts.length === 0) return 'var(--surface-container-highest)';
-    return `conic-gradient(${parts.join(', ')})`;
-  };
+
 
   const periods = [
     { id: 'today', label: 'Hoje' },
@@ -241,20 +232,38 @@ const Analysis = ({
           </div>
 
           <div className="relative flex justify-center py-6">
-            <div className="w-52 h-52 rounded-full flex items-center justify-center relative shadow-sm">
-              <div 
-                className="absolute inset-0 rounded-full border-[14px] border-surface-container-highest opacity-10"
-              />
-              <div 
-                className="absolute inset-0 rounded-full border-[14px] transition-all duration-1000 shadow-sm"
-                style={{ 
-                  background: getConicGradient(),
-                  WebkitMaskImage: 'radial-gradient(transparent 62%, black 63%)',
-                  maskImage: 'radial-gradient(transparent 62%, black 63%)',
-                }}
-              />
-              <div className="text-center z-10">
-                <span className="block text-2xl font-headline font-black text-on-surface">
+            <div className="relative w-52 h-52">
+              {/* Donut usando SVG para garantir as cores */}
+              <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+                <circle
+                  cx="50" cy="50" r="40"
+                  fill="none"
+                  stroke="var(--surface-container-highest)"
+                  strokeWidth="12"
+                  className="opacity-10"
+                />
+                {composition.reduce((acc, item, i) => {
+                  const circumference = 2 * Math.PI * 40;
+                  const offset = acc.offset;
+                  const dash = (item.percentage / 100) * circumference;
+                  acc.elements.push(
+                    <circle
+                      key={item.label}
+                      cx="50" cy="50" r="40"
+                      fill="none"
+                      stroke={item.color}
+                      strokeWidth="12"
+                      strokeDasharray={`${dash} ${circumference - dash}`}
+                      strokeDashoffset={-offset}
+                      className="transition-all duration-1000 ease-out"
+                    />
+                  );
+                  acc.offset += dash;
+                  return acc;
+                }, { elements: [] as React.ReactNode[], offset: 0 }).elements}
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-2xl font-headline font-black text-on-surface">
                   {loading ? '...' : fmt(summary?.total_expense ?? 0).split(',')[0]}
                 </span>
                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant opacity-60">Despesas</span>
