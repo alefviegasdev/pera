@@ -71,14 +71,28 @@ REGRAS DE CLASSIFICAÇÃO:
    
    REGRA ESPECIAL PADARIA: Produtos de panificadora comprados para consumo doméstico (pão, bolo, salgado, pão de queijo, etc.) = "Alimentação". Refeição consumida no local (café da manhã, almoço em restaurante/lanchonete) = "Fast Food".
 
+7. LIMITE DE ORÇAMENTO:
+   Se a mensagem mencionar alteração de limite ou orçamento para uma categoria, retorne type: "budget_limit" com:
+   - "category": nome da categoria (usar as categorias padronizadas da regra 6)
+   - "limit_value": número do novo limite
+
+   EXEMPLOS que devem retornar type: "budget_limit":
+   - "limite alimentação 800"
+   - "alterar limite de lazer para 500"
+   - "aumentar limite de saúde para 1000"
+   - "diminuir limite vestuário para 200"
+
+   Pode retornar múltiplos itens no array se houver várias categorias na mesma frase.
+
 JSON Structure (dentro do array):
 {
-  "value": número (decimal),
-  "type": "expense" ou "income" ou "payment" ou "bill",
+  "value": número (decimal, se for expense/income),
+  "limit_value": número (decimal, se for budget_limit),
+  "type": "expense" | "income" | "payment" | "bill" | "budget_limit",
   "category": "Alimentação" | "Fast Food" | "Transporte" | "Saúde" | "Lazer" | "Educação" | "Contas" | "Vestuário" | "Eletrônicos" | "Dízimo/Oferta" | "Outros",
   "subtype": "fixed" | "semifixed" | "variable",
   "urgency": "urgent" | "planned",
-  "description": string curta (ou nome da conta se for payment/bill),
+  "description": string curta,
   "name": string (apenas se for type: bill),
   "due_day": número (apenas se for type: bill),
   "is_installment": boolean,
@@ -496,6 +510,32 @@ Exemplos que funcionam:
 📝 ${item.description}
 🏷️ ${subtypeLabel}
 ⏱️ ${urgencyLabel}`);
+      } else if (item.type === 'budget_limit') {
+        const { data: existing } = await supabase
+          .from('budgets')
+          .select('id')
+          .eq('user_id', supabaseUserId)
+          .eq('category', item.category)
+          .maybeSingle();
+
+        if (existing) {
+          const { error } = await supabase
+            .from('budgets')
+            .update({ monthly_limit: item.limit_value })
+            .eq('id', existing.id);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase
+            .from('budgets')
+            .insert({
+              user_id: supabaseUserId,
+              category: item.category,
+              monthly_limit: item.limit_value
+            });
+          if (error) throw error;
+        }
+
+        await ctx.reply(`✅ Limite de **${item.category}** atualizado para R$ ${Number(item.limit_value).toFixed(2)} 🍐`);
       }
     }
 
