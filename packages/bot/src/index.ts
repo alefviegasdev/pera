@@ -18,7 +18,6 @@ if (!token || !geminiKey || !supabaseUrl || !supabaseKey) {
 const bot = new Bot(token);
 const supabase = createClient(supabaseUrl, supabaseKey);
 const pendingConfirmations = new Map<string, string>(); // Link confirmations
-const pendingBillConfirmations = new Map<string, any>(); // Natural language bill confirmations
 
 const SYSTEM_PROMPT = `
 Você é um assistente financeiro inteligente chamado Pera.
@@ -131,29 +130,7 @@ bot.on("message:text", async (ctx) => {
       .maybeSingle();
 
     const supabaseUserId = profile?.user_id;
-
-    // 0. VERIFICAÇÃO DE CONFIRMAÇÃO PENDENTE (SIM)
-    if (text.toUpperCase() === 'SIM' && supabaseUserId && pendingBillConfirmations.has(supabaseUserId)) {
-        const bill = pendingBillConfirmations.get(supabaseUserId);
-        const now = new Date();
-        
-        const { error } = await supabase.from('monthly_bills').insert({
-            user_id: supabaseUserId,
-            name: bill.name,
-            value: bill.value,
-            due_day: bill.due_day,
-            month: now.getMonth() + 1,
-            year: now.getFullYear(),
-            paid: false,
-            short_code: generateShortCode()
-        });
-
-        if (error) throw error;
-        
-        pendingBillConfirmations.delete(supabaseUserId);
-        return ctx.reply(`✅ ${bill.name} cadastrada!\nVence todo dia ${bill.due_day}. 🍐`);
-    }
-
+ 
     // Verifica se é um código de vinculação (6 dígitos)
     if (/^\d{6}$/.test(text)) {
       console.log(`[DEBUG] Recebido código de vínculo: ${text}`);
@@ -464,18 +441,24 @@ Exemplos que funcionam:
           await ctx.reply(`❓ Não encontrei nenhuma conta pendente para "${item.description}" este mês.`);
         }
       } else if (item.type === 'bill') {
-        pendingBillConfirmations.set(supabaseUserId, {
+        const now = new Date();
+        const { error } = await supabase.from('monthly_bills').insert({
+          user_id: supabaseUserId,
           name: item.name,
           value: item.value,
-          due_day: item.due_day
+          due_day: item.due_day,
+          month: now.getMonth() + 1,
+          year: now.getFullYear(),
+          paid: false,
+          short_code: shortCode
         });
 
-        await ctx.reply(`📋 Cadastrar conta fixa?
+        if (error) throw error;
+
+        await ctx.reply(`✅ Conta cadastrada! #${shortCode}
 📝 ${item.name}
 💰 R$ ${Number(item.value).toFixed(2)}
-📅 Vence todo dia ${item.due_day}
-
-Responda SIM para confirmar. 🍐`);
+📅 Vence todo dia ${item.due_day} 🍐`);
       } else {
         const { error } = await supabase.from("transactions").insert({
           user_id: supabaseUserId,
