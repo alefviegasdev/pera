@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { catBg, catColor, catEmoji } from '../utils/categories';
 import TransactionModal from '../components/TransactionModal';
 import BillsModal from '../components/BillsModal';
-import { ArrowRight, ArrowUpRight, ArrowDownRight, AlertTriangle, CreditCard, ChevronRight, Zap, Wifi, Home as HomeIcon, Dumbbell } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, ArrowDownRight, AlertTriangle, CreditCard, ChevronRight, Zap, Wifi, Home as HomeIcon, Dumbbell, Pin, WarningOutlined } from 'lucide-react';
+// Note: lucide doesn't have WarningOutlined, using AlertTriangle for consistency or keeping it simple.
+import { AlertCircle, CheckCircle2 } from 'lucide-react';
 
 const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
@@ -23,6 +25,7 @@ const Home = ({
   const [bills, setBills]     = useState<any[]>([]);
   const [txs, setTxs]         = useState<any[]>([]);
   const [installments, setInstallments] = useState<any[]>([]);
+  const [budgets, setBudgets]      = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTx, setSelectedTx] = useState<any>(null);
   const [showBillsModal, setShowBillsModal] = useState(false);
@@ -47,11 +50,12 @@ const Home = ({
   const fetchData = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const [sRes, bRes, tRes, iRes] = await Promise.all([
+      const [sRes, bRes, tRes, iRes, budgetsRes] = await Promise.all([
         fetch(`/api/transactions/summary?user_id=${userId}&period=month`),
         fetch(`/api/monthly-bills?user_id=${userId}`),
         fetch(`/api/transactions?user_id=${userId}&period=month`),
-        fetch(`/api/installments?user_id=${userId}`)
+        fetch(`/api/installments?user_id=${userId}`),
+        fetch(`/api/budgets?user_id=${userId}`)
       ]);
       setSummary(await sRes.json());
       const billsData = await bRes.json();
@@ -60,6 +64,8 @@ const Home = ({
       setTxs(txData.transactions || []);
       const instData = await iRes.json();
       setInstallments(Array.isArray(instData) ? instData : []);
+      const budgetsData = await budgetsRes.json();
+      setBudgets(Array.isArray(budgetsData) ? budgetsData : []);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
@@ -151,15 +157,37 @@ const Home = ({
   const balanceParts = splitFmt(summary?.balance ?? 0);
   const userName = userMetadata?.name?.split(' ')[0] || 'Michel';
 
-  // Budget calculations
-  const totalFixed = bills.reduce((sum, b) => sum + (b.value || 0), 0);
-  const totalInstallments = installments.reduce((sum, i) => sum + (i.installment_value || 0), 0);
-  const totalExpenses = (summary?.total_expense ?? 0) + totalFixed + totalInstallments;
-  const totalIncome = summary?.total_income ?? 0;
-  const budgetUsedPct = totalIncome > 0 ? Math.min((totalExpenses / totalIncome) * 100, 100) : 0;
+  // Financial Calculations
+  const income = summary?.total_income ?? 0;
+  const expense = summary?.total_expense ?? 0;
+  
+  // Custom logic: projectedFixed = unpaid bills + active installments value
+  const futureFixed = pendingBills.reduce((sum, b) => sum + Number(b.value), 0);
+  const installmentTotal = installments.reduce((sum, i) => sum + Number(i.installment_value), 0);
+  const projectedFixed = futureFixed + installmentTotal;
+  
+  const realAvailable = income - expense - projectedFixed;
+  const isNegative = realAvailable < 0;
 
-  // Progress Color Logic
-  const progressColor = budgetUsedPct < 80 ? '#22c55e' : budgetUsedPct < 100 ? '#f59e0b' : '#ef4444';
+  // Progress segments for the Real Available bar
+  const totalRelevant = Math.max(income, expense + projectedFixed);
+  const spentPct = totalRelevant > 0 ? (expense / totalRelevant) * 100 : 0;
+  const fixedPct = totalRelevant > 0 ? (projectedFixed / totalRelevant) * 100 : 0;
+  const availPct = Math.max(0, 100 - spentPct - fixedPct);
+
+  // Budget Alerts logic
+  const budgetAlerts = budgets
+    .map(b => {
+      const catSpend = summary?.by_category?.find((c: any) => c.category === b.category);
+      const spent = catSpend ? Number(catSpend.total) : Number(b.spent);
+      return { 
+        category: b.category, 
+        limit: Number(b.monthly_limit), 
+        spent, 
+        excess: spent - Number(b.monthly_limit) 
+      };
+    })
+    .filter(b => b.excess > 0);
 
   return (
     <div className="screen bg-surface pb-32">
@@ -201,59 +229,127 @@ const Home = ({
 
         {/* ── SUMMARY BENTO ── */}
         <section className="grid grid-cols-2 gap-4">
-          <div className="bg-tertiary-container p-6 rounded-[2rem] space-y-4">
-            <div className="flex items-center justify-between">
-              <ArrowDownRight size={20} className="text-on-tertiary-container" />
-              <span className="text-[10px] font-bold uppercase tracking-widest text-on-tertiary-container">Entradas</span>
+          <div className="col-span-2 bg-tertiary-container p-7 rounded-[2.5rem] space-y-4 shadow-sm relative overflow-hidden group transition-all hover:scale-[1.01]">
+            <div className="absolute -right-4 -top-4 w-24 h-24 bg-tertiary/10 rounded-full blur-2xl group-hover:scale-125 transition-transform" />
+            <div className="flex items-center justify-between relative z-10">
+              <div className="w-10 h-10 rounded-full bg-tertiary-fixed-dim flex items-center justify-center">
+                <ArrowDownRight size={22} className="text-on-tertiary-fixed" />
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-on-tertiary-fixed opacity-70">Entradas</span>
             </div>
-            <p className="text-on-tertiary-container font-extrabold text-xl font-headline tracking-tight">
-              {fmt(summary?.total_income ?? 0)}
+            <p className="text-on-tertiary-container font-headline font-black text-3xl tracking-tight relative z-10">
+              {fmt(income)}
             </p>
           </div>
-          <div className="bg-primary-container p-6 rounded-[2rem] space-y-4">
+          
+          <div className="bg-primary-container p-6 rounded-[2.5rem] space-y-4 shadow-sm relative overflow-hidden group transition-all hover:scale-[1.01]">
             <div className="flex items-center justify-between">
-              <ArrowUpRight size={20} className="text-on-primary-container" />
-              <span className="text-[10px] font-bold uppercase tracking-widest text-on-primary-container">Saídas</span>
+              <div className="w-8 h-8 rounded-full bg-primary-fixed-dim flex items-center justify-center">
+                <ArrowUpRight size={18} className="text-on-primary-container" />
+              </div>
+              <span className="text-[9px] font-black uppercase tracking-[0.1em] text-on-primary-container opacity-60">Saídas</span>
             </div>
-            <p className="text-on-primary-container font-extrabold text-xl font-headline tracking-tight">
-              {fmt(summary?.total_expense ?? 0)}
+            <p className="text-on-primary-container font-headline font-black text-xl tracking-tight">
+              {fmt(expense)}
+            </p>
+          </div>
+
+          <div className="bg-surface-container-highest p-6 rounded-[2.5rem] space-y-4 shadow-sm relative overflow-hidden group transition-all hover:scale-[1.01]">
+            <div className="flex items-center justify-between">
+              <div className="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center">
+                <Pin size={18} className="text-on-surface" />
+              </div>
+              <span className="text-[9px] font-black uppercase tracking-[0.1em] text-on-surface-variant opacity-60">Custos Fixos</span>
+            </div>
+            <p className="text-on-surface font-headline font-black text-xl tracking-tight">
+              {fmt(projectedFixed)}
             </p>
           </div>
         </section>
 
-        {/* ── BUDGET PROGRESS ── */}
-        <section className="bg-white p-8 rounded-[2.5rem] space-y-6 shadow-sm">
-          <div className="flex justify-between items-end">
-            <div>
-              <h2 className="text-on-surface font-extrabold text-xl font-headline">Orçamento Mensal</h2>
-              <p className="text-on-surface-variant text-sm font-medium">Você utilizou {budgetUsedPct.toFixed(0)}% das suas entradas</p>
+        {/* ── REAL AVAILABLE BALANCE ── */}
+        <section className="bg-white p-8 rounded-[3rem] space-y-8 shadow-sm border border-surface-container/30">
+          <div className="space-y-1">
+            <div className="flex justify-between items-start">
+              <h2 className="text-on-surface font-headline font-black text-2xl tracking-tight">Saldo Disponível Real</h2>
+              <span className="bg-tertiary/10 text-tertiary px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.15em] border border-tertiary/5">Projeção</span>
             </div>
-            <span className="text-primary font-bold font-headline text-lg">
-              {fmt(totalExpenses).split(',')[0]} <span className="text-outline-variant font-normal text-sm">/ {fmt(totalIncome).split(',')[0]}</span>
+            <p className="text-on-surface-variant text-sm font-medium opacity-70">O que você ainda pode gastar este mês</p>
+          </div>
+
+          <div className="flex items-baseline gap-1 py-4">
+            <span className={`font-headline font-black text-5xl tracking-tight ${isNegative ? 'text-error' : 'text-tertiary'}`}>
+              {splitFmt(realAvailable).int}
+            </span>
+            <span className={`font-headline font-black text-2xl ${isNegative ? 'text-error/60' : 'text-tertiary/60'}`}>
+              {splitFmt(realAvailable).dec}
             </span>
           </div>
-          <div className="w-full h-4 bg-surface-container-highest rounded-full overflow-hidden">
-            <div 
-              className="h-full rounded-full transition-all duration-1000" 
-              style={{ 
-                width: `${budgetUsedPct}%`,
-                backgroundColor: progressColor
-              }}
-            ></div>
+
+          <div className="space-y-6">
+            <div className="flex w-full h-4 gap-1.5 overflow-hidden rounded-full bg-surface-container-low">
+              {/* Spent Part */}
+              <div 
+                className="h-full bg-primary-dim rounded-l-full transition-all duration-1000 ease-out" 
+                style={{ width: `${spentPct}%` }}
+              />
+              {/* Fixed Part */}
+              <div 
+                className="h-full bg-primary-container transition-all duration-1000 ease-out delay-100" 
+                style={{ width: `${fixedPct}%` }}
+              />
+              {/* Available Part */}
+              <div 
+                className={`h-full rounded-r-full transition-all duration-1000 ease-out delay-200 ${isNegative ? 'bg-error' : 'bg-tertiary-container'}`}
+                style={{ width: `${availPct}%` }}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 pt-2">
+              <div className="flex items-center justify-between text-xs font-bold text-on-surface-variant">
+                <div className="flex items-center gap-3">
+                  <div className="w-3 h-3 rounded-full bg-primary-dim"></div>
+                  <span className="opacity-80 uppercase tracking-widest text-[10px]">Gastos realizados</span>
+                </div>
+                <span className="text-on-surface font-black">− {fmt(expense)}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs font-bold text-on-surface-variant">
+                <div className="flex items-center gap-3">
+                  <div className="w-3 h-3 rounded-full bg-primary-container"></div>
+                  <span className="opacity-80 uppercase tracking-widest text-[10px]">Contas fixas previstas</span>
+                </div>
+                <span className="text-on-surface font-black">− {fmt(projectedFixed)}</span>
+              </div>
+              <div className="pt-4 border-t border-surface-container-high flex items-center justify-between text-base font-black">
+                <span className="text-tertiary uppercase tracking-widest text-[11px]">Disponível para o mês</span>
+                <span className={isNegative ? 'text-error' : 'text-tertiary'}>{fmt(realAvailable)}</span>
+              </div>
+            </div>
           </div>
         </section>
 
-        {/* ── ALERTS ── */}
-        {alerts.length > 0 && (
-          <section className="bg-error-container p-6 rounded-[2rem] flex items-start gap-4">
-            <div className="bg-white/20 p-2 rounded-full">
-              <AlertTriangle size={24} className="text-on-error" />
+        {/* ── BUDGET ALERTS ── */}
+        {budgetAlerts.length > 0 && (
+          <section className="bg-error-container p-8 rounded-[2.5rem] flex items-start gap-5 shadow-lg shadow-error/5 relative overflow-hidden group">
+            <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
+              <AlertTriangle size={80} />
             </div>
-            <div className="space-y-1">
-              <h3 className="text-on-error font-bold font-headline">Despesas Próximas</h3>
-              <p className="text-on-error opacity-90 text-sm font-medium">
-                Você tem {alerts.length} conta{alerts.length > 1 ? 's' : ''} vencendo em breve.
-              </p>
+            <div className="bg-white/20 p-3 rounded-2xl relative z-10">
+              <AlertTriangle size={28} className="text-on-error" />
+            </div>
+            <div className="space-y-3 relative z-10">
+              <h3 className="text-on-error font-headline font-black text-xl tracking-tight">Alertas de Atenção</h3>
+              <div className="space-y-2">
+                <p className="text-on-error/80 text-[10px] font-black uppercase tracking-[0.2em]">Excedeu o limite em:</p>
+                <div className="space-y-1">
+                  {budgetAlerts.map(alert => (
+                    <div key={alert.category} className="flex items-center gap-2 text-on-error font-bold text-sm">
+                      <span className="opacity-50">•</span>
+                      <span>{alert.category}: {fmt(alert.excess)} acima</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </section>
         )}
@@ -273,7 +369,7 @@ const Home = ({
             {pendingBills.slice(0, 3).map(b => {
               const daysLeft = b.due_day - today;
               return (
-                <div key={b.id} className="bg-white p-6 rounded-[2rem] flex items-center justify-between border border-surface-container/50 shadow-sm transition-all hover:shadow-md">
+                <div key={b.id} className="bg-white p-7 rounded-[2.5rem] flex items-center justify-between border border-surface-container/50 shadow-sm transition-all hover:shadow-md hover:scale-[1.01]">
                   <div className="flex items-center gap-5">
                     <div className="w-14 h-14 bg-surface-container-low rounded-2xl flex items-center justify-center">
                       {getBillIcon(b.name)}
@@ -335,11 +431,11 @@ const Home = ({
               Ver todas
             </button>
           </div>
-          <div className="bg-white rounded-[2.5rem] divide-y divide-surface-container-low shadow-sm">
+          <div className="bg-white rounded-[2.5rem] divide-y divide-surface-container-low shadow-sm border border-surface-container/30 overflow-hidden">
             {txs.slice(0, 5).map(t => {
               const isIncome = t.type === 'income';
               return (
-                <div key={t.id} onClick={() => setSelectedTx(t)} className="p-5 flex items-center justify-between cursor-pointer active:bg-surface-container-low transition-colors">
+                <div key={t.id} onClick={() => setSelectedTx(t)} className="p-6 flex items-center justify-between cursor-pointer active:bg-surface-container-low transition-colors hover:bg-surface-container-lowest">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-surface-container-low rounded-2xl flex items-center justify-center text-xl">
                       {catEmoji(t.category)}
