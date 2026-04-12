@@ -1,12 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { Target, Calendar, ChevronRight, User, Heart, LogOut, PlusCircle, Home, Wifi, Utensils, Zap, HelpCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import NewBillModal from '../components/NewBillModal';
+import NewBudgetModal from '../components/NewBudgetModal';
+import NewGoalModal from '../components/NewGoalModal';
 
 const SectionHeader = ({ title, onAdd }: { title: string; onAdd?: () => void }) => (
   <div className="flex items-center justify-between mb-4">
     <h3 className="font-headline text-xl font-extrabold tracking-tight text-on-background">{title}</h3>
     {onAdd && (
-      <button className="text-primary text-sm font-bold flex items-center gap-1 active:scale-95 transition-transform">
+      <button 
+        onClick={onAdd}
+        className="text-primary text-sm font-bold flex items-center gap-1 active:scale-95 transition-transform"
+      >
         <PlusCircle size={18} />
         Adicionar nova
       </button>
@@ -25,13 +31,18 @@ const Settings = ({ userId, onUserChange, userMetadata }: {
   const [loading, setLoading] = useState(true);
   const [titheActive, setTitheActive] = useState(true);
 
+  // Modal states
+  const [showNewBill, setShowNewBill] = useState(false);
+  const [showNewGoal, setShowNewGoal] = useState(false);
+  const [showNewBudget, setShowNewBudget] = useState(false);
+
   useEffect(() => { fetchData(); }, [userId]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
       const [fRes, gRes, bRes] = await Promise.all([
-        fetch(`/api/fixed-expenses?user_id=${userId}`),
+        fetch(`/api/monthly-bills?user_id=${userId}`),
         fetch(`/api/goals?user_id=${userId}`),
         fetch(`/api/budgets?user_id=${userId}`)
       ]);
@@ -143,7 +154,7 @@ const Settings = ({ userId, onUserChange, userMetadata }: {
 
         {/* Fixed Bills Section */}
         <section className="space-y-4">
-          <SectionHeader title="Contas Fixas" onAdd={() => {}} />
+          <SectionHeader title="Contas Fixas" onAdd={() => setShowNewBill(true)} />
           <div className="grid gap-3">
             {loading ? (
               <div className="skeleton h-20 w-full rounded-2xl" />
@@ -170,7 +181,7 @@ const Settings = ({ userId, onUserChange, userMetadata }: {
 
         {/* Savings Goals */}
         <section className="space-y-4">
-          <SectionHeader title="Metas de Economia" onAdd={() => {}} />
+          <SectionHeader title="Metas de Economia" onAdd={() => setShowNewGoal(true)} />
           <div className="grid grid-cols-1 gap-4">
             {loading ? (
               <div className="skeleton h-28 w-full rounded-2xl" />
@@ -204,7 +215,7 @@ const Settings = ({ userId, onUserChange, userMetadata }: {
 
         {/* Budgets Section */}
         <section className="space-y-4">
-          <SectionHeader title="Orçamentos Mensais" onAdd={() => {}} />
+          <SectionHeader title="Orçamentos Mensais" onAdd={() => setShowNewBudget(true)} />
           <div className="space-y-3">
             {loading ? (
               <div className="skeleton h-20 w-full rounded-2xl" />
@@ -241,6 +252,29 @@ const Settings = ({ userId, onUserChange, userMetadata }: {
         </section>
 
       </main>
+
+      {/* Modals */}
+      {showNewBill && (
+        <NewBillModal 
+          userId={userId} 
+          onClose={() => setShowNewBill(false)} 
+          onSuccess={fetchData} 
+        />
+      )}
+      {showNewBudget && (
+        <NewBudgetModal 
+          userId={userId} 
+          onClose={() => setShowNewBudget(false)} 
+          onSuccess={fetchData} 
+        />
+      )}
+      {showNewGoal && (
+        <NewGoalModal 
+          userId={userId} 
+          onClose={() => setShowNewGoal(false)} 
+          onSuccess={fetchData} 
+        />
+      )}
     </div>
   );
 };
