@@ -116,7 +116,7 @@ const App = () => {
       case 'home':     return <Home userId={userId!} userMetadata={userMetadata} />;
       case 'analysis': return <Analysis userId={userId!} />;
       case 'history':  return <History userId={userId!} />;
-      case 'settings': return <Settings userId={userId!} onUserChange={(id) => { setUserId(id); }} />;
+      case 'settings': return <Settings userId={userId!} onUserChange={(id) => { setUserId(id); }} userMetadata={userMetadata} />;
       default:         return <Home userId={userId!} userMetadata={userMetadata} />;
     }
   };
