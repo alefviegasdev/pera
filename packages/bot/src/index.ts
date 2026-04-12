@@ -489,27 +489,6 @@ Exemplos que funcionam:
 📝 ${item.name}
 💰 R$ ${Number(item.value).toFixed(2)}
 📅 Vence todo dia ${item.due_day} 🍐`);
-      } else {
-        const { error } = await supabase.from("transactions").insert({
-          user_id: supabaseUserId,
-          value: item.value,
-          type: item.type,
-          category: item.category,
-          subtype: item.subtype,
-          urgency: item.urgency,
-          description: item.description,
-          source: 'text',
-          short_code: shortCode
-        });
-
-        if (error) throw error;
-
-        await ctx.reply(`✅ Registrado! #${shortCode}
-💰 R$ ${Number(item.value).toFixed(2)}
-📂 ${item.category}
-📝 ${item.description}
-🏷️ ${subtypeLabel}
-⏱️ ${urgencyLabel}`);
       } else if (item.type === 'budget_limit') {
         const { data: existing } = await supabase
           .from('budgets')
@@ -536,6 +515,27 @@ Exemplos que funcionam:
         }
 
         await ctx.reply(`✅ Limite de **${item.category}** atualizado para R$ ${Number(item.limit_value).toFixed(2)} 🍐`);
+      } else {
+        const { error } = await supabase.from("transactions").insert({
+          user_id: supabaseUserId,
+          value: item.value,
+          type: item.type,
+          category: item.category,
+          subtype: item.subtype,
+          urgency: item.urgency,
+          description: item.description,
+          source: 'text',
+          short_code: shortCode
+        });
+
+        if (error) throw error;
+
+        await ctx.reply(`✅ Registrado! #${shortCode}
+💰 R$ ${Number(item.value).toFixed(2)}
+📂 ${item.category}
+📝 ${item.description}
+🏷️ ${subtypeLabel}
+⏱️ ${urgencyLabel}`);
       }
     }
 
