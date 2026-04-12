@@ -148,13 +148,7 @@ function generateShortCode() {
 bot.command("start", async (ctx) => {
   await ctx.reply(`🍐 Olá! Bem-vindo ao Pera!
 
-Para começar, você precisa conectar sua conta:
-
-1. Acesse o app Pera
-2. Na tela de conexão, copie o código de 6 dígitos
-3. Envie o código aqui neste chat
-
-Assim que conectar, poderei registrar seus gastos automaticamente! 💰`);
+Envie o código de 6 dígitos que aparece no app para vincular sua conta. 📲`);
 });
 
 bot.on("message:text", async (ctx) => {
@@ -238,7 +232,9 @@ Agora você pode me enviar seus gastos assim:
 ✏️ Corrigir: "#CODE foi 90", "#CODE deletar"
 📊 Limites: "limite alimentação 500"
 
-Quanto mais detalhes você der, melhor eu classifico!`);
+Quanto mais detalhes você der, melhor eu classifico!
+
+👆 Agora volte ao app e clique em "Já enviei o código" para acessar seu dashboard!`);
       } else {
         await ctx.reply('❌ Código inválido ou expirado. Verifique no app e tente novamente.');
       }
