@@ -97,7 +97,7 @@ const History = ({
 
       <main className="page-content px-6 space-y-8 mt-4">
         {/* Period Filter Chips */}
-        <section className="overflow-x-auto scrollbar-hide flex items-center gap-2 -mx-6 px-6 py-1">
+        <section className="overflow-x-auto scrollbar-hide flex items-center gap-2 -mx-6 px-6 py-1 max-w-full">
           {periods.map(p => (
             <button
               key={p.id}
@@ -137,7 +137,7 @@ const History = ({
           </div>
           
           {insts.length > 0 ? (
-            <div className="flex gap-4 overflow-x-auto scrollbar-hide -mx-6 px-6 pb-2">
+            <div className="flex gap-4 overflow-x-auto scrollbar-hide -mx-6 px-6 pb-2 max-w-full">
               {insts.slice(0, 3).map(inst => (
                 <div key={inst.id} className="min-w-[280px] bg-primary text-on-primary rounded-[2rem] p-7 relative overflow-hidden group shadow-md shadow-primary/10">
                   {/* Abstract Pattern */}

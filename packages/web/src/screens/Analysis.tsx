@@ -137,7 +137,7 @@ const Analysis = ({
       <div className="page-content px-6 space-y-8 pb-32">
         
         {/* Period Selector Chips */}
-        <section className="overflow-x-auto scrollbar-hide -mx-6 px-6">
+        <section className="overflow-x-auto scrollbar-hide -mx-6 px-6 max-w-full">
           <div className="flex gap-2 min-w-max">
             {periods.map((p) => (
               <button
