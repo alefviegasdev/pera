@@ -20,6 +20,10 @@ const TelegramLink = ({ userId, onSkippedOrLinked }: TelegramLinkProps) => {
     if (hasGenerated.current) return;
     hasGenerated.current = true;
     generateCode();
+    
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
   }, [userId]);
 
   const generateCode = async () => {
@@ -50,6 +54,7 @@ const TelegramLink = ({ userId, onSkippedOrLinked }: TelegramLinkProps) => {
   };
 
   const startPolling = () => {
+    console.log('[POLLING] iniciando...');
     if (pollingRef.current) clearInterval(pollingRef.current);
     
     setChecking(true);
@@ -169,20 +174,16 @@ const TelegramLink = ({ userId, onSkippedOrLinked }: TelegramLinkProps) => {
           </button>
           
           {checking && (
-            <div className="flex flex-col items-center gap-2 animate-pulse">
-              <p className="text-xs font-bold text-primary italic">Estamos aguardando o seu sinal...</p>
-            </div>
-          )}
-
-          {errorDesc ? (
-            <p className="text-error font-bold text-xs text-center p-3 bg-error/5 border border-error/10 rounded-xl">{errorDesc}</p>
-          ) : (
             <button 
-              className="text-primary font-black text-xs uppercase tracking-widest hover:opacity-70 transition-opacity py-4"
-              onClick={onSkippedOrLinked}
+              onClick={startPolling}
+              className="text-on-surface-variant/50 font-bold text-[10px] uppercase tracking-[0.2em] hover:opacity-100 transition-opacity py-2 self-center bg-transparent border-none cursor-pointer"
             >
-              Fazer isso mais tarde
+              Tentar novamente
             </button>
+          )}
+          
+          {errorDesc && (
+            <p className="text-error font-bold text-xs text-center p-3 bg-error/5 border border-error/10 rounded-xl">{errorDesc}</p>
           )}
         </div>
 
