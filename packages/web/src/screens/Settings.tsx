@@ -95,9 +95,13 @@ const Settings = ({
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    onUserChange(null);
-    window.location.href = '/';
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.error('Erro no logout:', e);
+    } finally {
+      window.location.href = '/';
+    }
   };
 
   const fmt = (n: number) =>
