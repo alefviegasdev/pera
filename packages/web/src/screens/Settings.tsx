@@ -93,6 +93,7 @@ const Settings = ({
   const handleLogout = async () => {
     await supabase.auth.signOut();
     onUserChange(null);
+    window.location.href = '/';
   };
 
   const fmt = (n: number) =>
