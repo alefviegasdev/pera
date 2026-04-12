@@ -87,6 +87,14 @@ const TelegramLink = ({ userId, onSkippedOrLinked }: TelegramLinkProps) => {
     pollingRef.current = interval;
   };
 
+  const handleRetry = () => {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+    setChecking(false);
+  };
+
   const handleCopy = () => {
     if (!linkCode) return;
     navigator.clipboard.writeText(linkCode);
@@ -192,8 +200,8 @@ const TelegramLink = ({ userId, onSkippedOrLinked }: TelegramLinkProps) => {
           
           {checking && (
             <button 
-              onClick={startPolling}
-              className="text-on-surface-variant font-bold text-[10px] uppercase tracking-[0.2em] transition-all py-2 px-6 self-center bg-surface-container rounded-full border border-outline-variant/20 cursor-pointer active:scale-95"
+              onClick={handleRetry}
+              className="text-on-secondary-container font-extrabold text-[10px] uppercase tracking-[0.2em] transition-all py-3 px-8 self-center bg-secondary-container rounded-full shadow-sm hover:bg-secondary-fixed cursor-pointer active:scale-95"
             >
               Tentar novamente
             </button>
