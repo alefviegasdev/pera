@@ -113,11 +113,11 @@ const App = () => {
 
   const renderScreen = () => {
     switch (activeTab) {
-      case 'home':     return <Home userId={userId!} userMetadata={userMetadata} />;
+      case 'home':     return <Home userId={userId!} userMetadata={userMetadata} onTabChange={setActiveTab} />;
       case 'analysis': return <Analysis userId={userId!} />;
       case 'history':  return <History userId={userId!} />;
       case 'settings': return <Settings userId={userId!} onUserChange={(id) => { setUserId(id); }} userMetadata={userMetadata} />;
-      default:         return <Home userId={userId!} userMetadata={userMetadata} />;
+      default:         return <Home userId={userId!} userMetadata={userMetadata} onTabChange={setActiveTab} />;
     }
   };
 

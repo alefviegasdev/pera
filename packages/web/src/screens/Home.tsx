@@ -6,7 +6,7 @@ import { ArrowRight, ArrowUpRight, ArrowDownRight, AlertTriangle, CreditCard, Ch
 
 const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
-const Home = ({ userId, userMetadata }: { userId: string; userMetadata?: any }) => {
+const Home = ({ userId, userMetadata, onTabChange }: { userId: string; userMetadata?: any; onTabChange?: (tab: any) => void }) => {
   const [summary, setSummary] = useState<any>(null);
   const [bills, setBills]     = useState<any[]>([]);
   const [txs, setTxs]         = useState<any[]>([]);
@@ -281,7 +281,12 @@ const Home = ({ userId, userMetadata }: { userId: string; userMetadata?: any }) 
         <section className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-on-surface font-extrabold text-xl font-headline">Últimas Transações</h2>
-            <button className="text-primary font-bold text-sm">Ver todas</button>
+            <button 
+              onClick={() => onTabChange && onTabChange('history')}
+              className="text-primary font-bold text-sm"
+            >
+              Ver todas
+            </button>
           </div>
           <div className="bg-white rounded-[2.5rem] divide-y divide-surface-container-low shadow-sm">
             {txs.slice(0, 5).map(t => {
