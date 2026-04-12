@@ -29,6 +29,13 @@ const History = ({
   }, [selectedTx, showInstallments]);
 
   useEffect(() => { fetchAll(); }, [userId, period]);
+  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchAll();
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [userId]);
 
   const fetchAll = async () => {
     setLoading(true);

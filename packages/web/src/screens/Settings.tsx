@@ -57,6 +57,13 @@ const Settings = ({
 
   useEffect(() => { fetchData(); }, [userId]);
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchData();
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [userId]);
+
   const fetchData = async () => {
     setLoading(true);
     try {

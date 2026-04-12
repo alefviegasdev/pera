@@ -29,6 +29,13 @@ const Analysis = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { fetchData(); }, [userId, period]);
+  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchData();
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [userId]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
