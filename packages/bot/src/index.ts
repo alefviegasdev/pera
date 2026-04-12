@@ -55,11 +55,27 @@ REGRAS DE CLASSIFICAÇÃO:
    
    A presença de "dia X" na mensagem é o sinal principal para type: "bill".
 
+6. CATEGORIAS PADRONIZADAS (OBRIGATÓRIO):
+   A categoria DEVE ser uma destas exatamente:
+   - "Alimentação": mercado, padaria (pão, bolo, salgado p/ consumo doméstico), hortifruti, açougue, rancho.
+   - "Fast Food": pizza, hambúrguer, lanchonete, cafeteria, sorvete, delivery, restaurante, bar, refeição consumida na padaria.
+   - "Transporte": uber, táxi, combustível, gasolina, estacionamento, ônibus, metrô, passagem.
+   - "Saúde": farmácia, médico, plano de saúde, exames, hospital, academia, esportes, terapia.
+   - "Lazer": cinema, streaming, netflix, spotify, jogos, viagem, entretenimento.
+   - "Educação": curso, livro, escola, faculdade, material escolar.
+   - "Contas": luz, água, internet, aluguel, condomínio, telefone, gás, iptu, ipva.
+   - "Vestuário": roupa, calçado, tênis, sapato, acessório, bolsa.
+   - "Eletrônicos": celular, computador, notebook, tv, eletrodoméstico, gadget, fone.
+   - "Dízimo/Oferta": dízimo, oferta, contribuição, doação para igreja.
+   - "Outros": qualquer gasto que não se encaixe nas categorias acima.
+   
+   REGRA ESPECIAL PADARIA: Produtos de panificadora comprados para consumo doméstico (pão, bolo, salgado, pão de queijo, etc.) = "Alimentação". Refeição consumida no local (café da manhã, almoço em restaurante/lanchonete) = "Fast Food".
+
 JSON Structure (dentro do array):
 {
   "value": número (decimal),
   "type": "expense" ou "income" ou "payment" ou "bill",
-  "category": string em português,
+  "category": "Alimentação" | "Fast Food" | "Transporte" | "Saúde" | "Lazer" | "Educação" | "Contas" | "Vestuário" | "Eletrônicos" | "Dízimo/Oferta" | "Outros",
   "subtype": "fixed" | "semifixed" | "variable",
   "urgency": "urgent" | "planned",
   "description": string curta (ou nome da conta se for payment/bill),
