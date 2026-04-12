@@ -11,6 +11,20 @@ import {
 
 type ViewMode = 'subtype' | 'urgency' | 'category';
 
+const CATEGORY_COLORS: Record<string, string> = {
+  "Alimentação": "#4CAF50",
+  "Fast Food": "#FF5722",
+  "Transporte": "#2196F3",
+  "Saúde": "#E91E63",
+  "Lazer": "#9C27B0",
+  "Educação": "#3F51B5",
+  "Contas": "#607D8B",
+  "Vestuário": "#FF9800",
+  "Eletrônicos": "#00BCD4",
+  "Dízimo/Oferta": "#8BC34A",
+  "Outros": "#9E9E9E"
+};
+
 const Analysis = ({ 
   userId,
   onModalOpen,
@@ -87,7 +101,7 @@ const Analysis = ({
     } else {
       txs.forEach(t => {
         const label = t.category;
-        const color = catColor(t.category);
+        const color = CATEGORY_COLORS[t.category] || '#9E9E9E';
         if (!groups[label]) groups[label] = { value: 0, color, label };
         groups[label].value += t.value;
       });
@@ -201,7 +215,7 @@ const Analysis = ({
         {/* Composition Section */}
         <section className="bg-surface-container-low rounded-[2rem] p-8 space-y-8">
           <div className="flex justify-between items-center relative z-20">
-            <h3 className="font-headline font-bold text-xl text-on-surface">Composição</h3>
+            <h3 className="font-headline font-bold text-xl text-on-surface">Gastos</h3>
             <div className="relative" ref={dropdownRef}>
               <button 
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
@@ -243,7 +257,7 @@ const Analysis = ({
                 <span className="block text-2xl font-headline font-black text-on-surface">
                   {loading ? '...' : fmt(summary?.total_expense ?? 0).split(',')[0]}
                 </span>
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant opacity-60">Impacto Total</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant opacity-60">Despesas</span>
               </div>
             </div>
           </div>
@@ -280,7 +294,7 @@ const Analysis = ({
               Array(3).fill(0).map((_, i) => <div key={i} className="skeleton h-24 w-full rounded-[2rem]" />)
             ) : summary?.by_category?.length > 0 ? (
               summary.by_category.slice(0, 5).map((cat: any) => {
-                const color = catColor(cat.category);
+                const color = CATEGORY_COLORS[cat.category] || '#9E9E9E';
                 const emoji = catEmoji(cat.category);
                 return (
                   <div key={cat.category} className="bg-white p-6 rounded-[2rem] flex items-center justify-between hover:scale-[1.01] transition-transform cursor-pointer shadow-sm border border-surface-container/50">
