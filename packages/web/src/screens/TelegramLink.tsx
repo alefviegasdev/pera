@@ -64,11 +64,19 @@ const TelegramLink = ({ userId, onSkippedOrLinked }: TelegramLinkProps) => {
     const interval = setInterval(async () => {
       attempts++;
       try {
-        const { data } = await supabase
-          .from('user_profiles')
-          .select('telegram_id')
-          .eq('user_id', userId)
-          .maybeSingle();
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/user_profiles?user_id=eq.${userId}&select=telegram_id`,
+          {
+            headers: {
+              'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            }
+          }
+        );
+        const rows = await response.json();
+        const data = rows?.[0];
+        
+        console.log('[POLLING] data:', JSON.stringify(data));
         
         if (data?.telegram_id) {
           clearInterval(interval);
