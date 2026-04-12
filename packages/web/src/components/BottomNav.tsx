@@ -28,9 +28,8 @@ const BottomNav = ({
           aria-label={label}
         >
           <Icon
-            size={22}
-            strokeWidth={isActive ? 2.5 : 1.8}
-            style={{ color: isActive ? 'var(--primary)' : 'var(--outline-variant)' }}
+            size={24}
+            strokeWidth={isActive ? 2.5 : 2}
           />
           <span>{label}</span>
         </button>

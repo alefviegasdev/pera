@@ -13,19 +13,25 @@
   --surface-low: #f1f1ec;
   --surface-card: #ffffff;
   --surface-container: #e9e8e3;
-  --surface-high: #e3e3dd;
-  --surface-highest: #ddddd7;
+  --surface-container-low: #f1f1ec;
+  --surface-container-high: #e3e3dd;
+  --surface-container-highest: #ddddd7;
   --primary: #5d3fd3;
   --primary-container: #a391ff;
   --on-primary: #f6f0ff;
   --on-primary-container: #230076;
   --secondary-container: #ffc965;
+  --on-secondary-container: #5f4200;
+  --tertiary: #4c6313;
   --tertiary-container: #d6f393;
+  --on-tertiary-container: #465d0c;
   --on-surface: #2e2f2c;
   --on-surface-variant: #5b5c58;
   --outline-variant: #adada9;
   --error: #b41340;
   --error-container: #f74b6d;
+  --on-error-container: #510017;
+  --on-error: #ffefef;
 }
 
 /* ── Reset ── */
@@ -102,40 +108,53 @@ body {
 
 /* ── Cards · No-Line Rule ── */
 .card {
-  border-radius: 1.5rem;
-  padding: 20px;
+  border-radius: 2rem;
+  padding: 24px;
   background: var(--surface-card);
-  box-shadow: 0 2px 12px rgba(46, 47, 44, 0.04);
+  box-shadow: 0 4px 20px rgba(46, 47, 44, 0.03);
+  border: none;
 }
 
 .card-low {
-  border-radius: 1.5rem;
-  padding: 20px;
-  background: var(--surface-low);
+  border-radius: 2rem;
+  padding: 24px;
+  background: var(--surface-container-low);
+  border: none;
 }
 
 .card-container {
-  border-radius: 1.5rem;
-  padding: 20px;
+  border-radius: 2rem;
+  padding: 24px;
   background: var(--surface-container);
+  border: none;
 }
 
 .card-tertiary {
-  border-radius: 1.5rem;
-  padding: 20px;
+  border-radius: 2rem;
+  padding: 24px;
   background: var(--tertiary-container);
+  border: none;
 }
 
 .card-secondary {
-  border-radius: 1.5rem;
-  padding: 20px;
+  border-radius: 2rem;
+  padding: 24px;
   background: var(--secondary-container);
+  border: none;
 }
 
 .card-error {
-  border-radius: 1.5rem;
-  padding: 20px;
+  border-radius: 2rem;
+  padding: 24px;
   background: var(--error-container);
+  border: none;
+}
+
+.card-white {
+  border-radius: 2rem;
+  padding: 24px;
+  background: #ffffff;
+  border: none;
 }
 
 /* ── Chips ── */
@@ -333,24 +352,26 @@ body {
 
 .btn-icon:hover { opacity: 0.88; }
 
-/* ── Bottom Navigation ── */
+/* ── Bottom Navigation · Floating Pill ── */
 .bottom-nav {
   position: fixed;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 100%;
-  max-width: 430px;
-  background: rgba(247, 246, 241, 0.82);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  padding: 6px 8px;
-  padding-bottom: calc(6px + env(safe-area-inset-bottom));
+  bottom: 24px;
+  left: 24px;
+  right: 24px;
+  height: 72px;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  padding: 0 12px;
   display: flex;
   justify-content: space-around;
-  align-items: stretch;
-  z-index: 100;
-  border-top: 1px solid rgba(173, 173, 169, 0.2);
+  align-items: center;
+  z-index: 1000;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 12px 40px rgba(46, 47, 44, 0.12);
+  max-width: calc(430px - 48px);
+  margin: 0 auto;
 }
 
 .nav-item {
@@ -358,25 +379,30 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
-  padding: 8px 12px;
-  border-radius: 16px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
   border: none;
   background: transparent;
   cursor: pointer;
-  transition: all 0.22s ease;
-  flex: 1;
-  color: var(--outline-variant);
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-family: 'Manrope', sans-serif;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  color: var(--on-surface);
+  opacity: 0.4;
+}
+
+.nav-item span {
+  display: none; /* Emblem style, hide labels */
 }
 
 .nav-item.active {
-  background: rgba(93, 63, 211, 0.1);
-  color: var(--primary);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-container) 100%);
+  color: #ffffff;
+  opacity: 1;
+  transform: scale(0.9);
+}
+
+.nav-item:not(.active):hover {
+  opacity: 1;
 }
 
 /* ── Modal ── */

@@ -13,6 +13,7 @@ export type Tab = 'home' | 'analysis' | 'history' | 'settings';
 const App = () => {
   const [activeTab, setActiveTab] = useState<Tab>('home');
   const [userId, setUserId] = useState<string | null>(null);
+  const [userMetadata, setUserMetadata] = useState<{ name?: string; avatar?: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [needsTelegramLink, setNeedsTelegramLink] = useState(false);
 
@@ -26,9 +27,14 @@ const App = () => {
       clearTimeout(authTimeout);
       if (user?.id) {
         setUserId(user.id);
+        setUserMetadata({
+          name: user.user_metadata?.full_name || user.user_metadata?.name || user.email,
+          avatar: user.user_metadata?.avatar_url || user.user_metadata?.picture
+        });
         await checkTelegramLink(user.id);
       } else {
         setUserId(null);
+        setUserMetadata(null);
         setLoading(false);
       }
     }).catch(() => {
@@ -37,9 +43,14 @@ const App = () => {
         clearTimeout(authTimeout);
         if (session?.user?.id) {
           setUserId(session.user.id);
+          setUserMetadata({
+            name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email,
+            avatar: session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture
+          });
           await checkTelegramLink(session.user.id);
         } else {
           setUserId(null);
+          setUserMetadata(null);
           setLoading(false);
         }
       }).catch(() => {
@@ -54,9 +65,14 @@ const App = () => {
       async (event, session) => {
         if (session?.user) {
           setUserId(session.user.id);
+          setUserMetadata({
+            name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email,
+            avatar: session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture
+          });
           await checkTelegramLink(session.user.id);
         } else {
           setUserId(null);
+          setUserMetadata(null);
           setNeedsTelegramLink(false);
           setLoading(false);
         }
@@ -97,11 +113,11 @@ const App = () => {
 
   const renderScreen = () => {
     switch (activeTab) {
-      case 'home':     return <Home userId={userId} />;
-      case 'analysis': return <Analysis userId={userId} />;
-      case 'history':  return <History userId={userId} />;
-      case 'settings': return <Settings userId={userId} onUserChange={setUserId} />;
-      default:         return <Home userId={userId} />;
+      case 'home':     return <Home userId={userId!} userMetadata={userMetadata} />;
+      case 'analysis': return <Analysis userId={userId!} />;
+      case 'history':  return <History userId={userId!} />;
+      case 'settings': return <Settings userId={userId!} onUserChange={(id) => { setUserId(id); }} />;
+      default:         return <Home userId={userId!} userMetadata={userMetadata} />;
     }
   };
 
