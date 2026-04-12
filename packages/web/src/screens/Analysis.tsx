@@ -32,7 +32,7 @@ const Analysis = ({
   
   useEffect(() => {
     const interval = setInterval(() => {
-      fetchData();
+      fetchData(true);
     }, 15000);
     return () => clearInterval(interval);
   }, [userId]);
@@ -47,8 +47,8 @@ const Analysis = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const [summaryRes, txsRes] = await Promise.all([
         fetch(`/api/transactions/summary?user_id=${userId}&period=${period}`),

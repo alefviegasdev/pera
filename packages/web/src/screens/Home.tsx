@@ -39,13 +39,13 @@ const Home = ({
   
   useEffect(() => {
     const interval = setInterval(() => {
-      fetchData();
+      fetchData(true);
     }, 15000);
     return () => clearInterval(interval);
   }, [userId]);
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const [sRes, bRes, tRes, iRes] = await Promise.all([
         fetch(`/api/transactions/summary?user_id=${userId}&period=month`),

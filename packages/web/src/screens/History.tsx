@@ -32,13 +32,13 @@ const History = ({
   
   useEffect(() => {
     const interval = setInterval(() => {
-      fetchAll();
+      fetchAll(true);
     }, 15000);
     return () => clearInterval(interval);
   }, [userId]);
 
-  const fetchAll = async () => {
-    setLoading(true);
+  const fetchAll = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const [txRes, instRes] = await Promise.all([
         fetch(`/api/transactions?user_id=${userId}&period=${period}`),
