@@ -145,6 +145,19 @@ function generateShortCode() {
   return code;
 }
 
+bot.command("start", async (ctx) => {
+  await ctx.reply(`🍐 Olá! Bem-vindo ao Pera!
+
+Para começar, você precisa conectar sua conta:
+
+1. Acesse o app Pera
+2. Vá em Ajustes > Conectar Telegram
+3. Copie o código de 6 dígitos que aparecer
+4. Envie o código aqui neste chat
+
+Assim que conectar, poderei registrar seus gastos automaticamente! 💰`);
+});
+
 bot.on("message:text", async (ctx) => {
   const text = ctx.message.text.trim();
   const userId = ctx.from.id.toString();
@@ -214,7 +227,19 @@ bot.on("message:text", async (ctx) => {
           })
           .eq('user_id', data.user_id);
         
-        await ctx.reply('✅ Conta vinculada com sucesso! Agora posso registrar seus gastos. 🍐');
+        
+        await ctx.reply(`✅ Conta vinculada com sucesso! 🍐
+
+Agora você pode me enviar seus gastos assim:
+
+💸 Gastos: "gastei 45 no iFood", "50 padaria"
+💰 Receitas: "recebi 3000 de salário"
+📋 Contas fixas: "internet 120 dia 10"
+🛍️ Parcelamentos: "notebook 2400 em 12x"
+✏️ Corrigir: "#CODE foi 90", "#CODE deletar"
+📊 Limites: "limite alimentação 500"
+
+Quanto mais detalhes você der, melhor eu classifico!`);
       } else {
         await ctx.reply('❌ Código inválido ou expirado. Verifique no app e tente novamente.');
       }
@@ -397,16 +422,25 @@ O que você pode mudar:
     const data = JSON.parse(responseText);
 
     if (data.error === "not_financial") {
-      return ctx.reply(`🍐 Não entendi essa mensagem como gasto ou receita.
+      const lowerText = text.toLowerCase();
+      let hint = "";
+
+      if (lowerText.includes("dia") && !/\d+/.test(text)) {
+        hint = "Parece que você quer cadastrar uma conta fixa, mas faltou o valor. Tente: 'photoshop 120 dia 20'";
+      } else if (lowerText.includes("pagar") && !/\d+/.test(text)) {
+        hint = "Para registrar um pagamento, inclua o valor. Tente: 'pagar photoshop 120'";
+      } else {
+        hint = `Não entendi essa mensagem como gasto ou receita. Sua mensagem foi: "${text}" — tente reformular incluindo valor e descrição.`;
+      }
+
+      return ctx.reply(`🍐 ${hint}
 
 Exemplos que funcionam:
 - 'gastei 45 no iFood'
 - 'paguei 1500 de aluguel'
 - 'recebi 3000 de salário'
 - 'parcelei jaqueta 300 em 3x'
-- 'dízimo 300'
-
-💡 Dica: quanto mais detalhe você der, melhor eu classifico!`);
+- 'dízimo 300'`);
     }
 
     const items = Array.isArray(data) ? data : [data];
