@@ -17,7 +17,8 @@ if (!token || !geminiKey || !supabaseUrl || !supabaseKey) {
 
 const bot = new Bot(token);
 const supabase = createClient(supabaseUrl, supabaseKey);
-const pendingConfirmations = new Map<string, string>();
+const pendingConfirmations = new Map<string, string>(); // Link confirmations
+const pendingBillConfirmations = new Map<string, any>(); // Natural language bill confirmations
 
 const SYSTEM_PROMPT = `
 Você é um assistente financeiro inteligente chamado Pera.
@@ -36,15 +37,35 @@ REGRAS DE CLASSIFICAÇÃO:
    - "Oferta" ou "Ofertas" -> subtype: "variable".
 4. PARCELAMENTOS:
    - Se o usuário mencionar parcelas (ex: "em 3x", "6 vezes", "parcelei"), defina "is_installment": true e "installment_count": [número de parcelas].
+5. CONTAS FIXAS/RECORRENTES — PRIORIDADE ALTA:
+   Se a mensagem mencionar QUALQUER combinação de:
+   - Um nome de conta/serviço (água, luz, aluguel, internet, etc.)
+   - Um valor
+   - Um dia de vencimento (ex: "dia 13", "todo dia 5", "vence dia 10")
+   
+   INDEPENDENTE DA ORDEM, retorne type: "bill" com:
+   - "name": nome da conta
+   - "value": número
+   - "due_day": número do dia
+   
+   EXEMPLOS que devem retornar type: "bill":
+   - "65 reais conta de água todo dia 13"
+   - "aluguel 1500 dia 10"
+   - "internet 120 vence todo dia 5"
+   - "dia 20 luz 200"
+   
+   A presença de "dia X" na mensagem é o sinal principal para type: "bill".
 
 JSON Structure (dentro do array):
 {
-  "value": número (decimal, valor TOTAL se for parcelado),
-  "type": "expense" ou "income" ou "payment",
+  "value": número (decimal),
+  "type": "expense" ou "income" ou "payment" ou "bill",
   "category": string em português,
   "subtype": "fixed" | "semifixed" | "variable",
   "urgency": "urgent" | "planned",
-  "description": string curta (ou nome da conta se for payment),
+  "description": string curta (ou nome da conta se for payment/bill),
+  "name": string (apenas se for type: bill),
+  "due_day": número (apenas se for type: bill),
   "is_installment": boolean,
   "installment_count": número (opcional)
 }
@@ -102,6 +123,37 @@ bot.on("message:text", async (ctx) => {
   console.log(`Mensagem recebida: [${text}]`);
 
   try {
+    // --- Lookup do UUID do Supabase ---
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('user_id')
+      .eq('telegram_id', userId)
+      .maybeSingle();
+
+    const supabaseUserId = profile?.user_id;
+
+    // 0. VERIFICAÇÃO DE CONFIRMAÇÃO PENDENTE (SIM)
+    if (text.toUpperCase() === 'SIM' && supabaseUserId && pendingBillConfirmations.has(supabaseUserId)) {
+        const bill = pendingBillConfirmations.get(supabaseUserId);
+        const now = new Date();
+        
+        const { error } = await supabase.from('monthly_bills').insert({
+            user_id: supabaseUserId,
+            name: bill.name,
+            value: bill.value,
+            due_day: bill.due_day,
+            month: now.getMonth() + 1,
+            year: now.getFullYear(),
+            paid: false,
+            short_code: generateShortCode()
+        });
+
+        if (error) throw error;
+        
+        pendingBillConfirmations.delete(supabaseUserId);
+        return ctx.reply(`✅ ${bill.name} cadastrada!\nVence todo dia ${bill.due_day}. 🍐`);
+    }
+
     // Verifica se é um código de vinculação (6 dígitos)
     if (/^\d{6}$/.test(text)) {
       console.log(`[DEBUG] Recebido código de vínculo: ${text}`);
@@ -162,18 +214,37 @@ bot.on("message:text", async (ctx) => {
       return;
     }
 
-    // --- Lookup do UUID do Supabase (Obrigatório para transações) ---
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('user_id')
-      .eq('telegram_id', userId)
-      .maybeSingle();
-
-    if (!profile?.user_id) {
+    if (!supabaseUserId) {
       return ctx.reply('❌ Sua conta não está vinculada ou houve um erro na sincronização.\n\nAcesse "Ajustes > Vincular Telegram" no app e tente novamente. 🍐');
     }
 
-    const supabaseUserId = profile.user_id;
+    // --- CORREÇÃO RÁPIDA DE DIA DE VENCIMENTO (Regex) ---
+    // Padrões: #CODE 10 dia ou #CODE dia 10
+    const dayRegex1 = /^#?([a-zA-Z0-9]{4})\s+(\d{1,2})\s+dia$/i;
+    const dayRegex2 = /^#?([a-zA-Z0-9]{4})\s+dia\s+(\d{1,2})$/i;
+    const dayMatch = text.match(dayRegex1) || text.match(dayRegex2);
+
+    if (dayMatch) {
+        const code = dayMatch[1].toUpperCase();
+        const newDay = parseInt(dayMatch[2], 10);
+
+        if (isNaN(newDay) || newDay < 1 || newDay > 31) {
+            return ctx.reply('⚠️ Dia inválido. Use um número entre 1 e 31.');
+        }
+
+        const { data: updated, error } = await supabase
+            .from('monthly_bills')
+            .update({ due_day: newDay })
+            .eq('short_code', code)
+            .eq('user_id', supabaseUserId)
+            .select()
+            .maybeSingle();
+
+        if (error) throw error;
+        if (!updated) return ctx.reply(`❓ Não encontrei nenhuma conta com o código #${code}.`);
+
+        return ctx.reply(`✅ #${code} atualizado! Novo vencimento: dia ${newDay}. 🍐`);
+    }
 
     // 1. RECONHECIMENTO DE COMANDOS (IA-Driven)
     const cmdRegex = /^(#[a-zA-Z0-9]{4}|[a-zA-Z][a-zA-Z0-9]{3}|[a-zA-Z0-9]{3}[a-zA-Z])(\s+.*|$)/i;
@@ -392,6 +463,19 @@ Exemplos que funcionam:
         } else {
           await ctx.reply(`❓ Não encontrei nenhuma conta pendente para "${item.description}" este mês.`);
         }
+      } else if (item.type === 'bill') {
+        pendingBillConfirmations.set(supabaseUserId, {
+          name: item.name,
+          value: item.value,
+          due_day: item.due_day
+        });
+
+        await ctx.reply(`📋 Cadastrar conta fixa?
+📝 ${item.name}
+💰 R$ ${Number(item.value).toFixed(2)}
+📅 Vence todo dia ${item.due_day}
+
+Responda SIM para confirmar. 🍐`);
       } else {
         const { error } = await supabase.from("transactions").insert({
           user_id: supabaseUserId,
