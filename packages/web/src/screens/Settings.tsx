@@ -38,6 +38,9 @@ const Settings = ({
   const [budgets, setBudgets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [titheActive, setTitheActive] = useState(true);
+  const [totalIncome, setTotalIncome] = useState(0);
+  const [tithePercentage, setTithePercentage] = useState(10);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   // Modal states
   const [showNewBill, setShowNewBill] = useState(false);
@@ -57,15 +60,22 @@ const Settings = ({
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [fRes, gRes, bRes] = await Promise.all([
+      const [fRes, gRes, bRes, sRes] = await Promise.all([
         fetch(`/api/monthly-bills?user_id=${userId}`),
         fetch(`/api/goals?user_id=${userId}`),
-        fetch(`/api/budgets?user_id=${userId}`)
+        fetch(`/api/budgets?user_id=${userId}`),
+        fetch(`/api/transactions/summary?user_id=${userId}&period=month`)
       ]);
-      const [fData, gData, bData] = await Promise.all([fRes.json(), gRes.json(), bRes.json()]);
+      const [fData, gData, bData, sData] = await Promise.all([
+        fRes.json(), 
+        gRes.json(), 
+        bRes.json(),
+        sRes.json()
+      ]);
       setFixed(Array.isArray(fData) ? fData : []);
       setGoals(Array.isArray(gData) ? gData : []);
       setBudgets(Array.isArray(bData) ? bData : []);
+      if (sData?.total_income) setTotalIncome(Number(sData.total_income));
     } catch (e) {
       console.error(e);
     } finally {
@@ -98,31 +108,35 @@ const Settings = ({
 
       <main className="page-content px-6 space-y-10 mt-4 pb-32">
         
-        {/* Account Section */}
-        <section className="bg-surface-container-low rounded-[2rem] p-6 flex items-center justify-between gap-4 shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-full border-4 border-white shadow-sm overflow-hidden flex-shrink-0 bg-surface-container">
+        {/* Profile Section */}
+        <section className="py-8 flex flex-col items-center text-center">
+          <div className="relative mb-6">
+            <div className="w-32 h-32 rounded-full border-4 border-white shadow-xl overflow-hidden flex-shrink-0 bg-surface-container-high">
               {userMetadata?.avatar ? (
                 <img src={userMetadata.avatar} alt="Profile" className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-on-surface-variant">
-                  <User size={32} />
+                <div className="w-full h-full flex items-center justify-center text-on-surface-variant/30">
+                  <User size={48} />
                 </div>
               )}
             </div>
-            <div className="min-w-0">
-              <h2 className="font-headline text-lg font-bold leading-tight truncate text-on-background">
+          </div>
+          <div className="space-y-1 mb-8">
+            <div className="flex items-center justify-center gap-2">
+              <h2 className="font-headline text-3xl font-black text-on-surface tracking-tight">
                 {userMetadata?.name || 'Usuário Pera'}
               </h2>
-              <p className="text-[10px] font-bold text-primary uppercase tracking-[0.2em] mt-1">Conta Pro</p>
+              <button aria-label="Editar nome" className="text-on-surface-variant/40 hover:text-primary transition-colors">
+                <ChevronRight size={20} />
+              </button>
             </div>
           </div>
           <button 
-            onClick={handleLogout}
-            className="flex items-center gap-2 text-error font-black text-[11px] uppercase tracking-widest hover:bg-error/5 transition-all px-4 py-2.5 rounded-full border border-error/10"
+            onClick={() => setShowLogoutConfirm(true)}
+            className="flex items-center gap-2 text-on-surface-variant hover:text-error font-bold text-sm transition-colors py-2 px-6 rounded-full border border-outline-variant/30 active:scale-95"
           >
-            <LogOut size={14} />
-            Sair
+            <LogOut size={16} />
+            Sair da conta
           </button>
         </section>
 
@@ -145,25 +159,33 @@ const Settings = ({
           </div>
 
           <div className={`bg-white rounded-[2rem] p-7 shadow-sm border border-surface-container transition-all overflow-hidden ${titheActive ? 'opacity-100 max-h-[500px]' : 'opacity-40 max-h-0 py-0 overflow-hidden text-transparent translate-y-4'}`}>
-            <p className="text-[10px] text-on-surface-variant mb-6 italic font-medium">Esta é uma funcionalidade opcional para ajudar na sua organização financeira.</p>
-            
             <div className="flex justify-between items-end mb-6">
               <div>
                 <p className="text-on-surface-variant text-[10px] font-black uppercase tracking-[0.2em] mb-2">Valor Calculado</p>
-                <p className="font-headline text-3xl font-black text-primary leading-tight">{fmt(1245.00)}</p>
+                <p className="font-headline text-3xl font-black text-primary leading-tight">
+                  {fmt(totalIncome * (tithePercentage / 100))}
+                </p>
               </div>
               <div className="text-right">
                 <p className="text-on-surface-variant text-[10px] font-black uppercase tracking-[0.2em] mb-2">Percentual</p>
-                <p className="font-headline text-xl font-bold">10%</p>
+                <p className="font-headline text-xl font-bold">{tithePercentage}%</p>
               </div>
             </div>
 
-            <div className="relative h-2 bg-surface-container-low rounded-full overflow-hidden mb-6">
-              <div className="absolute top-0 left-0 h-full w-[45%] bg-primary rounded-full" />
+            <div className="mb-6">
+              <input 
+                type="range"
+                min="0"
+                max="100"
+                step="1"
+                value={tithePercentage}
+                onChange={(e) => setTithePercentage(parseInt(e.target.value))}
+                className="w-full h-2 bg-surface-container-low rounded-full appearance-none cursor-pointer accent-primary"
+              />
             </div>
 
             <p className="text-xs text-on-surface-variant leading-relaxed font-medium">
-              Baseado na sua renda mensal declarada de <span className="font-bold text-on-background">{fmt(12450.00)}</span>. O valor é provisionado automaticamente ao receber depósitos.
+              Baseado na sua renda mensal de <span className="font-bold text-on-background">{fmt(totalIncome)}</span>. O valor é provisionado automaticamente ao receber depósitos.
             </p>
           </div>
         </section>
@@ -290,6 +312,32 @@ const Settings = ({
           onClose={() => setShowNewGoal(false)} 
           onSuccess={fetchData} 
         />
+      )}
+
+      {/* Logout Confirmation Modal */}
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6 animate-in fade-in duration-300" onClick={() => setShowLogoutConfirm(false)}>
+          <div className="bg-white rounded-[2.5rem] w-full max-w-xs p-8 shadow-2xl animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
+            <div className="text-center space-y-2 mb-8">
+              <h2 className="font-headline text-2xl font-black text-on-surface tracking-tight">Sair da conta?</h2>
+              <p className="font-body text-sm text-on-surface-variant/70">Tem certeza que deseja sair?</p>
+            </div>
+            <div className="flex flex-col gap-3">
+              <button 
+                onClick={handleLogout}
+                className="w-full bg-error text-white py-4 rounded-full font-headline font-bold text-base shadow-lg shadow-error/20 active:scale-95 transition-all"
+              >
+                Sair
+              </button>
+              <button 
+                onClick={() => setShowLogoutConfirm(false)}
+                className="w-full bg-transparent text-on-surface-variant py-3 rounded-full font-headline font-bold text-sm hover:text-on-surface active:scale-95 transition-all"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -22,7 +22,11 @@ const NewGoalModal: React.FC<NewGoalModalProps> = ({ userId, onClose, onSuccess 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !targetValue) return;
+    console.log('[NewGoalModal] Submitting:', { name, targetValue, category, userId });
+    if (!name || !targetValue) {
+      console.log('[NewGoalModal] Validation failed: missing name or targetValue');
+      return;
+    }
 
     setLoading(true);
     try {

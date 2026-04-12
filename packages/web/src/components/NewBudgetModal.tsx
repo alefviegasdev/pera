@@ -25,7 +25,11 @@ const NewBudgetModal: React.FC<NewBudgetModalProps> = ({ userId, onClose, onSucc
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!limit || !category) return;
+    console.log('[NewBudgetModal] Submitting:', { limit, category, selectedIcon, userId });
+    if (!limit || !category) {
+      console.log('[NewBudgetModal] Validation failed: missing limit or category');
+      return;
+    }
 
     setLoading(true);
     try {

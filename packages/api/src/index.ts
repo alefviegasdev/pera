@@ -441,6 +441,45 @@ app.patch('/monthly-bills/:id/pay', async (req, res) => {
   }
 });
 
+app.post('/monthly-bills', async (req, res) => {
+  try {
+    const { user_id, name, value, due_day, category, month, year, short_code } = req.body;
+    const { data, error } = await supabase.from('monthly_bills').insert({
+      user_id, name, value, due_day, category, month, year, short_code
+    }).select();
+    if (error) throw error;
+    res.json(data[0]);
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/budgets', async (req, res) => {
+  try {
+    const { user_id, category, limit_value } = req.body;
+    const { data, error } = await supabase.from('budgets').insert({
+      user_id, category, monthly_limit: limit_value
+    }).select();
+    if (error) throw error;
+    res.json(data[0]);
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/goals', async (req, res) => {
+  try {
+    const { user_id, name, target_value, category } = req.body;
+    const { data, error } = await supabase.from('goals').insert({
+      user_id, name, target_value, current_value: 0, category
+    }).select();
+    if (error) throw error;
+    res.json(data[0]);
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.listen(port, () => {
   console.log(`API Pera rodando na porta ${port}`);
 });

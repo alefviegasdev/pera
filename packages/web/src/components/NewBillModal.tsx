@@ -23,7 +23,11 @@ const NewBillModal: React.FC<NewBillModalProps> = ({ userId, onClose, onSuccess 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !value) return;
+    console.log('[NewBillModal] Submitting:', { name, value, dueDay, category, userId });
+    if (!name || !value) {
+      console.log('[NewBillModal] Validation failed: missing name or value');
+      return;
+    }
 
     setLoading(true);
     try {
