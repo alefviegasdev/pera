@@ -493,7 +493,21 @@ Exemplos que funcionam:
             .eq("id", bill.id);
 
           if (payError) throw payError;
-          await ctx.reply(`✅ Conta paga!
+          // 2. Inserir transação para descontar do saldo
+          const shortCode = generateShortCode();
+          await supabase.from("transactions").insert({
+            user_id: supabaseUserId,
+            value: bill.value,
+            type: 'expense',
+            category: 'Contas',
+            subtype: 'fixed',
+            urgency: 'planned',
+            description: bill.name,
+            source: 'manual',
+            short_code: shortCode
+          });
+
+          await ctx.reply(`✅ Conta paga! #${shortCode}
 📝 ${bill.name}
 💰 R$ ${Number(bill.value).toFixed(2)}`);
         } else {
