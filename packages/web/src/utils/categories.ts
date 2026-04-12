@@ -16,16 +16,18 @@ const catColor = (category: string): string => {
 
 const catEmoji = (category: string): string => {
   const map: Record<string, string> = {
-    'Alimentação': '🍕',
-    'Transporte':  '🚗',
-    'Moradia':     '🏠',
-    'Saúde':       '💊',
-    'Lazer':       '🎮',
-    'Doações':     '🎁',
-    'Educação':    '📚',
-    'Receita':     '💰',
-    'Tecnologia':  '💻',
-    'Mercado':     '🛒',
+    "Alimentação": "🛒",
+    "Fast Food": "🍔",
+    "Transporte": "🚗",
+    "Saúde": "💊",
+    "Lazer": "🎬",
+    "Educação": "📚",
+    "Contas": "💡",
+    "Vestuário": "👕",
+    "Eletrônicos": "📱",
+    "Dízimo/Oferta": "🙏",
+    "Outros": "📦",
+    "Receita": "💰"
   };
   return map[category] || '💳';
 };

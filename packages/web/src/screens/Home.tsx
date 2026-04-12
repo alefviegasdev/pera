@@ -499,14 +499,14 @@ const Home = ({
           <h2 className="text-on-surface font-extrabold text-xl font-headline">Onde você mais gasta</h2>
           <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
             {summary?.by_category?.length > 0 ? (
-              summary.by_category.slice(0, 5).map((cat: any, idx: number) => (
+              [...summary.by_category].sort((a,b) => b.count - a.count).slice(0, 5).map((cat: any, idx: number) => (
                 <div key={cat.category} className={`min-w-[140px] ${idx === 0 ? 'bg-secondary-container' : 'bg-white'} p-5 rounded-[2rem] flex flex-col items-center text-center space-y-3 shadow-sm`}>
                   <div className={`w-12 h-12 ${idx === 0 ? 'bg-white/30' : 'bg-surface-container-low'} rounded-full flex items-center justify-center text-xl`}>
                     {catEmoji(cat.category)}
                   </div>
                   <div>
                     <p className={`${idx === 0 ? 'text-on-secondary-container' : 'text-on-surface'} font-bold text-sm truncate`}>{cat.category}</p>
-                    <p className={`${idx === 0 ? 'text-on-secondary-container opacity-70' : 'text-on-surface-variant'} text-[10px] font-bold uppercase tracking-widest`}>{cat.count} VISITAS</p>
+                    <p className={`${idx === 0 ? 'text-on-secondary-container opacity-70' : 'text-on-surface-variant'} text-[10px] font-bold uppercase tracking-widest`}>{cat.count} PAGOS</p>
                   </div>
                 </div>
               ))

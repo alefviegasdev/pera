@@ -302,7 +302,7 @@ const Analysis = ({
             {loading ? (
               Array(3).fill(0).map((_, i) => <div key={i} className="skeleton h-24 w-full rounded-[2rem]" />)
             ) : summary?.by_category?.length > 0 ? (
-              summary.by_category.slice(0, 5).map((cat: any) => {
+              [...summary.by_category].sort((a, b) => b.count - a.count).slice(0, 5).map((cat: any) => {
                 const color = CATEGORY_COLORS[cat.category] || '#9E9E9E';
                 const emoji = catEmoji(cat.category);
                 return (
@@ -313,7 +313,7 @@ const Analysis = ({
                       </div>
                       <div>
                         <h4 className="font-bold text-on-surface">{cat.category}</h4>
-                        <p className="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">{cat.count} transações</p>
+                        <p className="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">{cat.count} PAGOS</p>
                       </div>
                     </div>
                     <div className="text-right">
