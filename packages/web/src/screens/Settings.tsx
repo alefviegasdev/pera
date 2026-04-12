@@ -96,10 +96,16 @@ const Settings = ({
 
   const handleLogout = async () => {
     try {
-      await supabase.auth.signOut();
+      await Promise.race([
+        supabase.auth.signOut(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000))
+      ]);
     } catch (e) {
-      console.error('Erro no logout:', e);
+      console.log('SignOut timeout ou erro, forçando logout:', e);
     } finally {
+      // Limpar storage manualmente para garantir reset
+      localStorage.clear();
+      sessionStorage.clear();
       window.location.href = '/';
     }
   };
