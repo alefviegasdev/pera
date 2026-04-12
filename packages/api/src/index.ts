@@ -443,9 +443,9 @@ app.patch('/monthly-bills/:id/pay', async (req, res) => {
 
 app.post('/monthly-bills', async (req, res) => {
   try {
-    const { user_id, name, value, due_day, category, month, year, short_code } = req.body;
+    const { user_id, name, value, due_day, month, year, paid, short_code } = req.body;
     const { data, error } = await supabase.from('monthly_bills').insert({
-      user_id, name, value, due_day, category, month, year, short_code
+      user_id, name, value, due_day, month, year, paid, short_code
     }).select();
     if (error) throw error;
     res.json(data[0]);
@@ -456,9 +456,9 @@ app.post('/monthly-bills', async (req, res) => {
 
 app.post('/budgets', async (req, res) => {
   try {
-    const { user_id, category, limit_value } = req.body;
+    const { user_id, category, limit_value, icon } = req.body;
     const { data, error } = await supabase.from('budgets').insert({
-      user_id, category, monthly_limit: limit_value
+      user_id, category, monthly_limit: limit_value, icon
     }).select();
     if (error) throw error;
     res.json(data[0]);
@@ -469,9 +469,9 @@ app.post('/budgets', async (req, res) => {
 
 app.post('/goals', async (req, res) => {
   try {
-    const { user_id, name, target_value, category } = req.body;
+    const { user_id, name, target_value, current_value, category } = req.body;
     const { data, error } = await supabase.from('goals').insert({
-      user_id, name, target_value, current_value: 0, category
+      user_id, name, target_value, current_value: current_value || 0, category
     }).select();
     if (error) throw error;
     res.json(data[0]);
