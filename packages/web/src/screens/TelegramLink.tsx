@@ -148,7 +148,7 @@ const TelegramLink = ({ userId, onSkippedOrLinked }: TelegramLinkProps) => {
           <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-on-surface-variant/50 px-2">Como vincular</h3>
           <div className="grid grid-cols-1 gap-3">
             {[
-              { icon: <MessageCircle size={20} />, text: 'Abra o @PeraFin_bot no Telegram', color: 'bg-primary/10' },
+              { icon: <MessageCircle size={20} />, text: 'Abra o @pera_gardenbot no Telegram', color: 'bg-primary/10' },
               { icon: <Zap size={20} />, text: 'Envie os 6 dígitos mostrados acima', color: 'bg-secondary-container/20' },
               { icon: <ShieldCheck size={20} />, text: 'Sincronização instantânea e segura', color: 'bg-tertiary-container/20' }
             ].map((step, i) => (

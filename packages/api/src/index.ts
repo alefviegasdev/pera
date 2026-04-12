@@ -456,10 +456,28 @@ app.post('/monthly-bills', async (req, res) => {
 
 app.post('/budgets', async (req, res) => {
   try {
-    const { user_id, category, limit_value, icon } = req.body;
+    const { user_id, category, limit_value } = req.body;
     const { data, error } = await supabase.from('budgets').insert({
-      user_id, category, monthly_limit: limit_value, icon
+      user_id, category, monthly_limit: limit_value
     }).select();
+    if (error) throw error;
+    res.json(data[0]);
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.patch('/budgets/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { monthly_limit } = req.body;
+    
+    const { data, error } = await supabase
+      .from('budgets')
+      .update({ monthly_limit })
+      .eq('id', id)
+      .select();
+
     if (error) throw error;
     res.json(data[0]);
   } catch (e: any) {

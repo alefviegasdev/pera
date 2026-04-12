@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Target, Calendar, ChevronRight, User, Heart, LogOut, PlusCircle, Home, Wifi, Utensils, Zap, HelpCircle } from 'lucide-react';
+import { Target, Calendar, ChevronRight, User, Heart, LogOut, PlusCircle, Home, Wifi, Utensils, Zap, HelpCircle, Coffee, Car, HeartPulse, Gamepad2, BookOpen, ReceiptText, Shirt, Smartphone, Hands, CircleEllipsis, Pencil } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import NewBillModal from '../components/NewBillModal';
 import NewBudgetModal from '../components/NewBudgetModal';
@@ -39,8 +39,11 @@ const Settings = ({
   const [loading, setLoading] = useState(true);
   const [titheActive, setTitheActive] = useState(true);
   const [totalIncome, setTotalIncome] = useState(0);
+  const [categorySpending, setCategorySpending] = useState<any[]>([]);
   const [tithePercentage, setTithePercentage] = useState(10);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [editBudget, setEditBudget] = useState<{ category: string; budget?: any } | null>(null);
+  const [newLimit, setNewLimit] = useState('');
 
   // Modal states
   const [showNewBill, setShowNewBill] = useState(false);
@@ -83,6 +86,7 @@ const Settings = ({
       setGoals(Array.isArray(gData) ? gData : []);
       setBudgets(Array.isArray(bData) ? bData : []);
       if (sData?.total_income) setTotalIncome(Number(sData.total_income));
+      if (sData?.by_category) setCategorySpending(sData.by_category);
     } catch (e) {
       console.error(e);
     } finally {
@@ -106,6 +110,50 @@ const Settings = ({
     if (low.includes('luz') || low.includes('energia')) return <Zap size={20} className="text-primary" />;
     if (low.includes('água')) return <Utensils size={20} className="text-primary" />;
     return <Calendar size={20} className="text-primary" />;
+  };
+
+  const CATEGORIES = [
+    { name: "Alimentação", icon: <Utensils size={24} />, color: "bg-error-container/10", textColor: "text-error" },
+    { name: "Fast Food", icon: <Coffee size={24} />, color: "bg-secondary-container/20", textColor: "text-secondary-dim" },
+    { name: "Transporte", icon: <Car size={24} />, color: "bg-primary/10", textColor: "text-primary" },
+    { name: "Saúde", icon: <HeartPulse size={24} />, color: "bg-error-container/10", textColor: "text-error" },
+    { name: "Lazer", icon: <Gamepad2 size={24} />, color: "bg-secondary-container/20", textColor: "text-secondary-dim" },
+    { name: "Educação", icon: <BookOpen size={24} />, color: "bg-primary/10", textColor: "text-primary" },
+    { name: "Contas", icon: <ReceiptText size={24} />, color: "bg-surface-container-high", textColor: "text-on-surface" },
+    { name: "Vestuário", icon: <Shirt size={24} />, color: "bg-secondary-container/10", textColor: "text-secondary-dim" },
+    { name: "Eletrônicos", icon: <Smartphone size={24} />, color: "bg-primary/10", textColor: "text-primary" },
+    { name: "Dízimo/Oferta", icon: <Hands size={24} />, color: "bg-tertiary-container/20", textColor: "text-on-tertiary-container" },
+    { name: "Outros", icon: <CircleEllipsis size={24} />, color: "bg-surface-container-high", textColor: "text-on-surface" },
+  ];
+
+  const handleUpdateLimit = async () => {
+    if (!editBudget) return;
+    const value = parseFloat(newLimit);
+    if (isNaN(value)) return;
+
+    try {
+      if (editBudget.budget?.id) {
+        await fetch(`/api/budgets/${editBudget.budget.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ monthly_limit: value })
+        });
+      } else {
+        await fetch(`/api/budgets`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            user_id: userId, 
+            category: editBudget.category, 
+            limit_value: value 
+          })
+        });
+      }
+      setEditBudget(null);
+      fetchData();
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   return (
@@ -261,39 +309,71 @@ const Settings = ({
 
         {/* Budgets Section */}
         <section className="space-y-4">
-          <SectionHeader title="Orçamentos Mensais" onAdd={() => setShowNewBudget(true)} />
-          <div className="space-y-3">
-            {loading ? (
-              <div className="skeleton h-20 w-full rounded-2xl" />
-            ) : budgets.length === 0 ? (
-              <p className="text-xs font-bold text-muted text-center py-4 uppercase tracking-widest">Nenhum limite definido</p>
-            ) : (
-              budgets.map(b => {
-                const rawPct = (b.spent / b.monthly_limit) * 100;
-                const pct = Math.min(rawPct, 100);
-                const over = rawPct > 100;
+          <SectionHeader title="Orçamentos Mensais" />
+          <div className="space-y-4">
+            {CATEGORIES.map(cat => {
+              const budget = budgets.find(b => b.category === cat.name);
+              const spending = categorySpending.find(s => s.category === cat.name);
+              const spent = spending ? Number(spending.total) : (budget?.spent || 0);
+              const limit = budget?.monthly_limit;
+              
+              const rawPct = limit ? (spent / limit) * 100 : 0;
+              const pct = Math.min(rawPct, 100);
+              const over = limit ? spent > limit : false;
+              const excess = over ? spent - limit : 0;
 
-                return (
-                  <div key={b.id} className="bg-surface-container-low rounded-[1.5rem] p-5">
-                    <div className="flex justify-between items-center mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-2 h-2 rounded-full ${over ? 'bg-error' : 'bg-primary'}`} />
-                        <p className="font-bold text-on-background">{b.category}</p>
+              return (
+                <div 
+                  key={cat.name} 
+                  className={`rounded-[2rem] p-7 shadow-sm border border-outline-variant/10 transition-all ${over ? 'bg-error-container/5 border-error-container/20' : 'bg-white'}`}
+                >
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-4">
+                      <div className={`w-14 h-14 ${cat.name === 'Alimentação' && over ? 'bg-error-container/20' : cat.color} rounded-2xl flex items-center justify-center ${cat.textColor}`}>
+                        {cat.icon}
                       </div>
-                      <p className="text-[11px] font-bold text-on-surface-variant">
-                        <span className={`font-black ${over ? 'text-error' : 'text-on-background'}`}>{fmt(b.spent)}</span> / {fmt(b.monthly_limit)}
+                      <h4 className="font-headline font-bold text-xl text-on-surface tracking-tight">{cat.name}</h4>
+                    </div>
+                    <div className="text-right">
+                      <p className={`text-[10px] font-black uppercase tracking-[0.2em] mb-1 ${over ? 'text-error' : 'text-on-surface-variant'}`}>Gasto Atual</p>
+                      <p className={`font-headline font-black text-2xl leading-none ${over ? 'text-error' : 'text-on-surface'}`}>
+                        {fmt(spent).split(',')[0]}
                       </p>
                     </div>
-                    <div className="h-2 bg-white rounded-full overflow-hidden">
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="h-3 bg-surface-container-low rounded-full overflow-hidden">
                       <div 
-                        className={`h-full transition-all duration-500 ${over ? 'bg-error-container' : 'bg-secondary-container'}`} 
-                        style={{ width: `${pct}%` }} 
+                        className={`h-full transition-all duration-700 ease-out rounded-full ${over ? 'bg-error' : 'bg-primary'}`} 
+                        style={{ width: `${limit ? pct : 0}%` }} 
                       />
                     </div>
+                    <div className="flex justify-between items-center">
+                      <p className={`text-xs font-bold leading-none ${over ? 'text-error' : 'text-on-surface-variant opacity-70'}`}>
+                        {limit ? (
+                          over ? `Limite excedido em ${fmt(excess)}` : `${Math.round(rawPct)}% do orçamento utilizado`
+                        ) : (
+                          'Sem limite definido'
+                        )}
+                      </p>
+                      <button 
+                        onClick={() => {
+                          setEditBudget({ category: cat.name, budget });
+                          setNewLimit(limit ? limit.toString() : '');
+                        }}
+                        className="flex items-center gap-2 hover:bg-surface-container-low px-4 py-2 rounded-xl transition-all group active:scale-95"
+                      >
+                        <span className="text-[11px] font-black uppercase tracking-wider text-on-surface">
+                          Limite: <span className="text-primary">{limit ? fmt(limit) : '---'}</span>
+                        </span>
+                        <Pencil size={14} className="text-primary group-hover:scale-110 transition-transform" />
+                      </button>
+                    </div>
                   </div>
-                );
-              })
-            )}
+                </div>
+              );
+            })}
           </div>
         </section>
 
@@ -339,6 +419,49 @@ const Settings = ({
               </button>
               <button 
                 onClick={() => setShowLogoutConfirm(false)}
+                className="w-full bg-transparent text-on-surface-variant py-3 rounded-full font-headline font-bold text-sm hover:text-on-surface active:scale-95 transition-all"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Budget Limit Modal */}
+      {editBudget && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-6 animate-in fade-in duration-300" onClick={() => setEditBudget(null)}>
+          <div className="bg-white rounded-[2.5rem] w-full max-w-xs p-8 shadow-2xl animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
+            <div className="text-center space-y-2 mb-8">
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Configurar Limite</p>
+              <h2 className="font-headline text-2xl font-black text-on-surface tracking-tight">
+                {editBudget.category}
+              </h2>
+            </div>
+            
+            <div className="mb-8">
+              <div className="relative">
+                <span className="absolute left-6 top-1/2 -translate-y-1/2 font-headline font-bold text-on-surface-variant opacity-50">R$</span>
+                <input 
+                  type="number"
+                  autoFocus
+                  value={newLimit}
+                  onChange={e => setNewLimit(e.target.value)}
+                  placeholder="0,00"
+                  className="w-full h-16 bg-surface-container-low border-none rounded-2xl px-12 font-headline font-black text-2xl text-on-surface focus:ring-2 focus:ring-primary/20 transition-all"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <button 
+                onClick={handleUpdateLimit}
+                className="w-full bg-primary text-white py-4 rounded-full font-headline font-bold text-base shadow-lg shadow-primary/20 active:scale-95 transition-all"
+              >
+                Salvar Limite
+              </button>
+              <button 
+                onClick={() => setEditBudget(null)}
                 className="w-full bg-transparent text-on-surface-variant py-3 rounded-full font-headline font-bold text-sm hover:text-on-surface active:scale-95 transition-all"
               >
                 Cancelar
