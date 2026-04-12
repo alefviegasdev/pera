@@ -34,7 +34,7 @@ const InstallmentsModal: React.FC<InstallmentsModalProps> = ({ userId, onClose }
   const totalMonthly = insts.reduce((acc, curr) => acc + (curr.installment_value || 0), 0);
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={onClose} style={{ zIndex: 9999 }}>
       <div className="modal-card scrollbar-hide" onClick={(e) => e.stopPropagation()} style={{ maxHeight: '90vh', overflowY: 'auto' }}>
         <div className="modal-handle" />
 

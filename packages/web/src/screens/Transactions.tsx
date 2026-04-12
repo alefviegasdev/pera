@@ -141,7 +141,7 @@ const Transactions = ({ userId }: { userId: string }) => {
 
       {/* ── MODAL ── */}
       {selected && (
-        <div className="modal-overlay" onClick={() => setSelected(null)}>
+        <div className="modal-overlay" onClick={() => setSelected(null)} style={{ zIndex: 9999 }}>
           <div className="modal-card" onClick={e => e.stopPropagation()}>
             <div className="modal-handle" />
 

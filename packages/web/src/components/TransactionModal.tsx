@@ -23,7 +23,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ tx, onClose }) => {
   const initials = getInitials(tx.description);
 
   return (
-    <div className="modal-overlay" onClick={onClose} style={{ zIndex: 2000 }}>
+    <div className="modal-overlay" onClick={onClose} style={{ zIndex: 9999 }}>
       <div className="modal-card scrollbar-hide" onClick={(e) => e.stopPropagation()} style={{ borderRadius: '2.5rem' }}>
         <div className="modal-handle" />
 
