@@ -109,9 +109,6 @@ const Home = ({ userId, userMetadata }: { userId: string; userMetadata?: any }) 
           </div>
         </div>
         <div className="flex items-center gap-4">
-          <button className="w-10 h-10 flex items-center justify-center rounded-full text-on-surface hover:bg-[#f1f1ec]/50 transition-colors scale-95 duration-200 ease-out">
-            <CreditCard size={20} />
-          </button>
           <div className="text-2xl font-black tracking-tighter text-[#5d3fd3]">Pera</div>
         </div>
       </header>
@@ -121,8 +118,12 @@ const Home = ({ userId, userMetadata }: { userId: string; userMetadata?: any }) 
         <section className="space-y-1">
           <h2 className="text-on-surface-variant font-medium font-body text-sm">Saldo Geral</h2>
           <div className="flex items-baseline gap-1">
-            <span className="text-primary font-black text-5xl tracking-tight font-headline">{balanceParts.int}</span>
-            <span className="text-primary-container font-bold text-2xl font-headline">{balanceParts.dec}</span>
+            <span className={`font-black text-5xl tracking-tight font-headline ${(summary?.balance || 0) < 0 ? 'text-error' : 'text-primary'}`}>
+              {balanceParts.int}
+            </span>
+            <span className={`font-bold text-2xl font-headline ${(summary?.balance || 0) < 0 ? 'text-error opacity-70' : 'text-primary-container'}`}>
+              {balanceParts.dec}
+            </span>
           </div>
         </section>
 
@@ -179,30 +180,6 @@ const Home = ({ userId, userMetadata }: { userId: string; userMetadata?: any }) 
           </section>
         )}
 
-        {/* ── CATEGORY HIGHLIGHTS ── */}
-        <section className="space-y-4">
-          <h2 className="text-on-surface font-extrabold text-xl font-headline">Onde você mais gasta</h2>
-          <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-            {summary?.by_category?.length > 0 ? (
-              summary.by_category.slice(0, 5).map((cat: any, idx: number) => (
-                <div key={cat.category} className={`min-w-[140px] ${idx === 0 ? 'bg-secondary-container' : 'bg-white'} p-5 rounded-[2rem] flex flex-col items-center text-center space-y-3 shadow-sm`}>
-                  <div className={`w-12 h-12 ${idx === 0 ? 'bg-white/30' : 'bg-surface-container-low'} rounded-full flex items-center justify-center text-xl`}>
-                    {catEmoji(cat.category)}
-                  </div>
-                  <div>
-                    <p className={`${idx === 0 ? 'text-on-secondary-container' : 'text-on-surface'} font-bold text-sm truncate`}>{cat.category}</p>
-                    <p className={`${idx === 0 ? 'text-on-secondary-container opacity-70' : 'text-on-surface-variant'} text-[10px] font-bold uppercase tracking-widest`}>{cat.count} VISITAS</p>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="w-full p-8 text-center bg-white rounded-[2rem]">
-                <p className="text-on-surface-variant font-medium text-sm">Sem dados suficientes ainda.</p>
-              </div>
-            )}
-          </div>
-        </section>
-
         {/* ── UPCOMING BILLS ── */}
         <section className="space-y-4">
           <div className="flex justify-between items-center">
@@ -232,6 +209,30 @@ const Home = ({ userId, userMetadata }: { userId: string; userMetadata?: any }) 
                 </div>
               </div>
             ))}
+          </div>
+        </section>
+
+        {/* ── CATEGORY HIGHLIGHTS ── */}
+        <section className="space-y-4">
+          <h2 className="text-on-surface font-extrabold text-xl font-headline">Onde você mais gasta</h2>
+          <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+            {summary?.by_category?.length > 0 ? (
+              summary.by_category.slice(0, 5).map((cat: any, idx: number) => (
+                <div key={cat.category} className={`min-w-[140px] ${idx === 0 ? 'bg-secondary-container' : 'bg-white'} p-5 rounded-[2rem] flex flex-col items-center text-center space-y-3 shadow-sm`}>
+                  <div className={`w-12 h-12 ${idx === 0 ? 'bg-white/30' : 'bg-surface-container-low'} rounded-full flex items-center justify-center text-xl`}>
+                    {catEmoji(cat.category)}
+                  </div>
+                  <div>
+                    <p className={`${idx === 0 ? 'text-on-secondary-container' : 'text-on-surface'} font-bold text-sm truncate`}>{cat.category}</p>
+                    <p className={`${idx === 0 ? 'text-on-secondary-container opacity-70' : 'text-on-surface-variant'} text-[10px] font-bold uppercase tracking-widest`}>{cat.count} VISITAS</p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="w-full p-8 text-center bg-white rounded-[2rem]">
+                <p className="text-on-surface-variant font-medium text-sm">Sem dados suficientes ainda.</p>
+              </div>
+            )}
           </div>
         </section>
 
