@@ -159,10 +159,11 @@ const Home = ({
   const income = summary?.total_income ?? 0;
   const expense = summary?.total_expense ?? 0;
   
-  // Custom logic: projectedFixed = unpaid bills + active installments value
+  // Custom logic: projectedFixed = unpaid bills + active installments value + 10% tithing
   const futureFixed = pendingBills.reduce((sum, b) => sum + Number(b.value), 0);
   const installmentTotal = installments.reduce((sum, i) => sum + Number(i.installment_value), 0);
-  const projectedFixed = futureFixed + installmentTotal;
+  const tithing = income * 0.10;
+  const projectedFixed = futureFixed + installmentTotal + tithing;
   
   const realAvailable = income - expense - projectedFixed;
   const isNegative = realAvailable < 0;
@@ -252,14 +253,14 @@ const Home = ({
             </p>
           </div>
 
-          <div className="bg-surface-container-highest p-6 rounded-[2.5rem] space-y-4 shadow-sm relative overflow-hidden group transition-all hover:scale-[1.01]">
+          <div className="bg-secondary-container p-6 rounded-[2.5rem] space-y-4 shadow-sm relative overflow-hidden group transition-all hover:scale-[1.01]">
             <div className="flex items-center justify-between">
-              <div className="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center">
-                <Pin size={18} className="text-on-surface" />
+              <div className="w-8 h-8 rounded-full bg-white/30 flex items-center justify-center">
+                <Pin size={18} className="text-on-secondary-container" />
               </div>
-              <span className="text-[9px] font-black uppercase tracking-[0.1em] text-on-surface-variant opacity-60">Custos Fixos</span>
+              <span className="text-[9px] font-black uppercase tracking-[0.1em] text-on-secondary-container opacity-60">Custos Fixos</span>
             </div>
-            <p className="text-on-surface font-headline font-black text-xl tracking-tight">
+            <p className="text-on-secondary-container font-headline font-black text-xl tracking-tight">
               {fmt(projectedFixed)}
             </p>
           </div>
