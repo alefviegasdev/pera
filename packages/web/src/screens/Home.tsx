@@ -27,6 +27,7 @@ const Home = ({
   const [loading, setLoading] = useState(true);
   const [selectedTx, setSelectedTx] = useState<any>(null);
   const [showBillsModal, setShowBillsModal] = useState(false);
+  const [billTab, setBillTab] = useState<'pending' | 'paid'>('pending');
 
   useEffect(() => {
     if (selectedTx || showBillsModal) {
@@ -118,6 +119,11 @@ const Home = ({
   const year = now.getFullYear();
 
   const pendingBills = bills.filter(b => !b.paid).sort((a, b) => a.due_day - b.due_day);
+  const paidBills = bills.filter(b => b.paid).sort((a, b) => {
+    const dateA = a.paid_at ? new Date(a.paid_at).getTime() : 0;
+    const dateB = b.paid_at ? new Date(b.paid_at).getTime() : 0;
+    return dateB - dateA;
+  });
   const alerts  = pendingBills.filter(b => b.due_day <= today + 2);
 
   const fmt = (n: number) =>
@@ -353,10 +359,10 @@ const Home = ({
           </section>
         )}
 
-        {/* ── UPCOMING BILLS ── */}
+        {/* ── BILLS (VENCIMENTOS) ── */}
         <section className="space-y-6">
           <div className="flex justify-between items-center">
-            <h2 className="text-on-surface font-extrabold text-xl font-headline">Próximos Vencimentos</h2>
+            <h2 className="text-on-surface font-extrabold text-xl font-headline">Vencimentos</h2>
             <button 
               onClick={() => setShowBillsModal(true)}
               className="text-primary font-black text-[10px] uppercase tracking-widest px-3 py-1.5 bg-primary/5 rounded-full"
@@ -364,34 +370,93 @@ const Home = ({
               Ver todos
             </button>
           </div>
+
+          {/* Segmented Control / Toggle Button Group */}
+          <div className="bg-surface-container p-1 rounded-2xl flex items-center">
+            <button 
+              onClick={() => setBillTab('pending')}
+              className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${billTab === 'pending' ? 'bg-white text-primary shadow-sm' : 'text-on-surface-variant opacity-50'}`}
+            >
+              A pagar
+            </button>
+            <button 
+              onClick={() => setBillTab('paid')}
+              className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${billTab === 'paid' ? 'bg-white text-primary shadow-sm' : 'text-on-surface-variant opacity-50'}`}
+            >
+              Pagos
+            </button>
+          </div>
+
           <div className="space-y-4">
-            {pendingBills.slice(0, 3).map(b => {
-              const daysLeft = b.due_day - today;
-              return (
-                <div key={b.id} className="bg-white p-7 rounded-[2.5rem] flex items-center justify-between border border-surface-container/50 shadow-sm transition-all hover:shadow-md hover:scale-[1.01]">
-                  <div className="flex items-center gap-5">
-                    <div className="w-14 h-14 bg-surface-container-low rounded-2xl flex items-center justify-center">
-                      {getBillIcon(b.name)}
+            {billTab === 'pending' ? (
+              pendingBills.slice(0, 3).map(b => {
+                const daysLeft = b.due_day - today;
+                return (
+                  <div key={b.id} className="bg-white p-7 rounded-[2.5rem] flex items-center justify-between border border-surface-container/50 shadow-sm transition-all hover:shadow-md hover:scale-[1.01]">
+                    <div className="flex items-center gap-5">
+                      <div className="w-14 h-14 bg-surface-container-low rounded-2xl flex items-center justify-center">
+                        {getBillIcon(b.name)}
+                      </div>
+                      <div>
+                        <p className="text-on-surface font-bold text-base font-headline">{b.name}</p>
+                        <p className={`text-sm mt-0.5 font-bold ${daysLeft <= 2 ? 'text-error' : 'text-on-surface-variant'}`}>
+                          {daysLeft === 0 ? 'Vence hoje' : daysLeft < 0 ? `Atrasado ${Math.abs(daysLeft)}d` : `Vence em ${daysLeft} dias`}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-on-surface font-bold text-base font-headline">{b.name}</p>
-                      <p className={`text-sm mt-0.5 font-bold ${daysLeft <= 2 ? 'text-error' : 'text-on-surface-variant'}`}>
-                        {daysLeft === 0 ? 'Vence hoje' : daysLeft < 0 ? `Atrasado ${Math.abs(daysLeft)}d` : `Vence em ${daysLeft} dias`}
-                      </p>
+                    <div className="flex flex-col items-end gap-3">
+                      <p className="text-on-surface font-black text-lg tracking-tight">{fmt(b.value)}</p>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); markAsPaid(b); }}
+                        className="bg-primary text-on-primary px-6 py-2.5 rounded-full text-[10px] font-black tracking-widest uppercase transition-all hover:brightness-110 active:scale-95 shadow-lg shadow-primary/10"
+                      >
+                        Pagar
+                      </button>
                     </div>
                   </div>
-                  <div className="flex flex-col items-end gap-3">
-                    <p className="text-on-surface font-black text-lg tracking-tight">{fmt(b.value)}</p>
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); markAsPaid(b); }}
-                      className="bg-primary text-on-primary px-6 py-2.5 rounded-full text-[10px] font-black tracking-widest uppercase transition-all hover:brightness-110 active:scale-95 shadow-lg shadow-primary/10"
-                    >
-                      Pagar
-                    </button>
+                );
+              })
+            ) : (
+              paidBills.slice(0, 3).map(b => {
+                const paidDate = b.paid_at ? new Date(b.paid_at) : new Date();
+                const day = paidDate.getDate().toString().padStart(2, '0');
+                const month = MONTH_NAMES[paidDate.getMonth()].substring(0, 3);
+                
+                return (
+                  <div key={b.id} className="bg-white/50 opacity-60 p-7 rounded-[2.5rem] flex items-center justify-between border border-surface-container/30 shadow-sm">
+                    <div className="flex items-center gap-5">
+                      <div className="w-14 h-14 bg-tertiary-container/30 rounded-2xl flex items-center justify-center">
+                        {getBillIcon(b.name).props && React.cloneElement(getBillIcon(b.name), { className: 'text-tertiary' })}
+                      </div>
+                      <div>
+                        <p className="text-on-surface-variant font-bold text-base font-headline">{b.name}</p>
+                        <p className="text-tertiary text-xs font-bold flex items-center gap-1">
+                          <CheckCircle2 size={14} fill="currentColor" className="opacity-80" />
+                          Pago em {day} {month}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-3">
+                      <p className="text-on-surface-variant font-black text-lg tracking-tight">{fmt(b.value)}</p>
+                      <div className="bg-tertiary-container text-on-tertiary-container px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest">
+                        Pago
+                      </div>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
+
+            {billTab === 'pending' && pendingBills.length === 0 && (
+              <div className="p-10 text-center bg-white rounded-[2.5rem] border border-surface-container/30">
+                <p className="text-on-surface-variant font-medium opacity-60">Todas as contas do mês estão em dia!</p>
+              </div>
+            )}
+            {billTab === 'paid' && paidBills.length === 0 && (
+              <div className="p-10 text-center bg-white/50 rounded-[2.5rem] border border-surface-container/20">
+                <p className="text-on-surface-variant font-medium opacity-60">Nenhuma conta paga este mês ainda.</p>
+              </div>
+            )}
           </div>
         </section>
 
