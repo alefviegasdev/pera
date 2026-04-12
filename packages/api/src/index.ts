@@ -166,6 +166,27 @@ app.get('/transactions', async (req, res) => {
   }
 });
 
+app.post('/transactions', async (req, res) => {
+  try {
+    const { user_id, value, type, category, subtype, urgency, 
+            description, source, short_code } = req.body;
+    if (!user_id) return res.status(400).json({ error: "user_id is required" });
+
+    const { data, error } = await supabase
+      .from('transactions')
+      .insert({
+        user_id, value, type, category, subtype, urgency,
+        description, source, short_code
+      })
+      .select();
+
+    if (error) throw error;
+    res.json(data[0]);
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.get('/transactions/summary', async (req, res) => {
   try {
     const { user_id, period } = req.query;
