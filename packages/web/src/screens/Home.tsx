@@ -22,6 +22,7 @@ const Home = ({
   const [summary, setSummary] = useState<any>(null);
   const [bills, setBills]     = useState<any[]>([]);
   const [txs, setTxs]         = useState<any[]>([]);
+  const [installments, setInstallments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTx, setSelectedTx] = useState<any>(null);
   const [showBillsModal, setShowBillsModal] = useState(false);
@@ -39,16 +40,19 @@ const Home = ({
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [sRes, bRes, tRes] = await Promise.all([
+      const [sRes, bRes, tRes, iRes] = await Promise.all([
         fetch(`/api/transactions/summary?user_id=${userId}&period=month`),
         fetch(`/api/monthly-bills?user_id=${userId}`),
-        fetch(`/api/transactions?user_id=${userId}&period=month`)
+        fetch(`/api/transactions?user_id=${userId}&period=month`),
+        fetch(`/api/installments?user_id=${userId}`)
       ]);
       setSummary(await sRes.json());
       const billsData = await bRes.json();
       setBills(Array.isArray(billsData) ? billsData : []);
       const txData = await tRes.json();
       setTxs(txData.transactions || []);
+      const instData = await iRes.json();
+      setInstallments(Array.isArray(instData) ? instData : []);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
@@ -140,6 +144,16 @@ const Home = ({
   const balanceParts = splitFmt(summary?.balance ?? 0);
   const userName = userMetadata?.name?.split(' ')[0] || 'Michel';
 
+  // Budget calculations
+  const totalFixed = bills.reduce((sum, b) => sum + (b.value || 0), 0);
+  const totalInstallments = installments.reduce((sum, i) => sum + (i.installment_value || 0), 0);
+  const totalExpenses = (summary?.total_expense ?? 0) + totalFixed + totalInstallments;
+  const totalIncome = summary?.total_income ?? 0;
+  const budgetUsedPct = totalIncome > 0 ? Math.min((totalExpenses / totalIncome) * 100, 100) : 0;
+
+  // Progress Color Logic
+  const progressColor = budgetUsedPct < 80 ? '#22c55e' : budgetUsedPct < 100 ? '#f59e0b' : '#ef4444';
+
   return (
     <div className="screen bg-surface pb-32">
       {/* ── HEADER ── */}
@@ -205,14 +219,20 @@ const Home = ({
           <div className="flex justify-between items-end">
             <div>
               <h2 className="text-on-surface font-extrabold text-xl font-headline">Orçamento Mensal</h2>
-              <p className="text-on-surface-variant text-sm font-medium">Você utilizou 65% do limite</p>
+              <p className="text-on-surface-variant text-sm font-medium">Você utilizou {budgetUsedPct.toFixed(0)}% das suas entradas</p>
             </div>
             <span className="text-primary font-bold font-headline text-lg">
-              R$ 3.200 <span className="text-outline-variant font-normal text-sm">/ R$ 5k</span>
+              {fmt(totalExpenses).split(',')[0]} <span className="text-outline-variant font-normal text-sm">/ {fmt(totalIncome).split(',')[0]}</span>
             </span>
           </div>
           <div className="w-full h-4 bg-surface-container-highest rounded-full overflow-hidden">
-            <div className="h-full bg-gradient-to-r from-primary to-primary-container rounded-full" style={{ width: '65%' }}></div>
+            <div 
+              className="h-full rounded-full transition-all duration-1000" 
+              style={{ 
+                width: `${budgetUsedPct}%`,
+                backgroundColor: progressColor
+              }}
+            ></div>
           </div>
         </section>
 
