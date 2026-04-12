@@ -294,8 +294,7 @@ const Analysis = ({
         {/* Maiores Categorias Breakdown */}
         <section className="space-y-6">
           <div className="flex justify-between items-center">
-            <h3 className="font-headline font-bold text-xl text-on-surface">Maiores Categorias</h3>
-            <button className="text-primary font-black text-[10px] uppercase tracking-widest px-3 py-1.5 bg-primary/5 rounded-full">Ver todas</button>
+            <h3 className="font-headline font-bold text-xl text-on-surface">Mais gastos</h3>
           </div>
 
           <div className="space-y-3">
