@@ -359,9 +359,9 @@ body {
   left: 24px;
   right: 24px;
   height: 72px;
-  background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  background: rgba(255, 255, 255, 0.97);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   padding: 0 12px;
   display: flex;
   justify-content: space-around;
