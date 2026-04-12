@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { catBg, catColor, catEmoji } from '../utils/categories';
 import TransactionModal from '../components/TransactionModal';
-import BillsModal from '../components/BillsModal';
 import FixedDetailsModal from '../components/FixedDetailsModal';
 import { ArrowRight, ArrowUpRight, ArrowDownRight, AlertTriangle, CreditCard, ChevronRight, Zap, Wifi, Home as HomeIcon, Dumbbell, Pin, AlertCircle, CheckCircle2, Heart } from 'lucide-react';
 
@@ -27,17 +26,16 @@ const Home = ({
   const [budgets, setBudgets]      = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTx, setSelectedTx] = useState<any>(null);
-  const [showBillsModal, setShowBillsModal] = useState(false);
   const [showFixedModal, setShowFixedModal] = useState(false);
   const [billTab, setBillTab] = useState<'pending' | 'paid'>('pending');
 
   useEffect(() => {
-    if (selectedTx || showBillsModal || showFixedModal) {
+    if (selectedTx || showFixedModal) {
       onModalOpen?.();
     } else {
       onModalClose?.();
     }
-  }, [selectedTx, showBillsModal, showFixedModal]);
+  }, [selectedTx, showFixedModal]);
 
   useEffect(() => { fetchData(); }, [userId]);
   
@@ -393,12 +391,6 @@ const Home = ({
         <section className="space-y-6">
           <div className="flex justify-between items-center">
             <h2 className="text-on-surface font-extrabold text-xl font-headline">Vencimentos</h2>
-            <button 
-              onClick={() => setShowBillsModal(true)}
-              className="text-primary font-black text-[10px] uppercase tracking-widest px-3 py-1.5 bg-primary/5 rounded-full"
-            >
-              Ver todos
-            </button>
           </div>
 
           {/* Segmented Control / Toggle Button Group */}
@@ -566,14 +558,6 @@ const Home = ({
       {/* MODALS */}
       {selectedTx && (
         <TransactionModal tx={selectedTx} onClose={() => setSelectedTx(null)} />
-      )}
-
-      {showBillsModal && (
-        <BillsModal 
-          bills={pendingBills}
-          onClose={() => setShowBillsModal(false)}
-          onPay={markAsPaid}
-        />
       )}
 
       {showFixedModal && (
