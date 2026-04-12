@@ -475,25 +475,32 @@ Exemplos que funcionam:
         const month = now.getMonth() + 1;
         const year = now.getFullYear();
 
+        // 1. BUSCA MAIS FLEXÍVEL DE CONTAS (Month Bills)
+        const keywords = item.description.toLowerCase().split(' ')
+          .filter(w => w.length > 2 && !['de', 'do', 'da', 'os', 'as', 'um', 'uma', 'the', 'para', 'com'].includes(w));
+
         const { data: bills, error: findError } = await supabase
           .from("monthly_bills")
           .select("*")
           .eq("user_id", supabaseUserId)
           .eq("month", month)
           .eq("year", year)
-          .ilike("name", `%${item.description}%`);
+          .eq("paid", false);
 
         if (findError) throw findError;
 
-        if (bills && bills.length > 0) {
-          const bill = bills[0];
+        const bill = bills?.find(b => 
+          keywords.some(kw => b.name.toLowerCase().includes(kw))
+        );
+
+        if (bill) {
           const { error: payError } = await supabase
             .from("monthly_bills")
             .update({ paid: true, paid_at: new Date().toISOString() })
             .eq("id", bill.id);
 
           if (payError) throw payError;
-          // 2. Inserir transação para descontar do saldo
+
           const shortCode = generateShortCode();
           await supabase.from("transactions").insert({
             user_id: supabaseUserId,
@@ -511,7 +518,50 @@ Exemplos que funcionam:
 📝 ${bill.name}
 💰 R$ ${Number(bill.value).toFixed(2)}`);
         } else {
-          await ctx.reply(`❓ Não encontrei nenhuma conta pendente para "${item.description}" este mês.`);
+          // 2. BUSCA EM PARCELAMENTOS (INSTALLMENTS)
+          const { data: installments, error: instError } = await supabase
+            .from("installments")
+            .select("*")
+            .eq("user_id", supabaseUserId)
+            .eq("active", true);
+
+          if (instError) throw instError;
+
+          const installment = installments?.find(inst => 
+            keywords.length > 0 && keywords.some(kw => inst.description.toLowerCase().includes(kw))
+          );
+
+          if (installment) {
+            const nextInstallment = (installment.current_installment || 0) + 1;
+            const isFinished = nextInstallment >= installment.total_installments;
+
+            await supabase
+              .from("installments")
+              .update({ 
+                current_installment: nextInstallment,
+                active: !isFinished
+              })
+              .eq("id", installment.id);
+
+            const shortCode = generateShortCode();
+            await supabase.from("transactions").insert({
+              user_id: supabaseUserId,
+              value: installment.installment_value,
+              type: 'expense',
+              category: installment.category,
+              subtype: 'semifixed',
+              urgency: 'planned',
+              description: `${installment.description} (${nextInstallment}/${installment.total_installments})`,
+              source: 'text',
+              short_code: shortCode
+            });
+
+            await ctx.reply(`✅ Parcela paga! #${shortCode}
+📝 ${installment.description} (${nextInstallment}/${installment.total_installments})
+💰 R$ ${Number(installment.installment_value).toFixed(2)}`);
+          } else {
+            await ctx.reply(`❓ Não encontrei nenhuma conta ou parcelamento pendente para "${item.description}".`);
+          }
         }
       } else if (item.type === 'bill') {
         const now = new Date();
