@@ -151,9 +151,8 @@ bot.command("start", async (ctx) => {
 Para começar, você precisa conectar sua conta:
 
 1. Acesse o app Pera
-2. Vá em Ajustes > Conectar Telegram
-3. Copie o código de 6 dígitos que aparecer
-4. Envie o código aqui neste chat
+2. Na tela de conexão, copie o código de 6 dígitos
+3. Envie o código aqui neste chat
 
 Assim que conectar, poderei registrar seus gastos automaticamente! 💰`);
 });
