@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { catBg, catColor, catEmoji } from '../utils/categories';
 import TransactionModal from '../components/TransactionModal';
-import { ArrowRight, ArrowUpRight, ArrowDownRight, AlertTriangle, CreditCard, ChevronRight, Plus } from 'lucide-react';
+import BillsModal from '../components/BillsModal';
+import { ArrowRight, ArrowUpRight, ArrowDownRight, AlertTriangle, CreditCard, ChevronRight, Plus, Zap, Wifi, Home as HomeIcon, Dumbbell } from 'lucide-react';
 
 const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
@@ -11,6 +12,7 @@ const Home = ({ userId, userMetadata }: { userId: string; userMetadata?: any }) 
   const [txs, setTxs]         = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTx, setSelectedTx] = useState<any>(null);
+  const [showBillsModal, setShowBillsModal] = useState(false);
 
   useEffect(() => { fetchData(); }, [userId]);
 
@@ -31,18 +33,48 @@ const Home = ({ userId, userMetadata }: { userId: string; userMetadata?: any }) 
     finally { setLoading(false); }
   };
 
-  const markAsPaid = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const markAsPaid = async (bill: any) => {
     try {
-      await fetch(`/api/monthly-bills/${id}/pay`, {
+      const shortCode = Math.random().toString(36).substring(2, 6).toUpperCase();
+      
+      // 1. Mark bill as paid
+      const billPromise = fetch(`/api/monthly-bills/${bill.id}/pay`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ paid: true })
       });
+
+      // 2. Create transaction
+      const txPromise = fetch(`/api/transactions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: userId,
+          value: bill.value,
+          type: 'expense',
+          category: 'Contas',
+          subtype: 'fixed',
+          urgency: 'planned',
+          description: bill.name,
+          source: 'manual',
+          short_code: shortCode
+        })
+      });
+
+      await Promise.all([billPromise, txPromise]);
       fetchData();
     } catch (e) {
       console.error(e);
     }
+  };
+
+  const getBillIcon = (name: string) => {
+    const n = name.toLowerCase();
+    if (n.includes('luz') || n.includes('energia')) return <Zap size={24} className="text-primary" />;
+    if (n.includes('internet') || n.includes('wifi')) return <Wifi size={24} className="text-primary" />;
+    if (n.includes('aluguel') || n.includes('condomínio')) return <HomeIcon size={24} className="text-primary" />;
+    if (n.includes('academia') || n.includes('gym')) return <Dumbbell size={24} className="text-primary" />;
+    return <Zap size={24} className="text-primary" />;
   };
 
   const now   = new Date();
@@ -56,7 +88,6 @@ const Home = ({ userId, userMetadata }: { userId: string; userMetadata?: any }) 
   const fmt = (n: number) =>
     n?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) ?? 'R$\u00a00,00';
 
-  // Helper to split currency for big typography
   const splitFmt = (n: number) => {
     const s = fmt(n);
     const parts = s.split(',');
@@ -87,7 +118,7 @@ const Home = ({ userId, userMetadata }: { userId: string; userMetadata?: any }) 
   );
 
   const balanceParts = splitFmt(summary?.balance ?? 0);
-  const userName = userMetadata?.name?.split(' ')[0] || 'Michel'; // Fallback to reference name
+  const userName = userMetadata?.name?.split(' ')[0] || 'Michel';
 
   return (
     <div className="screen bg-surface pb-32">
@@ -181,34 +212,44 @@ const Home = ({ userId, userMetadata }: { userId: string; userMetadata?: any }) 
         )}
 
         {/* ── UPCOMING BILLS ── */}
-        <section className="space-y-4">
+        <section className="space-y-6">
           <div className="flex justify-between items-center">
             <h2 className="text-on-surface font-extrabold text-xl font-headline">Próximos Vencimentos</h2>
-            <span className="text-primary font-bold text-sm">Próximos dias</span>
+            <button 
+              onClick={() => setShowBillsModal(true)}
+              className="text-primary font-black text-[10px] uppercase tracking-widest px-3 py-1.5 bg-primary/5 rounded-full"
+            >
+              Ver todos
+            </button>
           </div>
-          <div className="space-y-3">
-            {pendingBills.slice(0, 3).map(b => (
-              <div key={b.id} className="bg-surface-container-low p-4 rounded-[2rem] flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
-                    <CreditCard size={20} className="text-on-surface-variant" />
+          <div className="space-y-4">
+            {pendingBills.slice(0, 3).map(b => {
+              const daysLeft = b.due_day - today;
+              return (
+                <div key={b.id} className="bg-white p-6 rounded-[2rem] flex items-center justify-between border border-surface-container/50 shadow-sm transition-all hover:shadow-md">
+                  <div className="flex items-center gap-5">
+                    <div className="w-14 h-14 bg-surface-container-low rounded-2xl flex items-center justify-center">
+                      {getBillIcon(b.name)}
+                    </div>
+                    <div>
+                      <p className="text-on-surface font-bold text-base font-headline">{b.name}</p>
+                      <p className={`text-sm mt-0.5 font-bold ${daysLeft <= 2 ? 'text-error' : 'text-on-surface-variant'}`}>
+                        {daysLeft === 0 ? 'Vence hoje' : daysLeft < 0 ? `Atrasado ${Math.abs(daysLeft)}d` : `Vence em ${daysLeft} dias`}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-on-surface font-bold text-sm">{b.name}</p>
-                    <p className="text-on-surface-variant text-xs">Vence dia {b.due_day}</p>
+                  <div className="flex flex-col items-end gap-3">
+                    <p className="text-on-surface font-black text-lg tracking-tight">{fmt(b.value)}</p>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); markAsPaid(b); }}
+                      className="bg-primary text-on-primary px-6 py-2.5 rounded-full text-[10px] font-black tracking-widest uppercase transition-all hover:brightness-110 active:scale-95 shadow-lg shadow-primary/10"
+                    >
+                      Pagar
+                    </button>
                   </div>
                 </div>
-                <div className="flex items-center gap-4">
-                  <p className="text-on-surface font-bold text-sm">{fmt(b.value)}</p>
-                  <button 
-                    onClick={(e) => markAsPaid(b.id, e)}
-                    className="bg-primary text-on-primary px-4 py-2 rounded-full text-xs font-bold transition-transform active:scale-95"
-                  >
-                    Pagar
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </section>
 
@@ -271,9 +312,17 @@ const Home = ({ userId, userMetadata }: { userId: string; userMetadata?: any }) 
         <Plus size={28} />
       </button>
 
-      {/* MODAL */}
+      {/* MODALS */}
       {selectedTx && (
         <TransactionModal tx={selectedTx} onClose={() => setSelectedTx(null)} />
+      )}
+
+      {showBillsModal && (
+        <BillsModal 
+          bills={pendingBills}
+          onClose={() => setShowBillsModal(false)}
+          onPay={markAsPaid}
+        />
       )}
     </div>
   );
