@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Target, Calendar, ChevronRight, User, Heart, LogOut, PlusCircle, Home, Wifi, Utensils, Zap, HelpCircle, Coffee, Car, HeartPulse, Gamepad2, BookOpen, ReceiptText, Shirt, Smartphone, Hands, CircleEllipsis, Pencil } from 'lucide-react';
+import { Target, Calendar, ChevronRight, User, Heart, LogOut, PlusCircle, Home, Wifi, Utensils, Zap, HelpCircle, Coffee, Car, HeartPulse, Gamepad2, BookOpen, ReceiptText, Shirt, Smartphone, Hand, CircleEllipsis, Pencil } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import NewBillModal from '../components/NewBillModal';
 import NewBudgetModal from '../components/NewBudgetModal';
@@ -122,7 +122,7 @@ const Settings = ({
     { name: "Contas", icon: <ReceiptText size={24} />, color: "bg-surface-container-high", textColor: "text-on-surface" },
     { name: "Vestuário", icon: <Shirt size={24} />, color: "bg-secondary-container/10", textColor: "text-secondary-dim" },
     { name: "Eletrônicos", icon: <Smartphone size={24} />, color: "bg-primary/10", textColor: "text-primary" },
-    { name: "Dízimo/Oferta", icon: <Hands size={24} />, color: "bg-tertiary-container/20", textColor: "text-on-tertiary-container" },
+    { name: "Dízimo/Oferta", icon: <Hand size={24} />, color: "bg-tertiary-container/20", textColor: "text-on-tertiary-container" },
     { name: "Outros", icon: <CircleEllipsis size={24} />, color: "bg-surface-container-high", textColor: "text-on-surface" },
   ];
 
