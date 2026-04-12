@@ -404,7 +404,7 @@ const Settings = ({
 
       {/* Logout Confirmation Modal */}
       {showLogoutConfirm && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6 animate-in fade-in duration-300" onClick={() => setShowLogoutConfirm(false)}>
+        <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-6 animate-in fade-in duration-300" onClick={() => setShowLogoutConfirm(false)}>
           <div className="bg-white rounded-[2.5rem] w-full max-w-xs p-8 shadow-2xl animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
             <div className="text-center space-y-2 mb-8">
               <h2 className="font-headline text-2xl font-black text-on-surface tracking-tight">Sair da conta?</h2>
@@ -430,7 +430,7 @@ const Settings = ({
 
       {/* Edit Budget Limit Modal */}
       {editBudget && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-6 animate-in fade-in duration-300" onClick={() => setEditBudget(null)}>
+        <div className="fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-6 animate-in fade-in duration-300" onClick={() => setEditBudget(null)}>
           <div className="bg-white rounded-[2.5rem] w-full max-w-xs p-8 shadow-2xl animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
             <div className="text-center space-y-2 mb-8">
               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Configurar Limite</p>
