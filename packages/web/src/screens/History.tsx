@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { catColor, catEmoji } from '../utils/categories';
 import TransactionModal from '../components/TransactionModal';
+import InstallmentsModal from '../components/InstallmentsModal';
 
 const History = ({ userId }: { userId: string }) => {
   const [txs, setTxs] = useState<any[]>([]);
@@ -8,6 +9,7 @@ const History = ({ userId }: { userId: string }) => {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [selectedTx, setSelectedTx] = useState<any>(null);
+  const [showInstallments, setShowInstallments] = useState(false);
   const [period, setPeriod] = useState('month');
 
   useEffect(() => { fetchAll(); }, [userId, period]);
@@ -100,12 +102,18 @@ const History = ({ userId }: { userId: string }) => {
         </section>
 
         {/* Active Installments Section */}
-        {insts.length > 0 && (
-          <section className="space-y-4">
-            <div className="flex justify-between items-center px-1">
-              <h3 className="font-headline font-extrabold text-lg tracking-tight text-on-surface">Parcelamentos Ativos</h3>
-              <span className="text-primary text-xs font-black uppercase tracking-wider">Ver todos</span>
-            </div>
+        <section className="space-y-4">
+          <div className="flex justify-between items-center px-1">
+            <h3 className="font-headline font-extrabold text-lg tracking-tight text-on-surface">Parcelamentos Ativos</h3>
+            <button 
+              onClick={() => setShowInstallments(true)}
+              className="text-primary text-xs font-black uppercase tracking-wider hover:opacity-70 transition-opacity"
+            >
+              Ver todos
+            </button>
+          </div>
+          
+          {insts.length > 0 ? (
             <div className="flex gap-4 overflow-x-auto scrollbar-hide -mx-6 px-6 pb-2">
               {insts.slice(0, 3).map(inst => (
                 <div key={inst.id} className="min-w-[280px] bg-primary text-on-primary rounded-[2rem] p-7 relative overflow-hidden group shadow-md shadow-primary/10">
@@ -142,8 +150,12 @@ const History = ({ userId }: { userId: string }) => {
                 </div>
               ))}
             </div>
-          </section>
-        )}
+          ) : (
+            <div className="bg-surface-container-low p-6 rounded-[2rem] border border-dashed border-outline-variant text-center">
+              <p className="text-xs font-medium text-on-surface-variant opacity-60">Nenhum parcelamento ativo no momento.</p>
+            </div>
+          )}
+        </section>
 
         {/* Transaction List Grouped */}
         <section className="space-y-8 pb-12">
@@ -205,6 +217,10 @@ const History = ({ userId }: { userId: string }) => {
 
       {selectedTx && (
         <TransactionModal tx={selectedTx} onClose={() => setSelectedTx(null)} />
+      )}
+
+      {showInstallments && (
+        <InstallmentsModal userId={userId} onClose={() => setShowInstallments(false)} />
       )}
     </div>
   );
