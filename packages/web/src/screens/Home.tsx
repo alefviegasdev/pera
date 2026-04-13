@@ -123,6 +123,7 @@ const Home = ({
   };
 
   const markInstallmentAsPaid = async (inst: any) => {
+    console.log('[PARCELA] Pagando:', inst.id, typeof inst.id);
     try {
       const shortCode = Math.random().toString(36).substring(2, 6).toUpperCase();
       
@@ -162,12 +163,14 @@ const Home = ({
       const now = new Date();
       const key = `paid_installments_${userId}_${now.getMonth()}_${now.getFullYear()}`;
       const newPaid = [...paidInstallments, String(inst.id)];
+      console.log('[PARCELA] newPaid:', newPaid);
       setPaidInstallments(newPaid);
       localStorage.setItem(key, JSON.stringify(newPaid));
+      console.log('[PARCELA] localStorage salvo:', localStorage.getItem(key));
       
       fetchData(true);
     } catch (e) {
-      console.error(e);
+      console.error('[PARCELA] Erro:', e);
     }
   };
 
