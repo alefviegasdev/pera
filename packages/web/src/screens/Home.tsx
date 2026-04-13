@@ -43,7 +43,7 @@ const Home = ({
     const now = new Date();
     const key = `paid_installments_${userId}_${now.getMonth()}_${now.getFullYear()}`;
     const saved = localStorage.getItem(key);
-    if (saved) setPaidInstallments(JSON.parse(saved));
+    if (saved) setPaidInstallments(JSON.parse(saved).map(String));
   }, [userId]);
 
   useEffect(() => { fetchData(); }, [userId]);
@@ -161,7 +161,7 @@ const Home = ({
       // 2. Update local state and storage
       const now = new Date();
       const key = `paid_installments_${userId}_${now.getMonth()}_${now.getFullYear()}`;
-      const newPaid = [...paidInstallments, inst.id];
+      const newPaid = [...paidInstallments, String(inst.id)];
       setPaidInstallments(newPaid);
       localStorage.setItem(key, JSON.stringify(newPaid));
       
@@ -227,7 +227,7 @@ const Home = ({
   const unpaidBillsVal = pendingBills.reduce((sum, b) => sum + Number(b.value), 0);
   const installmentTotal = installments.reduce((sum, i) => sum + Number(i.installment_value), 0);
   const unpaidInstallmentTotal = installments
-    .filter(i => !paidInstallments.includes(i.id))
+    .filter(i => !paidInstallments.includes(String(i.id)))
     .reduce((sum, i) => sum + Number(i.installment_value), 0);
     
   const tithing = income * 0.10;
@@ -243,7 +243,7 @@ const Home = ({
   const allPending = [
     ...pendingBills.map(b => ({ ...b, itemType: 'bill' })),
     ...installments
-      .filter(i => !paidInstallments.includes(i.id))
+      .filter(i => !paidInstallments.includes(String(i.id)))
       .map(i => ({ 
         id: i.id, 
         name: i.description, 
@@ -264,7 +264,7 @@ const Home = ({
   const allPaid = [
     ...paidBills.map(b => ({ ...b, itemType: 'bill' })),
     ...installments
-      .filter(i => paidInstallments.includes(i.id))
+      .filter(i => paidInstallments.includes(String(i.id)))
       .map(i => ({
         id: i.id,
         name: i.description,
