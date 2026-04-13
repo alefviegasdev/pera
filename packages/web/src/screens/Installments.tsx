@@ -36,7 +36,8 @@ const Installments = ({ userId }: { userId: string }) => {
         ) : (
           insts.map(inst => {
             const pct       = (inst.current_installment / inst.total_installments) * 100;
-            const remaining = inst.total_installments - inst.current_installment + 1;
+            const remaining = inst.total_installments - inst.current_installment;
+            const nextInstallment = inst.current_installment + 1;
 
             return (
               <div key={inst.id} className="card">
@@ -60,7 +61,7 @@ const Installments = ({ userId }: { userId: string }) => {
                 <div style={{ marginBottom: 8 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                     <span className="text-xs text-muted">
-                      Parcela {inst.current_installment} de {inst.total_installments}
+                      Parcela {nextInstallment} de {inst.total_installments}
                     </span>
                     <span style={{ fontSize: 11, fontWeight: 700, color: '#4A7FE5' }}>
                       {Math.round(pct)}%

@@ -277,7 +277,7 @@ app.get('/installments', async (req, res) => {
     if (error) throw error;
 
     const result = data.map(i => {
-      const remaining_installments = i.total_installments - i.current_installment + 1;
+      const remaining_installments = i.total_installments - i.current_installment;
       return {
         ...i,
         remaining_installments,

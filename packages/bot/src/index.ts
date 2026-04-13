@@ -463,6 +463,7 @@ Exemplos que funcionam:
           total_value: item.value,
           installment_value: instValue,
           total_installments: item.installment_count,
+          current_installment: 0,
           category: item.category || 'Outros',
           short_code: shortCode
         });
@@ -538,13 +539,14 @@ Exemplos que funcionam:
           );
 
           if (installment) {
-            const nextInstallment = (installment.current_installment || 0) + 1;
-            const isFinished = nextInstallment >= installment.total_installments;
+            const previousCount = installment.current_installment || 0;
+            const currentCount = previousCount + 1;
+            const isFinished = currentCount >= installment.total_installments;
 
             await supabase
               .from("installments")
               .update({ 
-                current_installment: nextInstallment,
+                current_installment: currentCount,
                 active: !isFinished
               })
               .eq("id", installment.id);
@@ -557,14 +559,22 @@ Exemplos que funcionam:
               category: installment.category,
               subtype: 'semifixed',
               urgency: 'planned',
-              description: `${installment.description} (${nextInstallment}/${installment.total_installments})`,
+              description: isFinished 
+                ? `${installment.description} (Final)` 
+                : `${installment.description} (Parcela ${currentCount}/${installment.total_installments})`,
               source: 'text',
               short_code: shortCode
             });
 
-            await ctx.reply(`✅ Parcela paga! #${shortCode}
-📝 ${installment.description} (${nextInstallment}/${installment.total_installments})
+            if (isFinished) {
+              await ctx.reply(`✅ Parcelamento quitado! 🎉
+📝 ${installment.description}
+💰 Total pago: R$ ${Number(installment.total_value).toFixed(2)}`);
+            } else {
+              await ctx.reply(`✅ Parcela ${currentCount}/${installment.total_installments} paga! #${shortCode}
+📝 ${installment.description}
 💰 R$ ${Number(installment.installment_value).toFixed(2)}`);
+            }
           } else {
             await ctx.reply(`❓ Não encontrei nenhuma conta ou parcelamento pendente para "${item.description}".`);
           }

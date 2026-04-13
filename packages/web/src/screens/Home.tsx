@@ -184,7 +184,9 @@ const Home = ({
       id: i.id, 
       name: i.description, 
       value: i.installment_value, 
-      itemType: 'installment'
+      itemType: 'installment',
+      current: i.current_installment,
+      total: i.total_installments
     })),
     ...(tithing > 0 ? [{ 
       id: 'tithing', 
@@ -430,9 +432,16 @@ const Home = ({
                             {daysLeft === 0 ? 'Vence hoje' : (daysLeft !== null && daysLeft < 0) ? `Atrasado ${Math.abs(daysLeft)}d` : `Vence em ${daysLeft} dias`}
                           </p>
                         ) : (
-                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest mt-1 inline-block ${b.itemType === 'installment' ? 'bg-secondary/10 text-secondary' : 'bg-tertiary/10 text-tertiary'}`}>
-                            {b.itemType === 'installment' ? 'Parcela' : 'Dízimo'}
-                          </span>
+                          <div className="flex flex-col gap-1">
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest mt-1 inline-block ${b.itemType === 'installment' ? 'bg-secondary/10 text-secondary' : 'bg-tertiary/10 text-tertiary'}`}>
+                              {b.itemType === 'installment' ? 'Parcela' : 'Dízimo'}
+                            </span>
+                            {b.itemType === 'installment' && (
+                              <span className="text-[10px] text-on-surface-variant font-medium">
+                                Parcela {(b as any).current + 1} de {(b as any).total}
+                              </span>
+                            )}
+                          </div>
                         )}
                       </div>
                     </div>
