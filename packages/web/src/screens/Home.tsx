@@ -210,6 +210,7 @@ const Home = ({
   
   const totalBills = bills.reduce((sum, b) => sum + Number(b.value), 0);
   const unpaidBillsVal = pendingBills.reduce((sum, b) => sum + Number(b.value), 0);
+  const installmentTotal = installments.reduce((sum, i) => sum + Number(i.installment_value), 0);
   const unpaidInstallmentTotal = installments
     .filter(i => !paidInstallments.includes(i.id))
     .reduce((sum, i) => sum + Number(i.installment_value), 0);
