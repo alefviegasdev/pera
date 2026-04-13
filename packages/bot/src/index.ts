@@ -57,19 +57,19 @@ REGRAS DE CLASSIFICAÇÃO:
 
 6. CATEGORIAS PADRONIZADAS (OBRIGATÓRIO):
    A categoria DEVE ser uma destas exatamente:
-   - "Alimentação": mercado, padaria (pão, bolo, salgado p/ consumo doméstico), hortifruti, açougue, rancho.
-   - "Fast Food": pizza, hambúrguer, lanchonete, cafeteria, sorvete, delivery, restaurante, bar, refeição consumida na padaria.
+   - "Alimentação": mercado, padaria, pão, bolo, salgado, pão de queijo, coxinha, produtos de panificadora, hortifruti, açougue, rancho. IMPORTANTE: Qualquer compra em padaria = "Alimentação", independente do item. Só vai para "Fast Food" se for refeição completa consumida no local (almoço, jantar, hamburgueres, pizzas, cafeterias, restaurantes, etc).
+   - "Fast Food": pizza, hambúrguer, lanchonete, cafeteria, sorvete, delivery, restaurante, bar.
    - "Transporte": uber, táxi, combustível, gasolina, estacionamento, ônibus, metrô, passagem.
    - "Saúde": farmácia, médico, plano de saúde, exames, hospital, academia, esportes, terapia.
    - "Lazer": cinema, streaming, netflix, spotify, jogos, viagem, entretenimento.
-   - "Educação": curso, livro, escola, faculdade, material escolar.
+   - "Educação": curso, livro, school, faculdade, material escolar.
    - "Contas": luz, água, internet, aluguel, condomínio, telefone, gás, iptu, ipva.
    - "Vestuário": roupa, calçado, tênis, sapato, acessório, bolsa.
    - "Eletrônicos": celular, computador, notebook, tv, eletrodoméstico, gadget, fone.
    - "Dízimo/Oferta": dízimo, oferta, contribuição, doação para igreja.
    - "Outros": qualquer gasto que não se encaixe nas categorias acima.
    
-   REGRA ESPECIAL PADARIA: Produtos de panificadora comprados para consumo doméstico (pão, bolo, salgado, pão de queijo, etc.) = "Alimentação". Refeição consumida no local (café da manhã, almoço em restaurante/lanchonete) = "Fast Food".
+   REGRA ESPECIAL PADARIA: ATENÇÃO: A palavra 'padaria' sozinha indica categoria 'Alimentação', não 'Fast Food'. Fast Food é apenas para restaurantes, lanchonetes, pizzarias e similares.
 
 7. LIMITE DE ORÇAMENTO:
    Se a mensagem mencionar alteração de limite ou orçamento para uma categoria, retorne type: "budget_limit" com:
