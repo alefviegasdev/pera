@@ -81,12 +81,6 @@ const syncMonthlyBills = async (user_id: string, month: number, year: number) =>
     .eq('user_id', user_id)
     .eq('active', true);
 
-  // Fetch installments
-  const { data: installments } = await supabase
-    .from('installments')
-    .select('*')
-    .eq('user_id', user_id)
-    .eq('active', true);
 
   const billsToInsert = [];
 
@@ -105,20 +99,6 @@ const syncMonthlyBills = async (user_id: string, month: number, year: number) =>
     });
   }
 
-  if (installments) {
-    installments.forEach(i => {
-      billsToInsert.push({
-        user_id,
-        name: i.description,
-        value: i.installment_value,
-        due_day: i.due_day,
-        category: i.category,
-        subtype: 'semifixed',
-        month,
-        year
-      });
-    });
-  }
 
   if (billsToInsert.length > 0) {
     await supabase.from('monthly_bills').insert(billsToInsert);
