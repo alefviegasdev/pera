@@ -486,6 +486,24 @@ app.patch('/budgets/:id', async (req, res) => {
   }
 });
 
+app.patch('/installments/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { current_installment, active } = req.body;
+    
+    const { data, error } = await supabase
+      .from('installments')
+      .update({ current_installment, active })
+      .eq('id', id)
+      .select();
+
+    if (error) throw error;
+    res.json(data[0]);
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.post('/goals', async (req, res) => {
   try {
     const { user_id, name, target_value, current_value, category } = req.body;

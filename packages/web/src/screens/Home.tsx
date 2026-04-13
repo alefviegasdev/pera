@@ -126,8 +126,21 @@ const Home = ({
     try {
       const shortCode = Math.random().toString(36).substring(2, 6).toUpperCase();
       
-      // 1. Create transaction
-      await fetch(`/api/transactions`, {
+      const nextCount = inst.current + 1;
+      const isFinished = nextCount >= inst.total;
+
+      // 1. Update installment in DB
+      const patchPromise = fetch(`/api/installments/${inst.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          current_installment: nextCount,
+          active: !isFinished
+        })
+      });
+
+      // 2. Create transaction
+      const txPromise = fetch(`/api/transactions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -137,11 +150,13 @@ const Home = ({
           category: inst.category || 'Outros',
           subtype: 'semifixed',
           urgency: 'planned',
-          description: inst.name,
+          description: isFinished ? `${inst.name} (Final)` : `${inst.name} (Parcela ${nextCount}/${inst.total})`,
           source: 'text',
           short_code: shortCode
         })
       });
+
+      await Promise.all([patchPromise, txPromise]);
 
       // 2. Update local state and storage
       const now = new Date();
@@ -568,7 +583,7 @@ const Home = ({
                 <p className="text-on-surface-variant font-medium opacity-60">Nenhum vencimento para o momento!</p>
               </div>
             )}
-            {billTab === 'paid' && paidBills.length === 0 && (
+            {billTab === 'paid' && allPaid.length === 0 && (
               <div className="p-10 text-center bg-white/50 rounded-[2.5rem] border border-surface-container/20">
                 <p className="text-on-surface-variant font-medium opacity-60">Nenhuma conta paga este mês ainda.</p>
               </div>
