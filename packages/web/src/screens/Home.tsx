@@ -221,7 +221,10 @@ const Home = ({
     .filter(i => !paidInstallmentNames.some(name => i.description?.toLowerCase().includes(name) || name?.includes(i.description?.toLowerCase())))
     .reduce((sum, i) => sum + Number(i.installment_value), 0);
     
-  const tithing = income * 0.10;
+    const dizimoBudget = budgets.find(b => b.category === 'Dízimo/Oferta');
+    const tithing = dizimoBudget?.monthly_limit 
+      ? Number(dizimoBudget.monthly_limit) 
+      : income * 0.10;
 
   // Values for the Total Card
   const totalFixedVal = totalBills + installmentTotal + tithing;

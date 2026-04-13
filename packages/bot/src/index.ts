@@ -486,6 +486,47 @@ Exemplos que funcionam:
         const keywords = item.description.toLowerCase().split(' ')
           .filter(w => w.length > 2 && !['de', 'do', 'da', 'os', 'as', 'um', 'uma', 'the', 'para', 'com'].includes(w));
 
+        // --- Lógica Especial: Dízimo ---
+        if (item.description.toLowerCase().includes('dízimo') || item.description.toLowerCase().includes('oferta')) {
+          const { data: budgetConfig } = await supabase
+            .from('budgets')
+            .select('monthly_limit')
+            .eq('user_id', supabaseUserId)
+            .eq('category', 'Dízimo/Oferta')
+            .maybeSingle();
+
+          let tithingValue = 0;
+          if (budgetConfig?.monthly_limit) {
+            tithingValue = Number(budgetConfig.monthly_limit);
+          } else {
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+            const { data: incomeTxs } = await supabase
+              .from('transactions')
+              .select('value')
+              .eq('user_id', supabaseUserId)
+              .eq('type', 'income')
+              .gte('occurred_at', startOfMonth);
+            
+            const totalIncome = incomeTxs?.reduce((sum, tx) => sum + Number(tx.value), 0) || 0;
+            tithingValue = totalIncome * 0.10;
+          }
+
+          const shortCode = generateShortCode();
+          await supabase.from("transactions").insert({
+            user_id: supabaseUserId,
+            value: tithingValue,
+            type: 'expense',
+            category: 'Dízimo/Oferta',
+            subtype: 'fixed',
+            urgency: 'planned',
+            description: 'Dízimo',
+            source: 'text',
+            short_code: shortCode
+          });
+
+          return ctx.reply(`✅ Dízimo registrado! #${shortCode}\n💰 R$ ${Number(tithingValue).toFixed(2)}`);
+        }
+
         const { data: bills, error: findError } = await supabase
           .from("monthly_bills")
           .select("*")
