@@ -342,8 +342,7 @@ Possíveis motivos:
              total_value: finalValue,
              installment_value: instValue,
              total_installments: totalInstallments,
-             category: updates.category || record.category,
-             urgency: updates.urgency || record.urgency,
+             category: (updates.category || record.category) || 'Outros',
              short_code: code
            });
 
@@ -456,9 +455,7 @@ Exemplos que funcionam:
           total_value: item.value,
           installment_value: instValue,
           total_installments: item.installment_count,
-          category: item.category,
-          subtype: item.subtype || 'semifixed',
-          urgency: item.urgency || 'planned',
+          category: item.category || 'Outros',
           short_code: shortCode
         });
 
