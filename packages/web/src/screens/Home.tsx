@@ -28,7 +28,7 @@ const Home = ({
   const [selectedTx, setSelectedTx] = useState<any>(null);
   const [showFixedModal, setShowFixedModal] = useState(false);
   const [billTab, setBillTab] = useState<'pending' | 'paid'>('pending');
-  const [paidInstallments, setPaidInstallments] = useState<string[]>([]);
+
 
 
   useEffect(() => {
@@ -39,12 +39,7 @@ const Home = ({
     }
   }, [selectedTx, showFixedModal]);
 
-  useEffect(() => {
-    const now = new Date();
-    const key = `paid_installments_${userId}_${now.getMonth()}_${now.getFullYear()}`;
-    const saved = localStorage.getItem(key);
-    if (saved) setPaidInstallments(JSON.parse(saved).map(String));
-  }, [userId]);
+
 
   useEffect(() => { fetchData(); }, [userId]);
   
@@ -123,7 +118,6 @@ const Home = ({
   };
 
   const markInstallmentAsPaid = async (inst: any) => {
-    console.log('[PARCELA] Pagando:', inst.id, typeof inst.id);
     try {
       const shortCode = Math.random().toString(36).substring(2, 6).toUpperCase();
       
@@ -158,16 +152,6 @@ const Home = ({
       });
 
       await Promise.all([patchPromise, txPromise]);
-
-      // 2. Update local state and storage
-      const now = new Date();
-      const key = `paid_installments_${userId}_${now.getMonth()}_${now.getFullYear()}`;
-      const newPaid = [...paidInstallments, String(inst.id)];
-      console.log('[PARCELA] newPaid:', newPaid);
-      setPaidInstallments(newPaid);
-      localStorage.setItem(key, JSON.stringify(newPaid));
-      console.log('[PARCELA] localStorage salvo:', localStorage.getItem(key));
-      
       fetchData(true);
     } catch (e) {
       console.error('[PARCELA] Erro:', e);
@@ -226,11 +210,15 @@ const Home = ({
   const income = summary?.total_income ?? 0;
   const expense = summary?.total_expense ?? 0;
   
+  const paidInstallmentNames = txs
+    .filter(t => t.subtype === 'semifixed' && t.type === 'expense')
+    .map(t => t.description?.toLowerCase());
+
   const totalBills = bills.reduce((sum, b) => sum + Number(b.value), 0);
   const unpaidBillsVal = pendingBills.reduce((sum, b) => sum + Number(b.value), 0);
   const installmentTotal = installments.reduce((sum, i) => sum + Number(i.installment_value), 0);
   const unpaidInstallmentTotal = installments
-    .filter(i => !paidInstallments.includes(String(i.id)))
+    .filter(i => !paidInstallmentNames.some(name => i.description?.toLowerCase().includes(name) || name?.includes(i.description?.toLowerCase())))
     .reduce((sum, i) => sum + Number(i.installment_value), 0);
     
   const tithing = income * 0.10;
@@ -246,7 +234,7 @@ const Home = ({
   const allPending = [
     ...pendingBills.map(b => ({ ...b, itemType: 'bill' })),
     ...installments
-      .filter(i => !paidInstallments.includes(String(i.id)))
+      .filter(i => !paidInstallmentNames.some(name => i.description?.toLowerCase().includes(name) || name?.includes(i.description?.toLowerCase())))
       .map(i => ({ 
         id: i.id, 
         name: i.description, 
@@ -267,7 +255,7 @@ const Home = ({
   const allPaid = [
     ...paidBills.map(b => ({ ...b, itemType: 'bill' })),
     ...installments
-      .filter(i => paidInstallments.includes(String(i.id)))
+      .filter(i => paidInstallmentNames.some(name => i.description?.toLowerCase().includes(name) || name?.includes(i.description?.toLowerCase())))
       .map(i => ({
         id: i.id,
         name: i.description,
