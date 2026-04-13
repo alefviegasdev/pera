@@ -99,7 +99,15 @@ JSON Structure (dentro do array):
   "installment_count": número (opcional)
 }
 
-Se for "payment" (ex: "paguei aluguel"), "description" deve ser o nome da conta.
+Se o usuário disser 'paguei [nome]', 'pagar [nome]', 'quitei [nome]' SEM mencionar valor, retorne type: 'payment' com description: nome do que foi pago. O sistema vai buscar o valor cadastrado automaticamente.
+
+EXEMPLOS que devem retornar type: 'payment':
+- 'paguei terapia' → { type: 'payment', description: 'terapia' }
+- 'paguei a luz' → { type: 'payment', description: 'luz' }
+- 'quitei o aluguel' → { type: 'payment', description: 'aluguel' }
+- 'pagar academia' → { type: 'payment', description: 'academia' }
+
+NÃO retorne not_financial para mensagens com 'paguei/pagar/quitei'.
 
 Se a mensagem não contiver informações financeiras, retorne: {"error": "not_financial"}.
 
