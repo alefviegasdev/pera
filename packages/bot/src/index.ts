@@ -457,7 +457,8 @@ Exemplos que funcionam:
           installment_value: instValue,
           total_installments: item.installment_count,
           category: item.category,
-          urgency: item.urgency,
+          subtype: item.subtype || 'semifixed',
+          urgency: item.urgency || 'planned',
           short_code: shortCode
         });
 
@@ -613,10 +614,10 @@ Exemplos que funcionam:
           user_id: supabaseUserId,
           value: item.value,
           type: item.type,
-          category: item.category,
-          subtype: item.subtype,
-          urgency: item.urgency,
-          description: item.description,
+          category: item.category || 'Outros',
+          subtype: item.subtype || 'variable',
+          urgency: item.urgency || 'planned',
+          description: item.description || item.category || 'Sem descrição',
           source: 'text',
           short_code: shortCode
         });
