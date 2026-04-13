@@ -28,6 +28,8 @@ const Home = ({
   const [selectedTx, setSelectedTx] = useState<any>(null);
   const [showFixedModal, setShowFixedModal] = useState(false);
   const [billTab, setBillTab] = useState<'pending' | 'paid'>('pending');
+  const [paidInstallments, setPaidInstallments] = useState<string[]>([]);
+
 
   useEffect(() => {
     if (selectedTx || showFixedModal) {
@@ -36,6 +38,13 @@ const Home = ({
       onModalClose?.();
     }
   }, [selectedTx, showFixedModal]);
+
+  useEffect(() => {
+    const now = new Date();
+    const key = `paid_installments_${userId}_${now.getMonth()}_${now.getFullYear()}`;
+    const saved = localStorage.getItem(key);
+    if (saved) setPaidInstallments(JSON.parse(saved));
+  }, [userId]);
 
   useEffect(() => { fetchData(); }, [userId]);
   
@@ -113,6 +122,40 @@ const Home = ({
     return <Zap size={24} className="text-primary" />;
   };
 
+  const markInstallmentAsPaid = async (inst: any) => {
+    try {
+      const shortCode = Math.random().toString(36).substring(2, 6).toUpperCase();
+      
+      // 1. Create transaction
+      await fetch(`/api/transactions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: userId,
+          value: inst.value,
+          type: 'expense',
+          category: inst.category || 'Outros',
+          subtype: 'semifixed',
+          urgency: 'planned',
+          description: inst.name,
+          source: 'text',
+          short_code: shortCode
+        })
+      });
+
+      // 2. Update local state and storage
+      const now = new Date();
+      const key = `paid_installments_${userId}_${now.getMonth()}_${now.getFullYear()}`;
+      const newPaid = [...paidInstallments, inst.id];
+      setPaidInstallments(newPaid);
+      localStorage.setItem(key, JSON.stringify(newPaid));
+      
+      fetchData(true);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const now   = new Date();
   const today = now.getDate();
   const monthLabel = MONTH_NAMES[now.getMonth()];
@@ -167,12 +210,15 @@ const Home = ({
   
   const totalBills = bills.reduce((sum, b) => sum + Number(b.value), 0);
   const unpaidBillsVal = pendingBills.reduce((sum, b) => sum + Number(b.value), 0);
-  const installmentTotal = installments.reduce((sum, i) => sum + Number(i.installment_value), 0);
+  const unpaidInstallmentTotal = installments
+    .filter(i => !paidInstallments.includes(i.id))
+    .reduce((sum, i) => sum + Number(i.installment_value), 0);
+    
   const tithing = income * 0.10;
 
   // Values for the Total Card
   const totalFixedVal = totalBills + installmentTotal + tithing;
-  const remainingFixedVal = unpaidBillsVal + installmentTotal + tithing;
+  const remainingFixedVal = unpaidBillsVal + unpaidInstallmentTotal + tithing;
   
   const realAvailable = income - expense - remainingFixedVal;
   const isNegative = realAvailable < 0;
@@ -180,14 +226,17 @@ const Home = ({
   // Unified list for Vencimentos
   const allPending = [
     ...pendingBills.map(b => ({ ...b, itemType: 'bill' })),
-    ...installments.map(i => ({ 
-      id: i.id, 
-      name: i.description, 
-      value: i.installment_value, 
-      itemType: 'installment',
-      current: i.current_installment,
-      total: i.total_installments
-    })),
+    ...installments
+      .filter(i => !paidInstallments.includes(i.id))
+      .map(i => ({ 
+        id: i.id, 
+        name: i.description, 
+        value: i.installment_value, 
+        category: i.category,
+        itemType: 'installment',
+        current: i.current_installment,
+        total: i.total_installments
+      })),
     ...(tithing > 0 ? [{ 
       id: 'tithing', 
       name: 'Dízimo do mês', 
@@ -195,6 +244,23 @@ const Home = ({
       itemType: 'tithing'
     }] : [])
   ];
+
+  const allPaid = [
+    ...paidBills.map(b => ({ ...b, itemType: 'bill' })),
+    ...installments
+      .filter(i => paidInstallments.includes(i.id))
+      .map(i => ({
+        id: i.id,
+        name: i.description,
+        value: i.installment_value,
+        itemType: 'installment',
+        paid_at: new Date().toISOString() // Approximate
+      }))
+  ].sort((a,b) => {
+    const dateA = a.paid_at ? new Date(a.paid_at).getTime() : 0;
+    const dateB = b.paid_at ? new Date(b.paid_at).getTime() : 0;
+    return dateB - dateA;
+  });
 
   // Progress segments for the Real Available bar
   const totalRelevant = Math.max(income, expense + remainingFixedVal);
@@ -447,9 +513,13 @@ const Home = ({
                     </div>
                     <div className="flex flex-col items-end gap-3">
                       <p className="text-on-surface font-black text-lg tracking-tight">{fmt(b.value)}</p>
-                      {isMonthlyBill && (
+                      {(isMonthlyBill || b.itemType === 'installment') && (
                         <button 
-                          onClick={(e) => { e.stopPropagation(); markAsPaid(b); }}
+                          onClick={(e) => { 
+                            e.stopPropagation(); 
+                            if (isMonthlyBill) markAsPaid(b);
+                            else markInstallmentAsPaid(b);
+                          }}
                           className="bg-primary text-on-primary px-6 py-2.5 rounded-full text-[10px] font-black tracking-widest uppercase transition-all hover:brightness-110 active:scale-95 shadow-lg shadow-primary/10"
                         >
                           Pagar
@@ -460,7 +530,8 @@ const Home = ({
                 );
               })
             ) : (
-              paidBills.slice(0, 3).map(b => {
+              allPaid.slice(0, 3).map(b => {
+                const isMonthlyBill = b.itemType === 'bill';
                 const paidDate = b.paid_at ? new Date(b.paid_at) : new Date();
                 const day = paidDate.getDate().toString().padStart(2, '0');
                 const month = MONTH_NAMES[paidDate.getMonth()].substring(0, 3);
@@ -469,13 +540,14 @@ const Home = ({
                   <div key={b.id} className="bg-white/50 opacity-60 p-7 rounded-[2.5rem] flex items-center justify-between border border-surface-container/30 shadow-sm">
                     <div className="flex items-center gap-5">
                       <div className="w-14 h-14 bg-tertiary-container/30 rounded-2xl flex items-center justify-center">
-                        {getBillIcon(b.name).props && React.cloneElement(getBillIcon(b.name), { className: 'text-tertiary' })}
+                        {b.itemType === 'installment' ? <CreditCard size={24} className="text-tertiary" /> :
+                         getBillIcon(b.name).props && React.cloneElement(getBillIcon(b.name), { className: 'text-tertiary' })}
                       </div>
                       <div>
                         <p className="text-on-surface-variant font-bold text-base font-headline">{b.name}</p>
                         <p className="text-tertiary text-xs font-bold flex items-center gap-1">
                           <CheckCircle2 size={14} fill="currentColor" className="opacity-80" />
-                          Pago em {day} {month}
+                          {b.itemType === 'installment' ? 'Parcela paga este mês' : `Pago em ${day} ${month}`}
                         </p>
                       </div>
                     </div>
