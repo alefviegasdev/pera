@@ -86,6 +86,16 @@ const App = () => {
     };
   }, []);
 
+  useEffect(() => {
+    // Scroll to top on tab change
+    const screen = document.querySelector('.screen');
+    if (screen) {
+      screen.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [activeTab]);
+
   const checkTelegramLink = async (uid: string) => {
     const { data } = await supabase
       .from('user_profiles')

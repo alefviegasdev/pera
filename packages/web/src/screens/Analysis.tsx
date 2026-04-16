@@ -36,7 +36,7 @@ const Analysis = ({
 }) => {
   const [summary, setSummary] = useState<any>(null);
   const [txs, setTxs] = useState<any[]>([]);
-  const [period, setPeriod] = useState('month');
+  const [period, setPeriod] = useState('today');
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>('subtype');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -121,7 +121,9 @@ const Analysis = ({
 
   const periods = [
     { id: 'today', label: 'Hoje' },
-    { id: 'week', label: 'Semana' },
+    { id: 'yesterday', label: 'Ontem' },
+    { id: 'week', label: 'Esta semana' },
+    { id: '7days', label: '7 dias' },
     { id: 'month', label: 'Este mês' },
     { id: '30days', label: '30 dias' },
   ];

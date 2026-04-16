@@ -30,6 +30,13 @@ const getDateRange = (period: string, start_date?: string, end_date?: string) =>
     case 'today':
       start = today;
       break;
+    case 'yesterday':
+      start = new Date(today);
+      start.setDate(today.getDate() - 1);
+      end = new Date(today);
+      end.setDate(today.getDate() - 1);
+      end.setHours(23, 59, 59, 999);
+      break;
     case 'week':
     case '7days':
       start = new Date(today);

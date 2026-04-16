@@ -18,7 +18,7 @@ const History = ({
   const [loading, setLoading] = useState(true);
   const [selectedTx, setSelectedTx] = useState<any>(null);
   const [showInstallments, setShowInstallments] = useState(false);
-  const [period, setPeriod] = useState('month');
+  const [period, setPeriod] = useState('today');
 
   useEffect(() => {
     if (selectedTx || showInstallments) {
@@ -82,7 +82,9 @@ const History = ({
 
   const periods = [
     { id: 'today', label: 'Hoje' },
-    { id: 'week', label: 'Semana' },
+    { id: 'yesterday', label: 'Ontem' },
+    { id: 'week', label: 'Esta semana' },
+    { id: '7days', label: '7 dias' },
     { id: 'month', label: 'Este mês' },
     { id: '30days', label: '30 dias' },
     { id: '90days', label: '90 dias' },
