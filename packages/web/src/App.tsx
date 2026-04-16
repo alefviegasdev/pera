@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Home from './screens/Home';
 import Analysis from './screens/Analysis';
 import History from './screens/History';
@@ -12,6 +12,7 @@ export type Tab = 'home' | 'analysis' | 'history' | 'settings';
 
 const App = () => {
   const [activeTab, setActiveTab] = useState<Tab>('home');
+  const screenRef = useRef<HTMLDivElement>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [userMetadata, setUserMetadata] = useState<{ name?: string; avatar?: string } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -88,11 +89,13 @@ const App = () => {
 
   useEffect(() => {
     // Scroll to top on tab change
-    const screen = document.querySelector('.screen');
-    if (screen) {
-      screen.scrollTo({ top: 0, behavior: 'smooth' });
-    } else {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+    screenRef.current?.scrollTo({ top: 0 });
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTo(0, 0);
+    
+    const screenEl = document.querySelector('.screen');
+    if (screenEl) {
+      screenEl.scrollTo({ top: 0 });
     }
   }, [activeTab]);
 
@@ -140,7 +143,7 @@ const App = () => {
   };
 
   return (
-    <div className="app-shell">
+    <div className="app-shell" ref={screenRef}>
       {renderScreen()}
       <BottomNav activeTab={activeTab} onTabChange={setActiveTab} hidden={modalOpen} />
     </div>

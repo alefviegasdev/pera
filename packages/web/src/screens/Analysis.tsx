@@ -125,7 +125,6 @@ const Analysis = ({
     { id: 'week', label: 'Esta semana' },
     { id: '7days', label: '7 dias' },
     { id: 'month', label: 'Este mês' },
-    { id: '30days', label: '30 dias' },
   ];
 
   const modes = [

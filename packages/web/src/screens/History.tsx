@@ -86,7 +86,6 @@ const History = ({
     { id: 'week', label: 'Esta semana' },
     { id: '7days', label: '7 dias' },
     { id: 'month', label: 'Este mês' },
-    { id: '30days', label: '30 dias' },
     { id: '90days', label: '90 dias' },
     { id: 'all', label: 'Tudo' },
   ];
