@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Calendar, Tag, Layers, Zap, Trash2, Hash } from 'lucide-react';
 import { catColor } from '../utils/categories';
 
@@ -22,10 +22,47 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ tx, onClose }) => {
   const isIncome = tx.type === 'income';
   const initials = getInitials(tx.description);
 
+  const [dragStart, setDragStart] = useState<number | null>(null);
+  const [dragOffset, setDragOffset] = useState(0);
+
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, []);
+
+  const handleTouchStart = (e: React.TouchEvent) => setDragStart(e.touches[0].clientY);
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (dragStart === null) return;
+    const offset = e.touches[0].clientY - dragStart;
+    if (offset > 0) setDragOffset(offset);
+  };
+  const handleTouchEnd = () => {
+    if (dragOffset > window.innerHeight * 0.85 * 0.3) onClose();
+    setDragStart(null);
+    setDragOffset(0);
+  };
+
   return (
-    <div className="modal-overlay" onClick={onClose} style={{ zIndex: 9999 }}>
-      <div className="modal-card scrollbar-hide" onClick={(e) => e.stopPropagation()} style={{ borderRadius: '2.5rem' }}>
+    <div className="modal-overlay" onClick={onClose} style={{ zIndex: 9999, overflowX: 'hidden' }}>
+      <div 
+        className="modal-card scrollbar-hide" 
+        onClick={(e) => e.stopPropagation()} 
+        style={{ 
+          borderRadius: '2.5rem',
+          height: '85dvh',
+          display: 'flex',
+          flexDirection: 'column',
+          overflowX: 'hidden',
+          transform: dragOffset > 0 ? `translateY(${dragOffset}px)` : undefined,
+          transition: dragOffset > 0 ? 'none' : 'transform 0.3s ease'
+        }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
         <div className="modal-handle" />
+
+        <div className="overflow-y-auto flex-1 scrollbar-hide" style={{ overscrollBehavior: 'contain', touchAction: 'pan-y', overflowX: 'hidden' }}>
 
         {/* Header Section */}
         <div className="flex items-start gap-5 mb-8">

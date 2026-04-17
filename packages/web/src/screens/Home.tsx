@@ -3,6 +3,7 @@ import { catBg, catColor, catEmoji } from '../utils/categories';
 import TransactionModal from '../components/TransactionModal';
 import FixedDetailsModal from '../components/FixedDetailsModal';
 import CategoryDetailsModal from '../components/CategoryDetailsModal';
+import IncomeDetailsModal from '../components/IncomeDetailsModal';
 import { ArrowRight, ArrowUpRight, ArrowDownRight, AlertTriangle, CreditCard, ChevronRight, Zap, Wifi, Home as HomeIcon, Dumbbell, Pin, AlertCircle, CheckCircle2, Heart } from 'lucide-react';
 
 const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -28,18 +29,19 @@ const Home = ({
   const [loading, setLoading] = useState(true);
   const [selectedTx, setSelectedTx] = useState<any>(null);
   const [showFixedModal, setShowFixedModal] = useState(false);
+  const [showIncomeModal, setShowIncomeModal] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [billTab, setBillTab] = useState<'pending' | 'paid'>('pending');
 
 
 
   useEffect(() => {
-    if (selectedTx || showFixedModal || selectedCategory) {
+    if (selectedTx || showFixedModal || selectedCategory || showIncomeModal) {
       onModalOpen?.();
     } else {
       onModalClose?.();
     }
-  }, [selectedTx, showFixedModal, selectedCategory]);
+  }, [selectedTx, showFixedModal, selectedCategory, showIncomeModal]);
 
 
 
@@ -334,7 +336,10 @@ const Home = ({
 
         {/* ── SUMMARY BENTO ── */}
         <section className="grid grid-cols-2 gap-4">
-          <div className="col-span-2 bg-tertiary-container p-6 rounded-[2.5rem] flex flex-row items-center justify-between shadow-sm relative overflow-hidden group transition-all hover:scale-[1.01]">
+          <div 
+            onClick={() => setShowIncomeModal(true)}
+            className="col-span-2 bg-tertiary-container p-6 rounded-[2.5rem] flex flex-row items-center justify-between shadow-sm relative overflow-hidden group transition-all hover:scale-[1.01] cursor-pointer active:scale-[0.99]"
+          >
             <div className="absolute -right-4 -top-4 w-24 h-24 bg-tertiary/10 rounded-full blur-2xl group-hover:scale-125 transition-transform" />
             <div className="flex items-center gap-4 relative z-10">
               <div className="w-10 h-10 rounded-full bg-tertiary-fixed-dim flex items-center justify-center">
@@ -668,6 +673,13 @@ const Home = ({
           period="month"
           userId={userId}
           onClose={() => setSelectedCategory(null)}
+        />
+      )}
+
+      {showIncomeModal && (
+        <IncomeDetailsModal 
+          userId={userId} 
+          onClose={() => setShowIncomeModal(false)} 
         />
       )}
     </div>

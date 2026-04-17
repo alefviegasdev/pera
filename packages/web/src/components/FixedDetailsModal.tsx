@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Zap, Wifi, Home, Dumbbell, CheckCircle2, CreditCard, Heart } from 'lucide-react';
 
 interface FixedDetailsModalProps {
@@ -26,16 +26,45 @@ const FixedDetailsModal: React.FC<FixedDetailsModalProps> = ({
     return <Zap size={20} />;
   };
 
+  const [dragStart, setDragStart] = useState<number | null>(null);
+  const [dragOffset, setDragOffset] = useState(0);
+
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, []);
+
+  const handleTouchStart = (e: React.TouchEvent) => setDragStart(e.touches[0].clientY);
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (dragStart === null) return;
+    const offset = e.touches[0].clientY - dragStart;
+    if (offset > 0) setDragOffset(offset);
+  };
+  const handleTouchEnd = () => {
+    if (dragOffset > window.innerHeight * 0.85 * 0.3) onClose();
+    setDragStart(null);
+    setDragOffset(0);
+  };
+
   const totalRemaining = 
     unpaidBills.reduce((sum, b) => sum + Number(b.value), 0) + 
     installments.reduce((sum, i) => sum + Number(i.installment_value), 0) + 
     tithingValue;
 
   return (
-    <div className="fixed inset-0 bg-on-surface/50 flex flex-col justify-end" onClick={onClose} style={{ zIndex: 9999 }}>
+    <div className="fixed inset-0 bg-on-surface/50 flex flex-col justify-end" onClick={onClose} style={{ zIndex: 9999, overflowX: 'hidden' }}>
       <div 
-        className="bg-surface rounded-t-[3rem] w-full max-w-2xl mx-auto shadow-2xl flex flex-col max-h-[85vh] animate-in slide-in-from-bottom duration-500 ease-out"
+        className="bg-surface rounded-t-[3rem] w-full max-w-2xl mx-auto shadow-2xl flex flex-col animate-in slide-in-from-bottom duration-500 ease-out"
         onClick={(e) => e.stopPropagation()}
+        style={{
+          height: '85dvh',
+          transform: dragOffset > 0 ? `translateY(${dragOffset}px)` : undefined,
+          transition: dragOffset > 0 ? 'none' : 'transform 0.3s ease',
+          overflowX: 'hidden'
+        }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       >
         <div className="pt-4 pb-6 px-8">
           <div className="w-12 h-1.5 bg-outline-variant/30 rounded-full mx-auto mb-8" />
@@ -58,7 +87,7 @@ const FixedDetailsModal: React.FC<FixedDetailsModalProps> = ({
           </div>
         </div>
 
-        <div className="px-8 pb-12 overflow-y-auto space-y-4 scrollbar-hide">
+        <div className="px-8 pb-12 overflow-y-auto space-y-4 scrollbar-hide" style={{ overscrollBehavior: 'contain', touchAction: 'pan-y', overflowX: 'hidden' }}>
           {/* Tithing */}
           {tithingValue > 0 && (
             <div className="bg-white p-6 rounded-[2rem] border border-surface-container/50 flex items-center justify-between shadow-sm">

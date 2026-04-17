@@ -1,8 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, ChevronDown } from 'lucide-react';
-import { catEmoji } from '../utils/categories';
-
-const HAS_SUBCATEGORIES = ['Alimentação', 'Fast Food', 'Saúde', 'Transporte'];
 
 interface Transaction {
   id: string;
@@ -10,25 +7,29 @@ interface Transaction {
   description: string;
   occurred_at: string;
   type: string;
-  category: string;
-  subcategory?: string | null;
 }
 
 interface Props {
-  category: string;
-  period: string;
   userId: string;
   onClose: () => void;
 }
 
-export default function CategoryDetailsModal({ category, period, userId, onClose }: Props) {
+const PERIODS = [
+  { id: 'today', label: 'Hoje' },
+  { id: 'yesterday', label: 'Ontem' },
+  { id: 'week', label: 'Esta semana' },
+  { id: '7days', label: '7 dias' },
+  { id: 'month', label: 'Este mês' },
+];
+
+export default function IncomeDetailsModal({ userId, onClose }: Props) {
   const [txs, setTxs] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeSubcat, setActiveSubcat] = useState<string>('Geral');
-  const [dragStart, setDragStart] = useState<number | null>(null);
-  const [dragOffset, setDragOffset] = useState(0);
   const [modalPeriod, setModalPeriod] = useState<string>('today');
   const [periodDropdownOpen, setPeriodDropdownOpen] = useState(false);
+  
+  const [dragStart, setDragStart] = useState<number | null>(null);
+  const [dragOffset, setDragOffset] = useState(0);
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -41,7 +42,10 @@ export default function CategoryDetailsModal({ category, period, userId, onClose
       try {
         const res = await fetch(`/api/transactions?user_id=${userId}&period=${modalPeriod}`);
         const data = await res.json();
-        const filtered = (data.transactions || []).filter((t: Transaction) => t.type === 'expense' && t.category === category);
+        const filtered = (data.transactions || []).filter((t: Transaction) => t.type === 'income');
+        
+        // Sort by date descending
+        filtered.sort((a: Transaction, b: Transaction) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime());
         setTxs(filtered);
       } catch (e) {
         console.error(e);
@@ -50,39 +54,10 @@ export default function CategoryDetailsModal({ category, period, userId, onClose
       }
     };
     fetchTxs();
-  }, [category, modalPeriod, userId]);
+  }, [modalPeriod, userId]);
 
   const total = txs.reduce((sum, t) => sum + Number(t.value), 0);
-  const emoji = catEmoji(category);
   const fmt = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  const hasSubCategories = HAS_SUBCATEGORIES.includes(category);
-
-  const grouped = useMemo(() => {
-    if (!hasSubCategories) {
-      return { 'Geral': txs };
-    }
-    const map: Record<string, Transaction[]> = { 'Geral': [] };
-    txs.forEach(t => {
-      const sub = t.subcategory || 'Geral';
-      if (!map[sub]) map[sub] = [];
-      map[sub].push(t);
-    });
-    // Remove 'Geral' if empty
-    if (map['Geral'].length === 0) delete map['Geral'];
-    
-    // Sort transactions within groups by date descending
-    Object.keys(map).forEach(key => {
-      map[key].sort((a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime());
-    });
-    
-    return map;
-  }, [txs, hasSubCategories]);
-
-  useEffect(() => {
-    if (Object.keys(grouped).length > 0 && !grouped[activeSubcat]) {
-      setActiveSubcat(grouped['Geral'] ? 'Geral' : Object.keys(grouped)[0]);
-    }
-  }, [grouped, activeSubcat]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     setDragStart(e.touches[0].clientY);
@@ -98,20 +73,6 @@ export default function CategoryDetailsModal({ category, period, userId, onClose
     setDragStart(null);
     setDragOffset(0);
   };
-
-  const subcatKeys = [
-    ...(grouped['Geral'] ? ['Geral'] : []),
-    ...Object.keys(grouped).filter(k => k !== 'Geral')
-  ];
-  const visibleGroups = { [activeSubcat]: grouped[activeSubcat] || [] };
-
-  const PERIODS = [
-    { id: 'today', label: 'Hoje' },
-    { id: 'yesterday', label: 'Ontem' },
-    { id: 'week', label: 'Esta semana' },
-    { id: '7days', label: '7 dias' },
-    { id: 'month', label: 'Este mês' },
-  ];
 
   return (
     <div className="modal-overlay" onClick={onClose} style={{ overflowX: 'hidden' }}>
@@ -137,13 +98,13 @@ export default function CategoryDetailsModal({ category, period, userId, onClose
         {/* Header fixo */}
         <div className="flex items-center justify-between mb-6 flex-shrink-0">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">{emoji}</span>
-            <h2 className="font-headline text-xl font-black text-on-surface">{category}</h2>
+            <span className="text-2xl">💰</span>
+            <h2 className="font-headline text-xl font-black text-on-surface">Entradas</h2>
           </div>
           <div className="flex items-center gap-4 text-right">
             <div>
               <p className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant opacity-60">Total</p>
-              <p className="font-headline font-black text-lg text-on-surface">{fmt(total)}</p>
+              <p className="font-headline font-black text-lg text-tertiary">{fmt(total)}</p>
             </div>
             <button onClick={onClose} className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant active:scale-95 transition-all">
               <X size={16} />
@@ -151,24 +112,7 @@ export default function CategoryDetailsModal({ category, period, userId, onClose
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-2 mb-2 flex-shrink-0">
-          {/* Chips de subcategoria à esquerda */}
-          <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2 flex-1">
-            {hasSubCategories && subcatKeys.map(sub => (
-              <button
-                key={sub}
-                onClick={() => setActiveSubcat(sub)}
-                className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all active:scale-95 ${
-                  activeSubcat === sub 
-                    ? 'bg-primary text-on-primary' 
-                    : 'bg-surface-container text-on-surface-variant'
-                }`}
-              >
-                {sub}
-              </button>
-            ))}
-          </div>
-
+        <div className="flex items-center justify-end gap-2 mb-2 flex-shrink-0">
           {/* Dropdown de período à direita */}
           <div className="relative flex-shrink-0 pb-2">
             <button
@@ -201,24 +145,21 @@ export default function CategoryDetailsModal({ category, period, userId, onClose
           {loading ? (
             <div className="flex justify-center p-8 opacity-50"><p>Carregando...</p></div>
           ) : txs.length === 0 ? (
-            <div className="p-10 text-center"><p className="text-on-surface-variant opacity-60">Nenhuma transação encontrada.</p></div>
+            <div className="p-10 text-center"><p className="text-on-surface-variant opacity-60">Nenhuma entrada no período</p></div>
           ) : (
-            Object.entries(visibleGroups).map(([sub, txs]) => (
-              <div key={sub}>
-                {hasSubCategories && <p className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant opacity-60 mb-2">{sub}</p>}
-                {txs.map(t => (
-                  <div key={t.id} className="flex items-center justify-between py-3 border-b border-surface-container/30 last:border-0 hover:bg-surface-container-low/50 px-2 -mx-2 rounded-xl transition-colors">
-                    <div>
-                      <p className="font-bold text-on-surface text-sm">{t.description}</p>
-                      <p className="text-[10px] text-on-surface-variant">
-                        {new Date(t.occurred_at).toLocaleDateString('pt-BR')}
-                      </p>
-                    </div>
-                    <p className="font-black text-on-surface">{fmt(t.value)}</p>
+            <div>
+              {txs.map(t => (
+                <div key={t.id} className="flex items-center justify-between py-3 border-b border-surface-container/30 last:border-0 hover:bg-surface-container-low/50 px-2 -mx-2 rounded-xl transition-colors">
+                  <div>
+                    <p className="font-bold text-on-surface text-sm">{t.description}</p>
+                    <p className="text-[10px] text-on-surface-variant">
+                      {new Date(t.occurred_at).toLocaleDateString('pt-BR')}
+                    </p>
                   </div>
-                ))}
-              </div>
-            ))
+                  <p className="font-black text-tertiary">+{fmt(t.value)}</p>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       </div>
