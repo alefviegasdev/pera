@@ -350,7 +350,11 @@ Quanto mais detalhes você der, melhor eu classifico!
           if (Object.keys(updates).length > 0) {
             await supabase.from(table).update(updates).eq("short_code", replyCode);
             return ctx.reply(`✏️ #${replyCode} atualizado via resposta! ✅`);
+          } else {
+            return ctx.reply(`🤔 Não entendi o que alterar. Tente: "foi 90", "deletar", "categoria Saúde"`);
           }
+        } else {
+          return ctx.reply(`❓ Não encontrei a transação #${replyCode} no seu histórico.`);
         }
       }
     }
