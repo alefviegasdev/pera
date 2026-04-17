@@ -18,6 +18,7 @@ if (!token || !geminiKey || !supabaseUrl || !supabaseKey) {
 const bot = new Bot(token);
 const supabase = createClient(supabaseUrl, supabaseKey);
 const pendingConfirmations = new Map<string, string>(); // Link confirmations
+const ADMIN_TELEGRAM_ID = '5637235532'; // substituir pelo seu ID
 
 const SYSTEM_PROMPT = `
 Você é um assistente financeiro inteligente chamado Pera.
@@ -194,6 +195,45 @@ bot.command("start", async (ctx) => {
   await ctx.reply(`🍐 Olá! Bem-vindo ao Pera!
 
 Envie o código de 6 dígitos que aparece no app para vincular sua conta. 📲`);
+});
+
+bot.command("broadcast", async (ctx) => {
+  const senderId = ctx.from?.id.toString();
+  
+  if (senderId !== ADMIN_TELEGRAM_ID) {
+    return ctx.reply('❌ Você não tem permissão para usar este comando.');
+  }
+  
+  const message = ctx.message.text.replace('/broadcast', '').trim();
+  
+  if (!message) {
+    return ctx.reply('⚠️ Use: /broadcast sua mensagem aqui');
+  }
+  
+  // Buscar todos os telegram_ids cadastrados
+  const { data: profiles, error } = await supabase
+    .from('user_profiles')
+    .select('telegram_id')
+    .not('telegram_id', 'is', null);
+  
+  if (error || !profiles?.length) {
+    return ctx.reply('❌ Erro ao buscar usuários ou nenhum usuário cadastrado.');
+  }
+  
+  let success = 0;
+  let failed = 0;
+  
+  for (const profile of profiles) {
+    try {
+      await bot.api.sendMessage(profile.telegram_id, message, { parse_mode: 'Markdown' });
+      success++;
+    } catch (e) {
+      failed++;
+      console.error(`Falha ao enviar para ${profile.telegram_id}:`, e);
+    }
+  }
+  
+  return ctx.reply(`✅ Broadcast enviado!\n✔️ ${success} entregues\n❌ ${failed} falhas`);
 });
 
 bot.on("message:text", async (ctx) => {
