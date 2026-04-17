@@ -160,6 +160,10 @@ Regras:
 - Se a mensagem for APENAS um número (ex: "3", "45.50", "100") → preenche value com esse número
 - Se mencionar nome/descrição/era/chama → preenche description
 - Se mencionar categoria/tipo de gasto → preenche category
+- Se mencionar subcategoria específica como "mercado", "padaria", 
+  "delivery", "restaurante", "farmácia", "academia", "uber", etc.
+  → preenche subcategory com o nome da subcategoria
+  → E se a categoria principal for inferível, preenche category também
 - Se mencionar fixo/obrigatório/mensalidade → subtype: fixed
 - Se mencionar variável/avulso/esporádico → subtype: variable
 - Se mencionar semi-fixo/temporário/por enquanto → subtype: semifixed
@@ -353,9 +357,44 @@ Quanto mais detalhes você der, melhor eu classifico!
           if (aiData.subtype !== null) updates.subtype = aiData.subtype;
           if (aiData.urgency !== null) updates.urgency = aiData.urgency;
           
+          const SUBCAT_TO_CAT: Record<string, {category: string, subcategory: string}> = {
+            'mercado': { category: 'Alimentação', subcategory: 'Mercado' },
+            'padaria': { category: 'Alimentação', subcategory: 'Padaria' },
+            'delivery': { category: 'Fast Food', subcategory: 'Delivery' },
+            'restaurante': { category: 'Fast Food', subcategory: 'Restaurante' },
+            'lanchonete': { category: 'Fast Food', subcategory: 'Lanchonete' },
+            'cafeteria': { category: 'Fast Food', subcategory: 'Cafeteria' },
+            'farmácia': { category: 'Saúde', subcategory: 'Farmácia' },
+            'médico': { category: 'Saúde', subcategory: 'Médico' },
+            'academia': { category: 'Saúde', subcategory: 'Academia' },
+            'exames': { category: 'Saúde', subcategory: 'Exames' },
+            'uber': { category: 'Transporte', subcategory: 'Uber/Táxi' },
+            'táxi': { category: 'Transporte', subcategory: 'Uber/Táxi' },
+            'combustível': { category: 'Transporte', subcategory: 'Combustível' },
+            'ônibus': { category: 'Transporte', subcategory: 'Transporte Público' },
+          };
+
+          const textLower = text.toLowerCase().trim();
+          if (SUBCAT_TO_CAT[textLower]) {
+            updates.category = SUBCAT_TO_CAT[textLower].category;
+            updates.subcategory = SUBCAT_TO_CAT[textLower].subcategory;
+          }
+          
           if (Object.keys(updates).length > 0) {
+            const changeSummary = Object.entries(updates)
+              .map(([key, val]) => {
+                if (key === 'value') return `💰 valor: R$ ${Number(record.value).toFixed(2)} → R$ ${Number(val).toFixed(2)}`;
+                if (key === 'category') return `📂 categoria: ${record.category} → ${val}`;
+                if (key === 'subcategory') return `📌 subcategoria: ${record.subcategory || 'nenhuma'} → ${val}`;
+                if (key === 'description') return `📝 descrição: ${record.description} → ${val}`;
+                if (key === 'subtype') return `🏷️ tipo: ${record.subtype} → ${val}`;
+                if (key === 'urgency') return `⏱️ urgência: ${record.urgency} → ${val}`;
+                return null;
+              })
+              .filter(Boolean)
+              .join('\n');
             await supabase.from(table).update(updates).eq("short_code", replyCode);
-            return ctx.reply(`✏️ #${replyCode} atualizado via resposta! ✅`);
+            return ctx.reply(`✏️ #${replyCode} atualizado!\n${changeSummary}`);
           } else {
             return ctx.reply(`🤔 Não entendi o que alterar. Tente: "foi 90", "deletar", "categoria Saúde"`);
           }
