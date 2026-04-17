@@ -63,6 +63,14 @@ const Analysis = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    if (selectedCategory) {
+      onModalOpen?.();
+    } else {
+      onModalClose?.();
+    }
+  }, [selectedCategory]);
+
   const fetchData = async (silent = false) => {
     if (!silent) setLoading(true);
     try {

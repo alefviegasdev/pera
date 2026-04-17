@@ -51,12 +51,12 @@ const Settings = ({
   const [showNewBudget, setShowNewBudget] = useState(false);
 
   useEffect(() => {
-    if (showNewBill || showNewGoal || showNewBudget) {
+    if (showNewBill || showNewGoal || showNewBudget || showLogoutConfirm || editBudget) {
       onModalOpen?.();
     } else {
       onModalClose?.();
     }
-  }, [showNewBill, showNewGoal, showNewBudget]);
+  }, [showNewBill, showNewGoal, showNewBudget, showLogoutConfirm, editBudget]);
 
   useEffect(() => { fetchData(); }, [userId]);
 
