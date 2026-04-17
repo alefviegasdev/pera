@@ -8,6 +8,7 @@ import {
   ChevronDown,
   ArrowUpRight,
 } from 'lucide-react';
+import CategoryDetailsModal from '../components/CategoryDetailsModal';
 
 type ViewMode = 'subtype' | 'urgency' | 'category';
 
@@ -40,6 +41,7 @@ const Analysis = ({
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>('subtype');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { fetchData(); }, [userId, period]);
@@ -306,7 +308,7 @@ const Analysis = ({
                 const color = CATEGORY_COLORS[cat.category] || '#9E9E9E';
                 const emoji = catEmoji(cat.category);
                 return (
-                  <div key={cat.category} className="bg-white p-6 rounded-[2rem] flex items-center justify-between hover:scale-[1.01] transition-transform cursor-pointer shadow-sm border border-surface-container/50">
+                  <div key={cat.category} onClick={() => setSelectedCategory(cat.category)} className="bg-white p-6 rounded-[2rem] flex items-center justify-between hover:scale-[1.01] transition-transform cursor-pointer shadow-sm border border-surface-container/50">
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-sm" style={{ backgroundColor: color + '22' }}>
                         {emoji}
@@ -349,6 +351,15 @@ const Analysis = ({
         </section>
 
       </div>
+
+      {selectedCategory && (
+        <CategoryDetailsModal
+          category={selectedCategory}
+          period={period}
+          userId={userId}
+          onClose={() => setSelectedCategory(null)}
+        />
+      )}
     </div>
   );
 };

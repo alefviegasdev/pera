@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { catBg, catColor, catEmoji } from '../utils/categories';
 import TransactionModal from '../components/TransactionModal';
 import FixedDetailsModal from '../components/FixedDetailsModal';
+import CategoryDetailsModal from '../components/CategoryDetailsModal';
 import { ArrowRight, ArrowUpRight, ArrowDownRight, AlertTriangle, CreditCard, ChevronRight, Zap, Wifi, Home as HomeIcon, Dumbbell, Pin, AlertCircle, CheckCircle2, Heart } from 'lucide-react';
 
 const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -27,17 +28,18 @@ const Home = ({
   const [loading, setLoading] = useState(true);
   const [selectedTx, setSelectedTx] = useState<any>(null);
   const [showFixedModal, setShowFixedModal] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [billTab, setBillTab] = useState<'pending' | 'paid'>('pending');
 
 
 
   useEffect(() => {
-    if (selectedTx || showFixedModal) {
+    if (selectedTx || showFixedModal || selectedCategory) {
       onModalOpen?.();
     } else {
       onModalClose?.();
     }
-  }, [selectedTx, showFixedModal]);
+  }, [selectedTx, showFixedModal, selectedCategory]);
 
 
 
@@ -591,7 +593,7 @@ const Home = ({
           <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
             {summary?.by_category?.length > 0 ? (
               [...summary.by_category].sort((a,b) => b.count - a.count).slice(0, 5).map((cat: any, idx: number) => (
-                <div key={cat.category} className={`min-w-[140px] ${idx === 0 ? 'bg-secondary-container' : 'bg-white'} p-5 rounded-[2rem] flex flex-col items-center text-center space-y-3 shadow-sm`}>
+                <div key={cat.category} onClick={() => setSelectedCategory(cat.category)} className={`min-w-[140px] ${idx === 0 ? 'bg-secondary-container' : 'bg-white'} p-5 rounded-[2rem] flex flex-col items-center text-center space-y-3 shadow-sm cursor-pointer transition-transform hover:scale-105 active:scale-95`}>
                   <div className={`w-12 h-12 ${idx === 0 ? 'bg-white/30' : 'bg-surface-container-low'} rounded-full flex items-center justify-center text-xl`}>
                     {catEmoji(cat.category)}
                   </div>
@@ -657,6 +659,15 @@ const Home = ({
           installments={installments}
           tithingValue={tithing}
           onClose={() => setShowFixedModal(false)}
+        />
+      )}
+
+      {selectedCategory && (
+        <CategoryDetailsModal
+          category={selectedCategory}
+          period="month"
+          userId={userId}
+          onClose={() => setSelectedCategory(null)}
         />
       )}
     </div>

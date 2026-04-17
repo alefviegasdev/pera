@@ -84,6 +84,32 @@ REGRAS DE CLASSIFICAÇÃO:
 
    Pode retornar múltiplos itens no array se houver várias categorias na mesma frase.
 
+8. SUBCATEGORIAS (preencher quando aplicável):
+Adicionar campo "subcategory" ao JSON para as seguintes categorias:
+
+"Alimentação":
+  - "Mercado": supermercado, mercadinho, extra, atacadão, rancho, feira
+  - "Padaria": padaria, pão, bolo, salgado, confeitaria, pão de queijo
+
+"Fast Food":
+  - "Delivery": ifood, rappi, uber eats, pedido online, delivery
+  - "Restaurante": restaurante, almoço, jantar, self-service, rodízio
+  - "Lanchonete": hambúrguer, pizza, hot dog, lanche, burguer
+  - "Cafeteria": café, starbucks, cafeteria, coffee, cappuccino
+
+"Saúde":
+  - "Farmácia": farmácia, remédio, medicamento, drogaria, droga raia
+  - "Médico": médico, consulta, dentista, psicólogo, terapia, clínica
+  - "Academia": academia, gym, crossfit, natação, musculação, esporte
+  - "Exames": exame, laboratório, raio-x, ultrassom, hemograma
+
+"Transporte":
+  - "Uber/Táxi": uber, 99, táxi, cabify, corrida
+  - "Combustível": gasolina, combustível, posto, etanol, abasteci
+  - "Transporte Público": ônibus, metrô, passagem, bilhete único, trem
+
+Para outras categorias (Lazer, Contas, Vestuário, etc.), não incluir subcategory.
+
 JSON Structure (dentro do array):
 {
   "value": número (decimal, se for expense/income),
@@ -96,7 +122,8 @@ JSON Structure (dentro do array):
   "name": string (apenas se for type: bill),
   "due_day": número (apenas se for type: bill),
   "is_installment": boolean,
-  "installment_count": número (opcional)
+  "installment_count": número (opcional),
+  "subcategory": string (opcional)
 }
 
 Se o usuário disser 'paguei [nome]', 'pagar [nome]', 'quitei [nome]' SEM mencionar valor, retorne type: 'payment' com description: nome do que foi pago. O sistema vai buscar o valor cadastrado automaticamente.
@@ -675,7 +702,8 @@ Exemplos que funcionam:
           urgency: item.urgency || 'planned',
           description: item.description || item.category || 'Sem descrição',
           source: 'text',
-          short_code: shortCode
+          short_code: shortCode,
+          subcategory: item.subcategory || null
         });
 
         if (error) throw error;

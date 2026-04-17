@@ -165,14 +165,14 @@ app.get('/transactions', async (req, res) => {
 app.post('/transactions', async (req, res) => {
   try {
     const { user_id, value, type, category, subtype, urgency, 
-            description, source, short_code } = req.body;
+            description, source, short_code, subcategory } = req.body;
     if (!user_id) return res.status(400).json({ error: "user_id is required" });
 
     const { data, error } = await supabase
       .from('transactions')
       .insert({
         user_id, value, type, category, subtype, urgency,
-        description, source, short_code
+        description, source, short_code, subcategory: subcategory || null
       })
       .select();
 
