@@ -157,6 +157,7 @@ Retorne neste formato:
 
 Regras:
 - Se mencionar valor/preço/reais → preenche value
+- Se a mensagem for APENAS um número (ex: "3", "45.50", "100") → preenche value com esse número
 - Se mencionar nome/descrição/era/chama → preenche description
 - Se mencionar categoria/tipo de gasto → preenche category
 - Se mencionar fixo/obrigatório/mensalidade → subtype: fixed
@@ -167,6 +168,11 @@ Regras:
 - Se mencionar parcelas/vezes/dividir/x → preenche installments
 - Se mencionar apagar/deletar/excluir/remover/cancelar → delete: true
 - Retorna null nos campos não mencionados
+
+Exemplos:
+- "3" → { "value": 3, ... }
+- "foi 90" → { "value": 90, ... }
+- "deletar" → { "delete": true, ... }
 
 MENSAGEM:
 `;
