@@ -30,12 +30,17 @@ const History = ({
 
   useEffect(() => { fetchAll(); }, [userId, period]);
   
+  const periodRef = React.useRef(period);
+  useEffect(() => {
+    periodRef.current = period;
+  }, [period]);
+
   useEffect(() => {
     const interval = setInterval(() => {
       fetchAll(true);
     }, 15000);
     return () => clearInterval(interval);
-  }, [userId]);
+  }, [userId, period]);
 
   const fetchAll = async (silent = false) => {
     if (!silent) setLoading(true);

@@ -46,12 +46,17 @@ const Analysis = ({
 
   useEffect(() => { fetchData(); }, [userId, period]);
   
+  const periodRef = React.useRef(period);
+  useEffect(() => {
+    periodRef.current = period;
+  }, [period]);
+
   useEffect(() => {
     const interval = setInterval(() => {
       fetchData(true);
     }, 15000);
     return () => clearInterval(interval);
-  }, [userId]);
+  }, [userId, period]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -312,7 +317,7 @@ const Analysis = ({
             {loading ? (
               Array(3).fill(0).map((_, i) => <div key={i} className="skeleton h-24 w-full rounded-[2rem]" />)
             ) : summary?.by_category?.length > 0 ? (
-              [...summary.by_category].sort((a, b) => b.count - a.count).slice(0, 5).map((cat: any) => {
+              [...summary.by_category].sort((a, b) => b.count - a.count).map((cat: any) => {
                 const color = CATEGORY_COLORS[cat.category] || '#9E9E9E';
                 const emoji = catEmoji(cat.category);
                 return (
