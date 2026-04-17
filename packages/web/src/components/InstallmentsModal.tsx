@@ -14,6 +14,14 @@ const InstallmentsModal: React.FC<InstallmentsModalProps> = ({ userId, onClose }
   const [insts, setInsts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [dragStart, setDragStart] = useState<number | null>(null);
+  const [dragOffset, setDragOffset] = useState(0);
+
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, []);
+
   useEffect(() => {
     fetchInstallments();
   }, [userId]);
@@ -31,15 +39,41 @@ const InstallmentsModal: React.FC<InstallmentsModalProps> = ({ userId, onClose }
     }
   };
 
+  const handleTouchStart = (e: React.TouchEvent) => setDragStart(e.touches[0].clientY);
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (dragStart === null) return;
+    const offset = e.touches[0].clientY - dragStart;
+    if (offset > 0) setDragOffset(offset);
+  };
+  const handleTouchEnd = () => {
+    if (dragOffset > window.innerHeight * 0.85 * 0.3) onClose();
+    setDragStart(null);
+    setDragOffset(0);
+  };
+
   const totalMonthly = insts.reduce((acc, curr) => acc + (curr.installment_value || 0), 0);
 
   return (
-    <div className="modal-overlay" onClick={onClose} style={{ zIndex: 9999 }}>
-      <div className="modal-card scrollbar-hide" onClick={(e) => e.stopPropagation()} style={{ maxHeight: '90vh', overflowY: 'auto' }}>
+    <div className="modal-overlay" onClick={onClose} style={{ zIndex: 9999, overflowX: 'hidden' }}>
+      <div 
+        className="modal-card scrollbar-hide" 
+        onClick={(e) => e.stopPropagation()} 
+        style={{
+          height: '85dvh',
+          display: 'flex',
+          flexDirection: 'column',
+          overflowX: 'hidden',
+          transform: dragOffset > 0 ? `translateY(${dragOffset}px)` : undefined,
+          transition: dragOffset > 0 ? 'none' : 'transform 0.3s ease'
+        }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
         <div className="modal-handle" />
 
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-8 px-6 flex-shrink-0">
           <h1 className="font-headline text-2xl font-bold text-on-surface">Parcelamentos</h1>
           <button 
             onClick={onClose}
@@ -49,6 +83,7 @@ const InstallmentsModal: React.FC<InstallmentsModalProps> = ({ userId, onClose }
           </button>
         </div>
 
+        <div className="overflow-y-auto flex-1 scrollbar-hide px-6 pb-8" style={{ overscrollBehavior: 'contain', touchAction: 'pan-y', overflowX: 'hidden' }}>
         {loading ? (
           <div className="flex flex-col gap-4 py-8">
             <div className="skeleton h-24 w-full rounded-xl" />
@@ -178,6 +213,7 @@ const InstallmentsModal: React.FC<InstallmentsModalProps> = ({ userId, onClose }
             </div>
           </div>
         )}
+        </div>
       </div>
     </div>
   );
