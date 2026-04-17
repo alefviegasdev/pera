@@ -395,13 +395,18 @@ const Home = ({
             <p className="text-on-surface-variant text-sm font-medium opacity-70">O que você ainda pode gastar este mês</p>
           </div>
 
-          <div className="flex items-baseline gap-1 py-4">
-            <span className={`font-headline font-black text-5xl tracking-tight ${isNegative ? 'text-error' : 'text-tertiary'}`}>
-              {splitFmt(realAvailable).int}
-            </span>
-            <span className={`font-headline font-black text-2xl ${isNegative ? 'text-error/60' : 'text-tertiary/60'}`}>
-              {splitFmt(realAvailable).dec}
-            </span>
+          <div className="py-4">
+            <p className="text-on-surface-variant text-xs font-black uppercase tracking-[0.2em] opacity-60 mb-2">
+              Disponível para o mês
+            </p>
+            <div className="flex items-baseline gap-1">
+              <span className={`font-headline font-black text-5xl tracking-tight ${isNegative ? 'text-error' : 'text-tertiary'}`}>
+                {splitFmt(realAvailable).int}
+              </span>
+              <span className={`font-headline font-black text-2xl ${isNegative ? 'text-error/60' : 'text-tertiary/60'}`}>
+                {splitFmt(realAvailable).dec}
+              </span>
+            </div>
           </div>
 
           <div className="space-y-6">
@@ -438,10 +443,7 @@ const Home = ({
                 </div>
                 <span className="text-on-surface font-black">− {fmt(remainingFixedVal)}</span>
               </div>
-              <div className="pt-4 border-t border-surface-container-high flex items-center justify-between text-base font-black">
-                <span className="text-tertiary uppercase tracking-widest text-[11px]">Disponível para o mês</span>
-                <span className={isNegative ? 'text-error' : 'text-tertiary'}>{fmt(realAvailable)}</span>
-              </div>
+
             </div>
           </div>
         </section>
@@ -496,7 +498,7 @@ const Home = ({
 
           <div className="space-y-4">
             {billTab === 'pending' ? (
-              allPending.slice(0, 4).map(b => {
+              allPending.map(b => {
                 const isMonthlyBill = b.itemType === 'bill';
                 const daysLeft = isMonthlyBill ? b.due_day - today : null;
                 
@@ -547,7 +549,7 @@ const Home = ({
                 );
               })
             ) : (
-              allPaid.slice(0, 3).map(b => {
+              allPaid.map(b => {
                 const isMonthlyBill = b.itemType === 'bill';
                 const paidDate = b.paid_at ? new Date(b.paid_at) : new Date();
                 const day = paidDate.getDate().toString().padStart(2, '0');
@@ -655,7 +657,11 @@ const Home = ({
 
       {/* MODALS */}
       {selectedTx && (
-        <TransactionModal tx={selectedTx} onClose={() => setSelectedTx(null)} />
+        <TransactionModal 
+          tx={selectedTx} 
+          onClose={() => setSelectedTx(null)}
+          onRefresh={() => fetchData(true)}
+        />
       )}
 
       {showFixedModal && (

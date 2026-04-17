@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { X, Calendar, Tag, Layers, Zap, Trash2, Hash } from 'lucide-react';
+import { X, Calendar, Tag, Layers, Zap, Trash2, Hash, Pencil } from 'lucide-react';
 import { catColor } from '../utils/categories';
 
 interface TransactionModalProps {
   tx: any;
+  onRefresh?: () => void;
   onClose: () => void;
 }
 
@@ -17,13 +18,47 @@ const getInitials = (str: string) => {
   return (parts[0][0] + (parts[1]?.[0] || '') + (parts[2]?.[0] || '')).toUpperCase();
 };
 
-const TransactionModal: React.FC<TransactionModalProps> = ({ tx, onClose }) => {
+const TransactionModal: React.FC<TransactionModalProps> = ({ tx, onRefresh, onClose }) => {
   const color = catColor(tx.category);
   const isIncome = tx.type === 'income';
   const initials = getInitials(tx.description);
 
   const [dragStart, setDragStart] = useState<number | null>(null);
   const [dragOffset, setDragOffset] = useState(0);
+
+  const [deleting, setDeleting] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editValue, setEditValue] = useState(String(tx.value));
+  const [editCategory, setEditCategory] = useState(tx.category);
+
+  const CATEGORIES = ['Alimentação','Fast Food','Transporte','Saúde',
+    'Lazer','Educação','Contas','Vestuário','Eletrônicos',
+    'Dízimo/Oferta','Outros'];
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      await fetch(`/api/transactions/${tx.id}`, { method: 'DELETE' });
+      onRefresh?.();
+      onClose();
+    } catch(e) { console.error(e); }
+    finally { setDeleting(false); }
+  };
+
+  const handleSaveEdit = async () => {
+    try {
+      await fetch(`/api/transactions/${tx.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          value: parseFloat(editValue), 
+          category: editCategory 
+        })
+      });
+      onRefresh?.();
+      onClose();
+    } catch(e) { console.error(e); }
+  };
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -142,7 +177,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ tx, onClose }) => {
           <div className="bg-white/50 border border-surface-container p-4 rounded-2xl">
             <div className="flex items-center gap-2 mb-1.5 opacity-40">
               <Tag size={12} />
-              <span className="text-[9px] font-black uppercase tracking-widest">Rubrica</span>
+              <span className="text-[9px] font-black uppercase tracking-widest">Categoria</span>
             </div>
             <p className="font-bold text-sm text-on-surface truncate">{tx.category}</p>
           </div>
@@ -150,18 +185,61 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ tx, onClose }) => {
 
         {/* Action Center */}
         <div className="flex flex-col gap-3">
-          <button 
-            className="h-14 w-full bg-primary text-on-primary rounded-full font-bold text-base shadow-lg shadow-primary/10 active:scale-95 transition-transform"
-            onClick={onClose}
-          >
-            Confirmar leitura
-          </button>
-          <button 
-            className="h-14 w-full flex items-center justify-center gap-2 text-error font-black text-xs uppercase tracking-widest hover:bg-error/5 rounded-full transition-colors"
-          >
-            <Trash2 size={16} />
-            Remover do registro
-          </button>
+          {!editing ? (
+            <>
+              <button
+                onClick={() => setEditing(true)}
+                className="h-14 w-full bg-surface-container-low text-on-surface rounded-full font-bold text-base active:scale-95 transition-transform flex items-center justify-center gap-2"
+              >
+                <Pencil size={18} />
+                Editar transação
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="h-14 w-full flex items-center justify-center gap-2 text-error font-black text-xs uppercase tracking-widest hover:bg-error/5 rounded-full transition-colors disabled:opacity-50"
+              >
+                <Trash2 size={16} />
+                {deleting ? 'Removendo...' : 'Remover do registro'}
+              </button>
+            </>
+          ) : (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant opacity-60">Valor (R$)</label>
+                <input
+                  type="number"
+                  value={editValue}
+                  onChange={e => setEditValue(e.target.value)}
+                  className="w-full h-14 bg-surface-container-low rounded-2xl px-4 font-headline font-bold text-xl text-on-surface border-none focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant opacity-60">Categoria</label>
+                <select
+                  value={editCategory}
+                  onChange={e => setEditCategory(e.target.value)}
+                  className="w-full h-14 bg-surface-container-low rounded-2xl px-4 font-bold text-on-surface border-none focus:ring-2 focus:ring-primary/20"
+                >
+                  {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setEditing(false)}
+                  className="flex-1 h-14 bg-surface-container-low text-on-surface-variant rounded-full font-bold active:scale-95 transition-transform"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleSaveEdit}
+                  className="flex-[2] h-14 bg-primary text-on-primary rounded-full font-bold text-base shadow-lg active:scale-95 transition-transform"
+                >
+                  Salvar
+                </button>
+              </div>
+            </div>
+          )}
         </div>
         </div>
       </div>
