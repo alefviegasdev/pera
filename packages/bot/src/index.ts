@@ -173,7 +173,7 @@ MENSAGEM:
 
 function generateShortCode() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let code = '';
+  let code = 'id';
   for (let i = 0; i < 4; i++) {
     code += chars.charAt(Math.floor(Math.random() * chars.length));
   }
@@ -282,8 +282,8 @@ Quanto mais detalhes você der, melhor eu classifico!
 
     // --- CORREÇÃO RÁPIDA DE DIA DE VENCIMENTO (Regex) ---
     // Padrões: #CODE 10 dia ou #CODE dia 10
-    const dayRegex1 = /^#?([a-zA-Z0-9]{4})\s+(\d{1,2})\s+dia$/i;
-    const dayRegex2 = /^#?([a-zA-Z0-9]{4})\s+dia\s+(\d{1,2})$/i;
+    const dayRegex1 = /^#?(?:id)?([a-zA-Z0-9]{4})\s+(\d{1,2})\s+dia$/i;
+    const dayRegex2 = /^#?(?:id)?([a-zA-Z0-9]{4})\s+dia\s+(\d{1,2})$/i;
     const dayMatch = text.match(dayRegex1) || text.match(dayRegex2);
 
     if (dayMatch) {
@@ -308,8 +308,55 @@ Quanto mais detalhes você der, melhor eu classifico!
         return ctx.reply(`✅ #${code} atualizado! Novo vencimento: dia ${newDay}. 🍐`);
     }
 
+    const replyMsg = ctx.message.reply_to_message;
+    if (replyMsg && replyMsg.text && supabaseUserId) {
+      const codeMatch = replyMsg.text.match(/#(id[a-zA-Z0-9]{4})/i);
+      if (codeMatch) {
+        const replyCode = codeMatch[1].toUpperCase();
+        
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
+        const response = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: CORRECTION_PROMPT + text }] }]
+          })
+        });
+        
+        if (!response.ok) throw new Error(`Gemini Error: ${response.status}`);
+        const result = await response.json();
+        const aiText = result.candidates?.[0]?.content?.parts?.[0]?.text?.trim().replace(/```json|```/g, "") || "";
+        const aiData = JSON.parse(aiText);
+        
+        const { data: tData } = await supabase.from("transactions").select("*").eq("short_code", replyCode).eq("user_id", supabaseUserId).maybeSingle();
+        const { data: iData } = await supabase.from("installments").select("*").eq("short_code", replyCode).eq("user_id", supabaseUserId).maybeSingle();
+        
+        const record = tData || iData;
+        const table = tData ? "transactions" : (iData ? "installments" : null);
+        
+        if (record && table) {
+          if (aiData.delete === true) {
+            await supabase.from(table).delete().eq("id", record.id);
+            return ctx.reply(`🗑️ Transação #${replyCode} apagada.`);
+          }
+          
+          const updates: any = {};
+          if (aiData.value !== null) updates.value = aiData.value;
+          if (aiData.description !== null) updates.description = aiData.description;
+          if (aiData.category !== null) updates.category = aiData.category;
+          if (aiData.subtype !== null) updates.subtype = aiData.subtype;
+          if (aiData.urgency !== null) updates.urgency = aiData.urgency;
+          
+          if (Object.keys(updates).length > 0) {
+            await supabase.from(table).update(updates).eq("short_code", replyCode);
+            return ctx.reply(`✏️ #${replyCode} atualizado via resposta! ✅`);
+          }
+        }
+      }
+    }
+
     // 1. RECONHECIMENTO DE COMANDOS (IA-Driven)
-    const cmdRegex = /^(#[a-zA-Z0-9]{4}|[a-zA-Z][a-zA-Z0-9]{3}|[a-zA-Z0-9]{3}[a-zA-Z])(\s+.*|$)/i;
+    const cmdRegex = /^(#?id[a-zA-Z0-9]{4}|#[a-zA-Z0-9]{4,6}|[a-zA-Z][a-zA-Z0-9]{3}|[a-zA-Z0-9]{3}[a-zA-Z])(\s+.*|$)/i;
     const cmdMatch = text.match(cmdRegex);
 
     if (cmdMatch) {
@@ -344,7 +391,7 @@ Possíveis motivos:
 - O código pode estar errado — confere na mensagem de confirmação
 - A transação pode já ter sido apagada
 
-💡 Dica: o código aparece em destaque na mensagem de registro, ex: #AOAV`);
+💡 Dica: o código aparece em destaque na mensagem de registro, ex: #idAOAV`);
       }
 
       // --- Caso: APAGAR ---
@@ -359,7 +406,13 @@ Possíveis motivos:
 
       if (aiData.value !== null) updates.value = aiData.value;
       if (aiData.description !== null) updates.description = aiData.description;
-      if (aiData.category !== null) updates.category = aiData.category;
+      const CATS_WITH_SUBCATEGORY = ['Alimentação', 'Fast Food', 'Saúde', 'Transporte'];
+      if (aiData.category !== null) {
+        updates.category = aiData.category;
+        if (!CATS_WITH_SUBCATEGORY.includes(aiData.category)) {
+          updates.subcategory = null;
+        }
+      }
       if (aiData.subtype !== null) updates.subtype = aiData.subtype;
       if (aiData.urgency !== null) updates.urgency = aiData.urgency;
 
@@ -708,9 +761,10 @@ Exemplos que funcionam:
 
         if (error) throw error;
 
+        const subcatLine = item.subcategory ? `\n📌 ${item.subcategory}` : '';
         await ctx.reply(`✅ Registrado! #${shortCode}
 💰 R$ ${Number(item.value).toFixed(2)}
-📂 ${item.category}
+📂 ${item.category}${subcatLine}
 📝 ${item.description}
 🏷️ ${subtypeLabel}
 ⏱️ ${urgencyLabel}`);
