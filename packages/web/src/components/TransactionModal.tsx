@@ -163,8 +163,9 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ tx, onClose }) => {
             Remover do registro
           </button>
         </div>
-      </div>
-    </div>
+        </div> {/* fecha overflow-y-auto */}
+      </div> {/* fecha modal-card */}
+    </div> {/* fecha modal-overlay */}
   );
 };
 
