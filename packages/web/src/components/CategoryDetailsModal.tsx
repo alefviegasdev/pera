@@ -24,7 +24,7 @@ interface Props {
 export default function CategoryDetailsModal({ category, period, userId, onClose }: Props) {
   const [txs, setTxs] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeSubcat, setActiveSubcat] = useState<string>('Todas');
+  const [activeSubcat, setActiveSubcat] = useState<string>('Geral');
   const [dragStart, setDragStart] = useState<number | null>(null);
   const [dragOffset, setDragOffset] = useState(0);
 
@@ -76,6 +76,12 @@ export default function CategoryDetailsModal({ category, period, userId, onClose
     return map;
   }, [txs, hasSubCategories]);
 
+  useEffect(() => {
+    if (Object.keys(grouped).length > 0 && !grouped[activeSubcat]) {
+      setActiveSubcat(grouped['Geral'] ? 'Geral' : Object.keys(grouped)[0]);
+    }
+  }, [grouped, activeSubcat]);
+
   const handleTouchStart = (e: React.TouchEvent) => {
     setDragStart(e.touches[0].clientY);
   };
@@ -90,11 +96,14 @@ export default function CategoryDetailsModal({ category, period, userId, onClose
     setDragOffset(0);
   };
 
-  const subcatKeys = ['Todas', ...Object.keys(grouped).filter(k => k !== 'Geral'), ...(grouped['Geral'] ? ['Geral'] : [])];
-  const visibleGroups = activeSubcat === 'Todas' ? grouped : { [activeSubcat]: grouped[activeSubcat] || [] };
+  const subcatKeys = [
+    ...(grouped['Geral'] ? ['Geral'] : []),
+    ...Object.keys(grouped).filter(k => k !== 'Geral')
+  ];
+  const visibleGroups = { [activeSubcat]: grouped[activeSubcat] || [] };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={onClose} style={{ overflowX: 'hidden' }}>
       <div 
         className="modal-card bg-surface-container-lowest"
         onClick={e => e.stopPropagation()}
@@ -103,9 +112,10 @@ export default function CategoryDetailsModal({ category, period, userId, onClose
           transition: dragOffset > 0 ? 'none' : 'transform 0.3s ease',
           borderRadius: '2rem 2rem 0 0', 
           padding: '16px 24px 48px', 
-          maxHeight: '85dvh', 
+          height: '85dvh', 
           display: 'flex', 
-          flexDirection: 'column' 
+          flexDirection: 'column',
+          overflowX: 'hidden'
         }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
@@ -149,7 +159,7 @@ export default function CategoryDetailsModal({ category, period, userId, onClose
         )}
 
         {/* Lista com scroll */}
-        <div className="overflow-y-auto flex-1 space-y-4 pr-1" style={{ overscrollBehavior: 'contain', touchAction: 'pan-y' }}>
+        <div className="overflow-y-auto flex-1 space-y-4 pr-1" style={{ overflowX: 'hidden', overscrollBehavior: 'contain', touchAction: 'pan-y' }}>
           {loading ? (
             <div className="flex justify-center p-8 opacity-50"><p>Carregando...</p></div>
           ) : txs.length === 0 ? (
