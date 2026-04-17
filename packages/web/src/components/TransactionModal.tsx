@@ -18,6 +18,15 @@ const getInitials = (str: string) => {
   return (parts[0][0] + (parts[1]?.[0] || '') + (parts[2]?.[0] || '')).toUpperCase();
 };
 
+const SUBCATEGORIES: Record<string, string[]> = {
+  'Alimentação': ['Mercado', 'Padaria'],
+  'Fast Food': ['Delivery', 'Restaurante', 'Lanchonete', 'Cafeteria'],
+  'Saúde': ['Farmácia', 'Médico', 'Academia', 'Exames'],
+  'Transporte': ['Uber/Táxi', 'Combustível', 'Transporte Público'],
+};
+
+const hasSubcategories = (cat: string) => !!SUBCATEGORIES[cat];
+
 const TransactionModal: React.FC<TransactionModalProps> = ({ tx, onRefresh, onClose }) => {
   const color = catColor(tx.category);
   const isIncome = tx.type === 'income';
@@ -30,6 +39,10 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ tx, onRefresh, onCl
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(String(tx.value));
   const [editCategory, setEditCategory] = useState(tx.category);
+
+  const [editSubcategory, setEditSubcategory] = useState<string>(
+    tx.subcategory || (SUBCATEGORIES[tx.category]?.[0] || '')
+  );
 
   const CATEGORIES = ['Alimentação','Fast Food','Transporte','Saúde',
     'Lazer','Educação','Contas','Vestuário','Eletrônicos',
@@ -52,7 +65,8 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ tx, onRefresh, onCl
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           value: parseFloat(editValue), 
-          category: editCategory 
+          category: editCategory,
+          subcategory: hasSubcategories(editCategory) ? editSubcategory : null
         })
       });
       onRefresh?.();
@@ -180,6 +194,9 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ tx, onRefresh, onCl
               <span className="text-[9px] font-black uppercase tracking-widest">Categoria</span>
             </div>
             <p className="font-bold text-sm text-on-surface truncate">{tx.category}</p>
+            {tx.subcategory && (
+              <p className="text-[10px] text-on-surface-variant font-bold mt-0.5">{tx.subcategory}</p>
+            )}
           </div>
         </div>
 
@@ -218,12 +235,32 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ tx, onRefresh, onCl
                 <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant opacity-60">Categoria</label>
                 <select
                   value={editCategory}
-                  onChange={e => setEditCategory(e.target.value)}
+                  onChange={e => {
+                    const newCat = e.target.value;
+                    setEditCategory(newCat);
+                    setEditSubcategory(SUBCATEGORIES[newCat]?.[0] || '');
+                  }}
                   className="w-full h-14 bg-surface-container-low rounded-2xl px-4 font-bold text-on-surface border-none focus:ring-2 focus:ring-primary/20"
                 >
                   {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
+              {hasSubcategories(editCategory) && (
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant opacity-60">
+                    Subcategoria
+                  </label>
+                  <select
+                    value={editSubcategory}
+                    onChange={e => setEditSubcategory(e.target.value)}
+                    className="w-full h-14 bg-surface-container-low rounded-2xl px-4 font-bold text-on-surface border-none focus:ring-2 focus:ring-primary/20"
+                  >
+                    {SUBCATEGORIES[editCategory].map(sub => (
+                      <option key={sub} value={sub}>{sub}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="flex gap-3">
                 <button
                   onClick={() => setEditing(false)}
