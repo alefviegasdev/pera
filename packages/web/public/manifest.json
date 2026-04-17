@@ -7,12 +7,12 @@
   "theme_color": "#4A7FE5",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/1048/1048950.png",
+      "src": "/pera-icon.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/1048/1048950.png",
+      "src": "/pera-icon.png",
       "sizes": "512x512",
       "type": "image/png"
     }
