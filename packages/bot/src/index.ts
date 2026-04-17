@@ -364,6 +364,47 @@ Quanto mais detalhes você der, melhor eu classifico!
       if (codeMatch) {
         const replyCode = codeMatch[1];
         
+        const { data: tData } = await supabase.from("transactions").select("*").ilike("short_code", replyCode).eq("user_id", supabaseUserId).maybeSingle();
+        const { data: iData } = await supabase.from("installments").select("*").ilike("short_code", replyCode).eq("user_id", supabaseUserId).maybeSingle();
+        
+        const record = tData || iData;
+        const table = tData ? "transactions" : (iData ? "installments" : null);
+
+        const SUBCAT_TO_CAT: Record<string, {category: string, subcategory: string}> = {
+          'mercado': { category: 'Alimentação', subcategory: 'Mercado' },
+          'padaria': { category: 'Alimentação', subcategory: 'Padaria' },
+          'delivery': { category: 'Fast Food', subcategory: 'Delivery' },
+          'restaurante': { category: 'Fast Food', subcategory: 'Restaurante' },
+          'lanchonete': { category: 'Fast Food', subcategory: 'Lanchonete' },
+          'cafeteria': { category: 'Fast Food', subcategory: 'Cafeteria' },
+          'farmácia': { category: 'Saúde', subcategory: 'Farmácia' },
+          'médico': { category: 'Saúde', subcategory: 'Médico' },
+          'academia': { category: 'Saúde', subcategory: 'Academia' },
+          'exames': { category: 'Saúde', subcategory: 'Exames' },
+          'uber': { category: 'Transporte', subcategory: 'Uber/Táxi' },
+          'táxi': { category: 'Transporte', subcategory: 'Uber/Táxi' },
+          'taxi': { category: 'Transporte', subcategory: 'Uber/Táxi' },
+          'combustível': { category: 'Transporte', subcategory: 'Combustível' },
+          'ônibus': { category: 'Transporte', subcategory: 'Transporte Público' },
+          '99': { category: 'Transporte', subcategory: 'Uber/Táxi' },
+          '99pop': { category: 'Transporte', subcategory: 'Uber/Táxi' },
+          'pop99': { category: 'Transporte', subcategory: 'Uber/Táxi' },
+          '99 pop': { category: 'Transporte', subcategory: 'Uber/Táxi' },
+          'pop 99': { category: 'Transporte', subcategory: 'Uber/Táxi' },
+          'cabify': { category: 'Transporte', subcategory: 'Uber/Táxi' },
+        };
+
+        const textLower = text.toLowerCase().trim();
+        if (SUBCAT_TO_CAT[textLower] && record && table) {
+          const mapped = SUBCAT_TO_CAT[textLower];
+          const updates = {
+            category: mapped.category,
+            subcategory: mapped.subcategory
+          };
+          await supabase.from(table).update(updates).eq("short_code", replyCode);
+          return ctx.reply(`✏️ #${replyCode} atualizado!\n📂 categoria: ${record.category} → ${mapped.category}\n📌 subcategoria: ${mapped.subcategory}`);
+        }
+
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
         const response = await fetch(url, {
           method: "POST",
@@ -378,12 +419,6 @@ Quanto mais detalhes você der, melhor eu classifico!
         const aiText = result.candidates?.[0]?.content?.parts?.[0]?.text?.trim().replace(/```json|```/g, "") || "";
         const aiData = JSON.parse(aiText);
         
-        const { data: tData } = await supabase.from("transactions").select("*").ilike("short_code", replyCode).eq("user_id", supabaseUserId).maybeSingle();
-        const { data: iData } = await supabase.from("installments").select("*").ilike("short_code", replyCode).eq("user_id", supabaseUserId).maybeSingle();
-        
-        const record = tData || iData;
-        const table = tData ? "transactions" : (iData ? "installments" : null);
-        
         if (record && table) {
           if (aiData.delete === true) {
             await supabase.from(table).delete().eq("id", record.id);
@@ -396,29 +431,6 @@ Quanto mais detalhes você der, melhor eu classifico!
           if (aiData.category !== null) updates.category = aiData.category;
           if (aiData.subtype !== null) updates.subtype = aiData.subtype;
           if (aiData.urgency !== null) updates.urgency = aiData.urgency;
-          
-          const SUBCAT_TO_CAT: Record<string, {category: string, subcategory: string}> = {
-            'mercado': { category: 'Alimentação', subcategory: 'Mercado' },
-            'padaria': { category: 'Alimentação', subcategory: 'Padaria' },
-            'delivery': { category: 'Fast Food', subcategory: 'Delivery' },
-            'restaurante': { category: 'Fast Food', subcategory: 'Restaurante' },
-            'lanchonete': { category: 'Fast Food', subcategory: 'Lanchonete' },
-            'cafeteria': { category: 'Fast Food', subcategory: 'Cafeteria' },
-            'farmácia': { category: 'Saúde', subcategory: 'Farmácia' },
-            'médico': { category: 'Saúde', subcategory: 'Médico' },
-            'academia': { category: 'Saúde', subcategory: 'Academia' },
-            'exames': { category: 'Saúde', subcategory: 'Exames' },
-            'uber': { category: 'Transporte', subcategory: 'Uber/Táxi' },
-            'táxi': { category: 'Transporte', subcategory: 'Uber/Táxi' },
-            'combustível': { category: 'Transporte', subcategory: 'Combustível' },
-            'ônibus': { category: 'Transporte', subcategory: 'Transporte Público' },
-          };
-
-          const textLower = text.toLowerCase().trim();
-          if (SUBCAT_TO_CAT[textLower]) {
-            updates.category = SUBCAT_TO_CAT[textLower].category;
-            updates.subcategory = SUBCAT_TO_CAT[textLower].subcategory;
-          }
           
           if (Object.keys(updates).length > 0) {
             const changeSummary = Object.entries(updates)
