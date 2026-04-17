@@ -28,14 +28,14 @@ const getDateRange = (period: string, start_date?: string, end_date?: string) =>
 
   switch (period) {
     case 'today':
-      start = today;
+      start = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0);
+      end = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
       break;
     case 'yesterday':
-      start = new Date(today);
-      start.setDate(today.getDate() - 1);
-      end = new Date(today);
-      end.setDate(today.getDate() - 1);
-      end.setHours(23, 59, 59, 999);
+      const yesterdayDate = new Date(today);
+      yesterdayDate.setDate(today.getDate() - 1);
+      start = new Date(yesterdayDate.getFullYear(), yesterdayDate.getMonth(), yesterdayDate.getDate(), 0, 0, 0, 0);
+      end = new Date(yesterdayDate.getFullYear(), yesterdayDate.getMonth(), yesterdayDate.getDate(), 23, 59, 59, 999);
       break;
     case 'week':
     case '7days':
