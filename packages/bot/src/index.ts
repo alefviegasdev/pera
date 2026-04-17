@@ -312,7 +312,7 @@ Quanto mais detalhes você der, melhor eu classifico!
     if (replyMsg && replyMsg.text && supabaseUserId) {
       const codeMatch = replyMsg.text.match(/#(id[a-zA-Z0-9]{4})/i);
       if (codeMatch) {
-        const replyCode = codeMatch[1].toUpperCase();
+        const replyCode = codeMatch[1];
         
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
         const response = await fetch(url, {
@@ -328,8 +328,8 @@ Quanto mais detalhes você der, melhor eu classifico!
         const aiText = result.candidates?.[0]?.content?.parts?.[0]?.text?.trim().replace(/```json|```/g, "") || "";
         const aiData = JSON.parse(aiText);
         
-        const { data: tData } = await supabase.from("transactions").select("*").eq("short_code", replyCode).eq("user_id", supabaseUserId).maybeSingle();
-        const { data: iData } = await supabase.from("installments").select("*").eq("short_code", replyCode).eq("user_id", supabaseUserId).maybeSingle();
+        const { data: tData } = await supabase.from("transactions").select("*").ilike("short_code", replyCode).eq("user_id", supabaseUserId).maybeSingle();
+        const { data: iData } = await supabase.from("installments").select("*").ilike("short_code", replyCode).eq("user_id", supabaseUserId).maybeSingle();
         
         const record = tData || iData;
         const table = tData ? "transactions" : (iData ? "installments" : null);
