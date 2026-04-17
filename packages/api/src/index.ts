@@ -17,49 +17,58 @@ const port = process.env.API_PORT || 3001;
 // Helper: Calculate date ranges
 const getDateRange = (period: string, start_date?: string, end_date?: string) => {
   const now = new Date();
-  let start = new Date(0); // Epoch
-  let end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+  const TIMEZONE_OFFSET_MS = -3 * 60 * 60 * 1000; // UTC-3 Brasil
+
+  // Calculate "now" and "today" in Brazil time (UTC - 3h)
+  const nowBrazil = new Date(now.getTime() + TIMEZONE_OFFSET_MS);
+  const todayBrazil = new Date(nowBrazil.getFullYear(), nowBrazil.getMonth(), nowBrazil.getDate());
+
+  // Convert back to UTC for database queries (Local + 3h)
+  const todayStartUTC = new Date(todayBrazil.getTime() - TIMEZONE_OFFSET_MS);
+  const todayEndUTC = new Date(todayStartUTC.getTime() + 24 * 60 * 60 * 1000 - 1);
 
   if (start_date && end_date) {
     return { start: new Date(start_date), end: new Date(end_date) };
   }
 
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  let start = new Date(0); // Epoch
+  let end = todayEndUTC;
 
   switch (period) {
     case 'today':
-      start = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0);
-      end = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
+      start = todayStartUTC;
+      end = todayEndUTC;
       break;
     case 'yesterday':
-      const yesterdayDate = new Date(today);
-      yesterdayDate.setDate(today.getDate() - 1);
-      start = new Date(yesterdayDate.getFullYear(), yesterdayDate.getMonth(), yesterdayDate.getDate(), 0, 0, 0, 0);
-      end = new Date(yesterdayDate.getFullYear(), yesterdayDate.getMonth(), yesterdayDate.getDate(), 23, 59, 59, 999);
+      start = new Date(todayStartUTC.getTime() - 24 * 60 * 60 * 1000);
+      end = new Date(todayStartUTC.getTime() - 1);
       break;
     case 'week':
     case '7days':
-      start = new Date(today);
-      start.setDate(today.getDate() - 7);
+      start = new Date(todayStartUTC);
+      start.setDate(start.getDate() - 7);
       break;
     case '14days':
-      start = new Date(today);
-      start.setDate(today.getDate() - 14);
+      start = new Date(todayStartUTC);
+      start.setDate(start.getDate() - 14);
       break;
     case '30days':
-      start = new Date(today);
-      start.setDate(today.getDate() - 30);
+      start = new Date(todayStartUTC);
+      start.setDate(start.getDate() - 30);
       break;
     case '90days':
-      start = new Date(today);
-      start.setDate(today.getDate() - 90);
+      start = new Date(todayStartUTC);
+      start.setDate(start.getDate() - 90);
       break;
     case 'month':
-      start = new Date(now.getFullYear(), now.getMonth(), 1);
+      const firstDayBrazil = new Date(nowBrazil.getFullYear(), nowBrazil.getMonth(), 1);
+      start = new Date(firstDayBrazil.getTime() - TIMEZONE_OFFSET_MS);
       break;
     case 'lastmonth':
-      start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+      const firstMonthBR = new Date(nowBrazil.getFullYear(), nowBrazil.getMonth() - 1, 1);
+      const lastDayLastMonthBR = new Date(nowBrazil.getFullYear(), nowBrazil.getMonth(), 0, 23, 59, 59, 999);
+      start = new Date(firstMonthBR.getTime() - TIMEZONE_OFFSET_MS);
+      end = new Date(lastDayLastMonthBR.getTime() - TIMEZONE_OFFSET_MS);
       break;
     case 'all':
       start = new Date(0);
