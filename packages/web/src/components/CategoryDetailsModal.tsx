@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X } from 'lucide-react';
+import { X, ChevronDown } from 'lucide-react';
 import { catEmoji } from '../utils/categories';
 
 const HAS_SUBCATEGORIES = ['Alimentação', 'Fast Food', 'Saúde', 'Transporte'];
@@ -27,6 +27,8 @@ export default function CategoryDetailsModal({ category, period, userId, onClose
   const [activeSubcat, setActiveSubcat] = useState<string>('Geral');
   const [dragStart, setDragStart] = useState<number | null>(null);
   const [dragOffset, setDragOffset] = useState(0);
+  const [modalPeriod, setModalPeriod] = useState<string>('today');
+  const [periodDropdownOpen, setPeriodDropdownOpen] = useState(false);
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -37,7 +39,7 @@ export default function CategoryDetailsModal({ category, period, userId, onClose
     const fetchTxs = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/transactions?user_id=${userId}&period=${period}`);
+        const res = await fetch(`/api/transactions?user_id=${userId}&period=${modalPeriod}`);
         const data = await res.json();
         const filtered = (data.transactions || []).filter((t: Transaction) => t.type === 'expense' && t.category === category);
         setTxs(filtered);
@@ -48,7 +50,7 @@ export default function CategoryDetailsModal({ category, period, userId, onClose
       }
     };
     fetchTxs();
-  }, [category, period, userId]);
+  }, [category, modalPeriod, userId]);
 
   const total = txs.reduce((sum, t) => sum + Number(t.value), 0);
   const emoji = catEmoji(category);
@@ -91,7 +93,8 @@ export default function CategoryDetailsModal({ category, period, userId, onClose
     if (offset > 0) setDragOffset(offset);
   };
   const handleTouchEnd = () => {
-    if (dragOffset > 80) onClose();
+    const modalHeight = window.innerHeight * 0.85;
+    if (dragOffset > modalHeight * 0.5) onClose();
     setDragStart(null);
     setDragOffset(0);
   };
@@ -101,6 +104,14 @@ export default function CategoryDetailsModal({ category, period, userId, onClose
     ...Object.keys(grouped).filter(k => k !== 'Geral')
   ];
   const visibleGroups = { [activeSubcat]: grouped[activeSubcat] || [] };
+
+  const PERIODS = [
+    { id: 'today', label: 'Hoje' },
+    { id: 'yesterday', label: 'Ontem' },
+    { id: 'week', label: 'Esta semana' },
+    { id: '7days', label: '7 dias' },
+    { id: 'month', label: 'Este mês' },
+  ];
 
   return (
     <div className="modal-overlay" onClick={onClose} style={{ overflowX: 'hidden' }}>
@@ -140,9 +151,10 @@ export default function CategoryDetailsModal({ category, period, userId, onClose
           </div>
         </div>
 
-        {hasSubCategories && (
-          <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2 mb-2 flex-shrink-0">
-            {subcatKeys.map(sub => (
+        <div className="flex items-center justify-between gap-2 mb-2 flex-shrink-0">
+          {/* Chips de subcategoria à esquerda */}
+          <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2 flex-1">
+            {hasSubCategories && subcatKeys.map(sub => (
               <button
                 key={sub}
                 onClick={() => setActiveSubcat(sub)}
@@ -156,7 +168,33 @@ export default function CategoryDetailsModal({ category, period, userId, onClose
               </button>
             ))}
           </div>
-        )}
+
+          {/* Dropdown de período à direita */}
+          <div className="relative flex-shrink-0 pb-2">
+            <button
+              onClick={() => setPeriodDropdownOpen(!periodDropdownOpen)}
+              className="flex items-center gap-1 bg-surface-container px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest text-on-surface-variant whitespace-nowrap active:scale-95 transition-all"
+            >
+              {PERIODS.find(p => p.id === modalPeriod)?.label}
+              <ChevronDown size={12} className={`transition-transform ${periodDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {periodDropdownOpen && (
+              <div className="absolute right-0 top-full mt-1 bg-white rounded-2xl shadow-xl border border-surface-container overflow-hidden z-50 w-36">
+                {PERIODS.map(p => (
+                  <button
+                    key={p.id}
+                    onClick={() => { setModalPeriod(p.id); setPeriodDropdownOpen(false); }}
+                    className={`w-full text-left px-4 py-2.5 text-xs font-bold transition-colors ${
+                      modalPeriod === p.id ? 'bg-primary/5 text-primary' : 'text-on-surface-variant hover:bg-surface-container-low'
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* Lista com scroll */}
         <div className="overflow-y-auto flex-1 space-y-4 pr-1" style={{ overflowX: 'hidden', overscrollBehavior: 'contain', touchAction: 'pan-y' }}>
