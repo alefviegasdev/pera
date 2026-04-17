@@ -380,6 +380,11 @@ body {
   margin: 0 auto;
 }
 
+.bottom-nav.hidden {
+  display: none !important;
+  pointer-events: none !important;
+}
+
 .nav-item {
   display: flex;
   flex-direction: column;
