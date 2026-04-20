@@ -7,15 +7,20 @@ const TitheDetailsModal = ({ userId, titheSummary, onClose }: { userId: string, 
   const [paying, setPaying] = useState(false);
   const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending');
   const [removingIncome, setRemovingIncome] = useState<any | null>(null);
+  const contentRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = ''; };
   }, []);
 
-  const handleTouchStart = (e: React.TouchEvent) => setDragStart(e.touches[0].clientY);
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (contentRef.current?.contains(e.target as Node)) return;
+    setDragStart(e.touches[0].clientY);
+  };
   const handleTouchMove = (e: React.TouchEvent) => {
     if (dragStart === null) return;
+    if (contentRef.current?.contains(e.target as Node)) return;
     const y = e.touches[0].clientY;
     const diff = y - dragStart;
     if (diff > 0) setDragOffset(diff);
@@ -114,7 +119,11 @@ const TitheDetailsModal = ({ userId, titheSummary, onClose }: { userId: string, 
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-6 pb-24 space-y-6">
+        <div 
+          ref={contentRef} 
+          className="flex-1 overflow-y-auto px-6 py-6 pb-24 space-y-6"
+          style={{ overscrollBehavior: 'contain', touchAction: 'pan-y' }}
+        >
           {activeTab === 'pending' && (
             <>
               <div className="grid grid-cols-2 gap-3 mb-6">
