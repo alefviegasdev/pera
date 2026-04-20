@@ -37,10 +37,11 @@ const Settings = ({
   const [goals,   setGoals]   = useState<any[]>([]);
   const [budgets, setBudgets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [titheActive, setTitheActive] = useState(true);
+  const [titheActive, setTitheActive] = useState<boolean | null>(null);
   const [totalIncome, setTotalIncome] = useState(0);
   const [categorySpending, setCategorySpending] = useState<any[]>([]);
-  const [tithePercentage, setTithePercentage] = useState(10);
+  const [tithePercentage, setTithePercentage] = useState<number | null>(null);
+  const [editingPct, setEditingPct] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [editBudget, setEditBudget] = useState<{ category: string; budget?: any } | null>(null);
   const [newLimit, setNewLimit] = useState('');
@@ -231,61 +232,101 @@ const Settings = ({
 
         {/* Tithe Section */}
         <section className="space-y-4">
-          <div className="flex items-center justify-between px-1">
-            <h3 className="font-headline text-xl font-extrabold tracking-tight text-on-background">Configuração de Dízimo</h3>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input 
-                type="checkbox" 
-                checked={titheActive} 
-                onChange={() => handleTitheActiveChange(!titheActive)}
-                className="sr-only peer" 
-              />
-              <div className="w-11 h-6 bg-surface-container-highest rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all shadow-inner"></div>
-              <span className="ms-3 text-[10px] font-black uppercase tracking-widest text-on-surface-variant">
-                {titheActive ? 'Ativo' : 'Inativo'}
-              </span>
-            </label>
-          </div>
+          {titheActive === null || tithePercentage === null ? (
+            <div className="skeleton h-48 w-full rounded-[2rem]" />
+          ) : (
+            <>
+              <div className="flex items-center justify-between px-1">
+                <h3 className="font-headline text-xl font-extrabold tracking-tight text-on-background">Configuração de Dízimo</h3>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={titheActive ?? true} 
+                    onChange={() => handleTitheActiveChange(!(titheActive ?? true))}
+                    className="sr-only peer" 
+                  />
+                  <div className="w-11 h-6 bg-outline-variant rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all shadow-inner"></div>
+                  <span className="ms-3 text-[10px] font-black uppercase tracking-widest text-on-surface-variant">
+                    {titheActive ? 'Ativo' : 'Inativo'}
+                  </span>
+                </label>
+              </div>
 
-          <div className={`bg-white rounded-[2rem] p-7 shadow-sm border border-surface-container transition-all overflow-hidden ${titheActive ? 'opacity-100 max-h-[500px]' : 'opacity-40 max-h-0 py-0 overflow-hidden text-transparent translate-y-4'}`}>
-            <div className="flex justify-between items-end mb-6">
-              <div>
-                <p className="text-on-surface-variant text-[10px] font-black uppercase tracking-[0.2em] mb-2">Valor Calculado</p>
-                <p className="font-headline text-3xl font-black text-primary leading-tight">
-                  {fmt(totalIncome * (tithePercentage / 100))}
+              <div className={`bg-white rounded-[2rem] p-7 shadow-sm border border-surface-container transition-all overflow-hidden ${titheActive ? 'opacity-100 max-h-[500px]' : 'opacity-40 max-h-0 py-0 overflow-hidden text-transparent translate-y-4'}`}>
+                <div className="flex justify-between items-end mb-6">
+                  <div>
+                    <p className="text-on-surface-variant text-[10px] font-black uppercase tracking-[0.2em] mb-2">Valor Calculado</p>
+                    <p className="font-headline text-3xl font-black text-primary leading-tight">
+                      {fmt(totalIncome * ((tithePercentage ?? 10) / 100))}
+                    </p>
+                  </div>
+                  {editingPct ? (
+                    <div className="text-right">
+                      <p className="text-on-surface-variant text-[10px] font-black uppercase tracking-[0.2em] mb-2">Percentual</p>
+                      <div className="flex items-center gap-1 justify-end">
+                        <input
+                          type="number"
+                          min="10"
+                          max="100"
+                          autoFocus
+                          value={tithePercentage ?? 10}
+                          onChange={e => {
+                            const val = Math.max(10, Math.min(100, parseInt(e.target.value) || 10));
+                            setTithePercentage(val);
+                          }}
+                          onBlur={() => {
+                            setEditingPct(false);
+                            handleTithePercentageSave(tithePercentage ?? 10);
+                          }}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') {
+                              setEditingPct(false);
+                              handleTithePercentageSave(tithePercentage ?? 10);
+                            }
+                          }}
+                          className="w-16 text-right bg-surface-container-low rounded-xl px-2 py-1 font-headline text-xl font-bold text-on-surface border-none focus:ring-2 focus:ring-primary/20"
+                        />
+                        <span className="font-headline text-xl font-bold">%</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-right cursor-pointer" onClick={() => setEditingPct(true)}>
+                      <p className="text-on-surface-variant text-[10px] font-black uppercase tracking-[0.2em] mb-2">Percentual</p>
+                      <p className="font-headline text-xl font-bold flex items-center gap-1 justify-end">
+                        {tithePercentage ?? 10}%
+                        <Pencil size={14} className="text-on-surface-variant opacity-40" />
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="relative mb-6">
+                  <input 
+                    type="range"
+                    min="10"
+                    max="100"
+                    step="1"
+                    value={tithePercentage ?? 10}
+                    onChange={(e) => setTithePercentage(parseInt(e.target.value))}
+                    onMouseUp={() => handleTithePercentageSave(tithePercentage ?? 10)}
+                    onTouchEnd={() => handleTithePercentageSave(tithePercentage ?? 10)}
+                    className="w-full h-3 rounded-full appearance-none cursor-pointer"
+                    style={{
+                      background: `linear-gradient(to right, var(--primary) ${((tithePercentage ?? 10) - 10) / 90 * 100}%, var(--surface-container-low) ${((tithePercentage ?? 10) - 10) / 90 * 100}%)`
+                    }}
+                  />
+                  <div className="flex justify-between mt-2">
+                    <span className="text-[10px] font-bold text-on-surface-variant opacity-50">10%</span>
+                    <span className="text-[10px] font-bold text-on-surface-variant opacity-50">100%</span>
+                  </div>
+                </div>
+
+                <p className="text-xs text-on-surface-variant leading-relaxed font-medium">
+                  Baseado na sua renda mensal de <span className="font-bold text-on-background">{fmt(totalIncome)}</span>. O valor é provisionado automaticamente ao receber depósitos.
                 </p>
               </div>
-              <div className="text-right">
-                <p className="text-on-surface-variant text-[10px] font-black uppercase tracking-[0.2em] mb-2">Percentual</p>
-                <p className="font-headline text-xl font-bold">{tithePercentage}%</p>
-              </div>
-            </div>
-
-            <div className="relative mb-6">
-              <input 
-                type="range"
-                min="10"
-                max="100"
-                step="1"
-                value={tithePercentage}
-                onChange={(e) => setTithePercentage(parseInt(e.target.value))}
-                onMouseUp={() => handleTithePercentageSave(tithePercentage)}
-                onTouchEnd={() => handleTithePercentageSave(tithePercentage)}
-                className="w-full h-3 rounded-full appearance-none cursor-pointer"
-                style={{
-                  background: `linear-gradient(to right, var(--primary) ${(tithePercentage - 10) / 90 * 100}%, var(--surface-container-low) ${(tithePercentage - 10) / 90 * 100}%)`
-                }}
-              />
-              <div className="flex justify-between mt-2">
-                <span className="text-[10px] font-bold text-on-surface-variant opacity-50">10%</span>
-                <span className="text-[10px] font-bold text-on-surface-variant opacity-50">100%</span>
-              </div>
-            </div>
-
-            <p className="text-xs text-on-surface-variant leading-relaxed font-medium">
-              Baseado na sua renda mensal de <span className="font-bold text-on-background">{fmt(totalIncome)}</span>. O valor é provisionado automaticamente ao receber depósitos.
-            </p>
-          </div>
+            </>
+          )}
         </section>
 
         {/* Fixed Bills Section */}

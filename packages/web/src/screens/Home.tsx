@@ -240,7 +240,7 @@ const Home = ({
       : income * 0.10;
 
     const tithePending = titheSummary?.balance_due > 0 ? titheSummary.balance_due : 0;
-    const tithing = tithePending > 0 ? tithePending : tithingFallback;
+    const tithing = titheActive ? (tithePending > 0 ? tithePending : tithingFallback) : 0;
 
   // Values for the Total Card
   const totalFixedVal = totalBills + installmentTotal + tithing;
