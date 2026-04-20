@@ -295,7 +295,10 @@ const Settings = ({
                           setEditingPct(false);
                           setPctError('');
                         } else {
-                          setPctError('Mínimo 10%');
+                          // Resetar para o último valor válido em vez de manter o inválido
+                          setPctInput(String(tithePercentage));
+                          setPctError('');
+                          setEditingPct(false);
                         }
                       }}
                       onKeyDown={e => {
@@ -307,6 +310,7 @@ const Settings = ({
                             setEditingPct(false);
                             setPctError('');
                           } else {
+                            setPctInput(String(tithePercentage));
                             setPctError('Mínimo 10%');
                           }
                         }
