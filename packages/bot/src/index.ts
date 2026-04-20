@@ -1,6 +1,6 @@
 import path from 'path'
 import dotenv from 'dotenv'
-import { Bot } from "grammy";
+import { Bot, InlineKeyboard } from "grammy";
 import { createClient } from "@supabase/supabase-js";
 import http from "http";
 
@@ -863,10 +863,33 @@ Exemplos que funcionam:
         if (error) throw error;
 
         const subcatLine = item.subcategory ? `\n📌 ${item.subcategory}` : '';
+
+        if (item.type === 'income') {
+          const { data: userProfile } = await supabase
+            .from('user_profiles')
+            .select('tithe_active')
+            .eq('user_id', supabaseUserId)
+            .maybeSingle();
+
+          const titheIsActive = userProfile?.tithe_active !== false;
+
+          if (titheIsActive) {
+            const keyboard = new InlineKeyboard()
+              .text('✅ Sim, conta para o dízimo', `tithe_yes_${shortCode}`)
+              .text('❌ Não conta', `tithe_no_${shortCode}`);
+
+            await ctx.reply(
+              `✅ Receita registrada! #${shortCode}\n💰 R$ ${Number(item.value).toFixed(2)}\n📝 ${item.description || item.category || 'Sem descrição'}\n\n🙏 Essa entrada conta para o cálculo do dízimo?`,
+              { reply_markup: keyboard }
+            );
+            continue;
+          }
+        }
+
         await ctx.reply(`✅ Registrado! #${shortCode}
 💰 R$ ${Number(item.value).toFixed(2)}
 📂 ${item.category}${subcatLine}
-📝 ${item.description}
+📝 ${item.description || item.category || 'Sem descrição'}
 🏷️ ${subtypeLabel}
 ⏱️ ${urgencyLabel}`);
       }
@@ -881,6 +904,26 @@ O que você pode fazer:
 - Se o erro persistir, tenta reformular a mensagem
 
 💡 Se estava tentando corrigir uma transação, confirma se o código está certo.`);
+  }
+});
+
+bot.on('callback_query:data', async (ctx) => {
+  const data = ctx.callbackQuery.data;
+  
+  if (data.startsWith('tithe_yes_') || data.startsWith('tithe_no_')) {
+    const shortCode = data.replace('tithe_yes_', '').replace('tithe_no_', '');
+    const countsForTithe = data.startsWith('tithe_yes_');
+    
+    await supabase
+      .from('transactions')
+      .update({ counts_for_tithe: countsForTithe })
+      .eq('short_code', shortCode);
+    
+    await ctx.answerCallbackQuery();
+    await ctx.editMessageText(
+      (ctx.callbackQuery.message?.text?.split('\n\n')[0] || '✅ Receita atualizada') + 
+      `\n\n${countsForTithe ? '✅ Conta para o dízimo' : '❌ Não conta para o dízimo'}`
+    );
   }
 });
 

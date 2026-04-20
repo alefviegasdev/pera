@@ -4,6 +4,7 @@ import TransactionModal from '../components/TransactionModal';
 import FixedDetailsModal from '../components/FixedDetailsModal';
 import CategoryDetailsModal from '../components/CategoryDetailsModal';
 import IncomeDetailsModal from '../components/IncomeDetailsModal';
+import TitheDetailsModal from '../components/TitheDetailsModal';
 import { ArrowRight, ArrowUpRight, ArrowDownRight, AlertTriangle, CreditCard, ChevronRight, Zap, Wifi, Home as HomeIcon, Dumbbell, Pin, AlertCircle, CheckCircle2, Heart } from 'lucide-react';
 
 const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -37,12 +38,12 @@ const Home = ({
   const [titheActive, setTitheActive] = useState(true);
 
   useEffect(() => {
-    if (selectedTx || showFixedModal || selectedCategory || showIncomeModal) {
+    if (selectedTx || showFixedModal || selectedCategory || showIncomeModal || showTitheModal) {
       onModalOpen?.();
     } else {
       onModalClose?.();
     }
-  }, [selectedTx, showFixedModal, selectedCategory, showIncomeModal]);
+  }, [selectedTx, showFixedModal, selectedCategory, showIncomeModal, showTitheModal]);
 
 
 
@@ -699,6 +700,14 @@ const Home = ({
         <IncomeDetailsModal 
           userId={userId} 
           onClose={() => setShowIncomeModal(false)} 
+        />
+      )}
+
+      {showTitheModal && titheSummary && (
+        <TitheDetailsModal
+          userId={userId}
+          titheSummary={titheSummary}
+          onClose={() => { setShowTitheModal(false); fetchData(true); }}
         />
       )}
     </div>

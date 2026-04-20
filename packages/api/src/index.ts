@@ -611,8 +611,8 @@ app.get('/tithe-summary', async (req, res) => {
 
     const [profileRes, txRes, paymentsRes] = await Promise.all([
       supabase.from('user_profiles').select('tithe_percentage').eq('user_id', user_id).single(),
-      supabase.from('transactions').select('value').eq('user_id', user_id).eq('counts_for_tithe', true).eq('type', 'income'),
-      supabase.from('tithe_payments').select('value, id').eq('user_id', user_id)
+      supabase.from('transactions').select('id, description, value, occurred_at').eq('user_id', user_id).eq('counts_for_tithe', true).eq('type', 'income').order('occurred_at', { ascending: false }),
+      supabase.from('tithe_payments').select('*').eq('user_id', user_id).order('paid_at', { ascending: false })
     ]);
 
     const percentage = profileRes.data?.tithe_percentage ?? 10;
@@ -624,7 +624,7 @@ app.get('/tithe-summary', async (req, res) => {
     const total_paid = payments.reduce((sum, p) => sum + Number(p.value), 0);
     const balance_due = tithe_due - total_paid;
 
-    res.json({ total_titheable, tithe_due, total_paid, balance_due, payments });
+    res.json({ total_titheable, tithe_due, total_paid, balance_due, titheable_incomes: incomes, payments });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
