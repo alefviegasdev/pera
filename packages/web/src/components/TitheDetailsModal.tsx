@@ -6,6 +6,7 @@ const TitheDetailsModal = ({ userId, titheSummary, onClose }: { userId: string, 
   const [payingAmount, setPayingAmount] = useState<string>('');
   const [paying, setPaying] = useState(false);
   const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending');
+  const [removingIncome, setRemovingIncome] = useState<any | null>(null);
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -72,7 +73,7 @@ const TitheDetailsModal = ({ userId, titheSummary, onClose }: { userId: string, 
     <div className="fixed inset-0 bg-black/60 z-[100] flex flex-col justify-end animate-in fade-in duration-300">
       <div className="flex-1" onClick={onClose} />
       <div 
-        className="bg-background rounded-t-[2.5rem] w-full flex flex-col overflow-hidden pointer-events-auto"
+        className="bg-white rounded-t-[2.5rem] w-full flex flex-col overflow-hidden pointer-events-auto shadow-2xl"
         style={{ 
           height: '85dvh',
           transform: `translateY(${Math.max(0, dragOffset)}px)`,
@@ -141,12 +142,20 @@ const TitheDetailsModal = ({ userId, titheSummary, onClose }: { userId: string, 
                     <p className="text-sm font-medium text-on-surface-variant text-center py-4">Nenhuma entrada recente.</p>
                   ) : (
                     titheSummary?.titheable_incomes?.map((inc: any, i: number) => (
-                      <div key={i} className="flex justify-between items-center p-4 bg-surface-container-low rounded-2xl">
-                        <div>
+                      <div key={i} className="flex items-center justify-between gap-3 p-4 bg-surface-container-low rounded-2xl">
+                        <div className="flex-1">
                           <p className="font-bold text-on-surface">{inc.description}</p>
-                          <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">{new Date(inc.occurred_at).toLocaleDateString('pt-BR')}</p>
+                          <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">
+                            {new Date(inc.occurred_at).toLocaleDateString('pt-BR')}
+                          </p>
                         </div>
                         <p className="font-headline font-black text-primary">{fmt(Number(inc.value))}</p>
+                        <button
+                          onClick={() => setRemovingIncome(inc)}
+                          className="ml-2 w-8 h-8 rounded-full bg-error/10 flex items-center justify-center text-error hover:bg-error/20 transition-colors flex-shrink-0"
+                        >
+                          <span className="text-sm font-bold">×</span>
+                        </button>
                       </div>
                     ))
                   )}
@@ -194,6 +203,44 @@ const TitheDetailsModal = ({ userId, titheSummary, onClose }: { userId: string, 
           )}
         </div>
       </div>
+
+      {removingIncome && (
+        <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-6" onClick={() => setRemovingIncome(null)}>
+          <div className="bg-white rounded-[2.5rem] w-full max-w-xs p-8 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="text-center mb-6">
+              <p className="text-2xl mb-3">⚠️</p>
+              <h3 className="font-headline text-xl font-black text-on-surface mb-2">Retirar do cálculo?</h3>
+              <p className="text-sm text-on-surface-variant">
+                A entrada <span className="font-bold text-on-surface">"{removingIncome.description}"</span> de{' '}
+                <span className="font-bold text-primary">{fmt(Number(removingIncome.value))}</span>{' '}
+                não será mais considerada no cálculo do dízimo.
+              </p>
+            </div>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={async () => {
+                  await fetch(`/api/transactions/${removingIncome.id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ counts_for_tithe: false })
+                  });
+                  setRemovingIncome(null);
+                  onClose();
+                }}
+                className="w-full bg-error text-white py-4 rounded-full font-bold active:scale-95 transition-all"
+              >
+                Sim, retirar
+              </button>
+              <button
+                onClick={() => setRemovingIncome(null)}
+                className="w-full text-on-surface-variant py-3 rounded-full font-bold active:scale-95 transition-all"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

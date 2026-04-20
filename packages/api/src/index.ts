@@ -200,11 +200,12 @@ app.delete('/transactions/:id', async (req, res) => {
 app.patch('/transactions/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { value, category, subcategory } = req.body;
+    const { value, category, subcategory, counts_for_tithe } = req.body;
     const updates: any = {};
     if (value !== undefined) updates.value = value;
     if (category !== undefined) updates.category = category;
     if ('subcategory' in req.body) updates.subcategory = subcategory;
+    if ('counts_for_tithe' in req.body) updates.counts_for_tithe = counts_for_tithe;
     const { data, error } = await supabase
       .from('transactions')
       .update(updates)
