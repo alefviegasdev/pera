@@ -50,6 +50,24 @@ const Settings = ({
   const [showNewGoal, setShowNewGoal] = useState(false);
   const [showNewBudget, setShowNewBudget] = useState(false);
 
+  // Tithe persistence handlers
+  const handleTitheActiveChange = async (active: boolean) => {
+    setTitheActive(active);
+    await fetch('/api/user-profile', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId, tithe_active: active })
+    });
+  };
+
+  const handleTithePercentageSave = async (pct: number) => {
+    await fetch('/api/user-profile', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId, tithe_percentage: pct })
+    });
+  };
+
   useEffect(() => {
     if (showNewBill || showNewGoal || showNewBudget || showLogoutConfirm || editBudget) {
       onModalOpen?.();
@@ -70,23 +88,28 @@ const Settings = ({
   const fetchData = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const [fRes, gRes, bRes, sRes] = await Promise.all([
+      const [fRes, gRes, bRes, sRes, profileRes] = await Promise.all([
         fetch(`/api/monthly-bills?user_id=${userId}`),
         fetch(`/api/goals?user_id=${userId}`),
         fetch(`/api/budgets?user_id=${userId}`),
-        fetch(`/api/transactions/summary?user_id=${userId}&period=month`)
+        fetch(`/api/transactions/summary?user_id=${userId}&period=month`),
+        fetch(`/api/user-profile?user_id=${userId}`)
       ]);
-      const [fData, gData, bData, sData] = await Promise.all([
+      const [fData, gData, bData, sData, profileData] = await Promise.all([
         fRes.json(), 
         gRes.json(), 
         bRes.json(),
-        sRes.json()
+        sRes.json(),
+        profileRes.json()
       ]);
       setFixed(Array.isArray(fData) ? fData : []);
       setGoals(Array.isArray(gData) ? gData : []);
       setBudgets(Array.isArray(bData) ? bData : []);
       if (sData?.total_income) setTotalIncome(Number(sData.total_income));
       if (sData?.by_category) setCategorySpending(sData.by_category);
+      
+      if (profileData?.tithe_percentage) setTithePercentage(profileData.tithe_percentage);
+      if (profileData?.tithe_active !== undefined) setTitheActive(profileData.tithe_active);
     } catch (e) {
       console.error(e);
     } finally {
@@ -214,7 +237,7 @@ const Settings = ({
               <input 
                 type="checkbox" 
                 checked={titheActive} 
-                onChange={() => setTitheActive(!titheActive)}
+                onChange={() => handleTitheActiveChange(!titheActive)}
                 className="sr-only peer" 
               />
               <div className="w-11 h-6 bg-surface-container-highest rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all shadow-inner"></div>
@@ -238,16 +261,25 @@ const Settings = ({
               </div>
             </div>
 
-            <div className="mb-6">
+            <div className="relative mb-6">
               <input 
                 type="range"
-                min="0"
+                min="10"
                 max="100"
                 step="1"
                 value={tithePercentage}
                 onChange={(e) => setTithePercentage(parseInt(e.target.value))}
-                className="w-full h-2 bg-surface-container-low rounded-full appearance-none cursor-pointer accent-primary"
+                onMouseUp={() => handleTithePercentageSave(tithePercentage)}
+                onTouchEnd={() => handleTithePercentageSave(tithePercentage)}
+                className="w-full h-3 rounded-full appearance-none cursor-pointer"
+                style={{
+                  background: `linear-gradient(to right, var(--primary) ${(tithePercentage - 10) / 90 * 100}%, var(--surface-container-low) ${(tithePercentage - 10) / 90 * 100}%)`
+                }}
               />
+              <div className="flex justify-between mt-2">
+                <span className="text-[10px] font-bold text-on-surface-variant opacity-50">10%</span>
+                <span className="text-[10px] font-bold text-on-surface-variant opacity-50">100%</span>
+              </div>
             </div>
 
             <p className="text-xs text-on-surface-variant leading-relaxed font-medium">

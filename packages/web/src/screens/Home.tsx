@@ -32,8 +32,9 @@ const Home = ({
   const [showIncomeModal, setShowIncomeModal] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [billTab, setBillTab] = useState<'pending' | 'paid'>('pending');
-
-
+  const [titheSummary, setTitheSummary] = useState<any>(null);
+  const [showTitheModal, setShowTitheModal] = useState(false);
+  const [titheActive, setTitheActive] = useState(true);
 
   useEffect(() => {
     if (selectedTx || showFixedModal || selectedCategory || showIncomeModal) {
@@ -57,12 +58,14 @@ const Home = ({
   const fetchData = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const [sRes, bRes, tRes, iRes, budgetsRes] = await Promise.all([
+      const [sRes, bRes, tRes, iRes, budgetsRes, titheSummaryRes, profileRes] = await Promise.all([
         fetch(`/api/transactions/summary?user_id=${userId}&period=month`),
         fetch(`/api/monthly-bills?user_id=${userId}`),
         fetch(`/api/transactions?user_id=${userId}&period=month`),
         fetch(`/api/installments?user_id=${userId}`),
-        fetch(`/api/budgets?user_id=${userId}`)
+        fetch(`/api/budgets?user_id=${userId}`),
+        fetch(`/api/tithe-summary?user_id=${userId}`),
+        fetch(`/api/user-profile?user_id=${userId}`)
       ]);
       setSummary(await sRes.json());
       const billsData = await bRes.json();
@@ -73,6 +76,12 @@ const Home = ({
       setInstallments(Array.isArray(instData) ? instData : []);
       const budgetsData = await budgetsRes.json();
       setBudgets(Array.isArray(budgetsData) ? budgetsData : []);
+      
+      const titheSummaryData = await titheSummaryRes.json();
+      setTitheSummary(titheSummaryData);
+      
+      const profileData = await profileRes.json();
+      setTitheActive(profileData?.tithe_active !== false);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
@@ -226,9 +235,12 @@ const Home = ({
     .reduce((sum, i) => sum + Number(i.installment_value), 0);
     
     const dizimoBudget = budgets.find(b => b.category === 'Dízimo/Oferta');
-    const tithing = dizimoBudget?.monthly_limit 
+    const tithingFallback = dizimoBudget?.monthly_limit 
       ? Number(dizimoBudget.monthly_limit) 
       : income * 0.10;
+
+    const tithePending = titheSummary?.balance_due > 0 ? titheSummary.balance_due : 0;
+    const tithing = tithePending > 0 ? tithePending : tithingFallback;
 
   // Values for the Total Card
   const totalFixedVal = totalBills + installmentTotal + tithing;
@@ -251,11 +263,12 @@ const Home = ({
         current: i.current_installment,
         total: i.total_installments
       })),
-    ...(tithing > 0 ? [{ 
+    ...(tithePending > 0 && titheActive ? [{ 
       id: 'tithing', 
-      name: 'Dízimo do mês', 
-      value: tithing, 
-      itemType: 'tithing'
+      name: 'Dízimo', 
+      value: tithePending,
+      itemType: 'tithing',
+      titheSummary: titheSummary
     }] : [])
   ];
 
@@ -503,7 +516,7 @@ const Home = ({
                 const daysLeft = isMonthlyBill ? b.due_day - today : null;
                 
                 return (
-                  <div key={b.id} className="bg-white p-7 rounded-[2.5rem] flex items-center justify-between border border-surface-container/50 shadow-sm transition-all hover:shadow-md hover:scale-[1.01]">
+                  <div key={b.id} onClick={b.itemType === 'tithing' ? () => setShowTitheModal(true) : undefined} className={`bg-white p-7 rounded-[2.5rem] flex items-center justify-between border border-surface-container/50 shadow-sm transition-all hover:shadow-md hover:scale-[1.01] ${b.itemType === 'tithing' ? 'cursor-pointer' : ''}`}>
                     <div className="flex items-center gap-5">
                       <div className="w-14 h-14 bg-surface-container-low rounded-2xl flex items-center justify-center">
                         {b.itemType === 'installment' ? <CreditCard size={24} className="text-secondary" /> : 

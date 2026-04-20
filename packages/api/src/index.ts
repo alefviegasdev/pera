@@ -567,6 +567,85 @@ app.post('/goals', async (req, res) => {
   }
 });
 
+app.get('/user-profile', async (req, res) => {
+  try {
+    const { user_id } = req.query;
+    if (!user_id) return res.status(400).json({ error: "user_id is required" });
+    const { data, error } = await supabase.from('user_profiles').select('tithe_active, tithe_percentage').eq('user_id', user_id).single();
+    if (error && error.code !== 'PGRST116') throw error;
+    res.json(data || { tithe_active: true, tithe_percentage: 10 });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.patch('/user-profile', async (req, res) => {
+  try {
+    const { user_id, tithe_active, tithe_percentage } = req.body;
+    if (!user_id) return res.status(400).json({ error: "user_id is required" });
+    
+    const updates: any = {};
+    if (tithe_active !== undefined) updates.tithe_active = tithe_active;
+    if (tithe_percentage !== undefined) updates.tithe_percentage = tithe_percentage;
+
+    const { data: existing } = await supabase.from('user_profiles').select('id').eq('user_id', user_id).single();
+
+    let result;
+    if (existing) {
+      result = await supabase.from('user_profiles').update(updates).eq('user_id', user_id).select();
+    } else {
+      result = await supabase.from('user_profiles').insert({ user_id, ...updates }).select();
+    }
+
+    if (result.error) throw result.error;
+    res.json(result.data[0]);
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/tithe-summary', async (req, res) => {
+  try {
+    const { user_id } = req.query;
+    if (!user_id) return res.status(400).json({ error: "user_id is required" });
+
+    const [profileRes, txRes, paymentsRes] = await Promise.all([
+      supabase.from('user_profiles').select('tithe_percentage').eq('user_id', user_id).single(),
+      supabase.from('transactions').select('value').eq('user_id', user_id).eq('counts_for_tithe', true).eq('type', 'income'),
+      supabase.from('tithe_payments').select('value, id').eq('user_id', user_id)
+    ]);
+
+    const percentage = profileRes.data?.tithe_percentage ?? 10;
+    const incomes = txRes.data || [];
+    const payments = paymentsRes.data || [];
+
+    const total_titheable = incomes.reduce((sum, tx) => sum + Number(tx.value), 0);
+    const tithe_due = total_titheable * (percentage / 100);
+    const total_paid = payments.reduce((sum, p) => sum + Number(p.value), 0);
+    const balance_due = tithe_due - total_paid;
+
+    res.json({ total_titheable, tithe_due, total_paid, balance_due, payments });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/tithe-payments', async (req, res) => {
+  try {
+    const { user_id, value, description, short_code } = req.body;
+    if (!user_id) return res.status(400).json({ error: "user_id is required" });
+
+    const { data, error } = await supabase.from('tithe_payments').insert({
+      user_id, value, description, short_code
+    }).select();
+
+    if (error) throw error;
+    res.json(data[0]);
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.listen(port, () => {
   console.log(`API Pera rodando na porta ${port}`);
 });
