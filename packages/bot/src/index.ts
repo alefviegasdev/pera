@@ -236,6 +236,31 @@ bot.command("broadcast", async (ctx) => {
   return ctx.reply(`✅ Broadcast enviado!\n✔️ ${success} entregues\n❌ ${failed} falhas`);
 });
 
+function isDizimo(text: string): boolean {
+  const t = text.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, ''); // remove acentos
+  
+  // Palavras-chave exatas ou contidas
+  const keywords = ['dizimo', 'tithe', 'oferta', 'dizmo', 'dismo', 'dizino'];
+  if (keywords.some(k => t.includes(k))) return true;
+  
+  // Similaridade simples — aceita até 2 erros em palavras de 5+ chars
+  function levenshtein(a: string, b: string): number {
+    const dp = Array.from({ length: a.length + 1 }, (_, i) =>
+      Array.from({ length: b.length + 1 }, (_, j) => i === 0 ? j : j === 0 ? i : 0)
+    );
+    for (let i = 1; i <= a.length; i++)
+      for (let j = 1; j <= b.length; j++)
+        dp[i][j] = a[i-1] === b[j-1]
+          ? dp[i-1][j-1]
+          : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+    return dp[a.length][b.length];
+  }
+  
+  const words = t.split(/\s+/);
+  return words.some(w => w.length >= 4 && levenshtein(w, 'dizimo') <= 2);
+}
+
 bot.on("message:text", async (ctx) => {
   const text = ctx.message.text.trim();
   const userId = ctx.from.id.toString();
@@ -687,7 +712,7 @@ Exemplos que funcionam:
           .filter(w => w.length > 2 && !['de', 'do', 'da', 'os', 'as', 'um', 'uma', 'the', 'para', 'com'].includes(w));
 
         // --- Lógica Especial: Dízimo ---
-        if (item.description.toLowerCase().includes('dízimo') || item.description.toLowerCase().includes('oferta')) {
+        if (isDizimo(item.description)) {
           // 1. Buscar perfil para pegar porcentagem
           const { data: userProfile } = await supabase
             .from('user_profiles')
