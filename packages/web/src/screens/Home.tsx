@@ -24,6 +24,8 @@ const Home = ({
 }) => {
   const [summary, setSummary] = useState<any>(null);
   const [bills, setBills]     = useState<any[]>([]);
+  const [paidBills, setPaidBills] = useState<any[]>([]);
+  const [paidPreviousRecent, setPaidPreviousRecent] = useState<any[]>([]);
   const [txs, setTxs]         = useState<any[]>([]);
   const [installments, setInstallments] = useState<any[]>([]);
   const [budgets, setBudgets]      = useState<any[]>([]);
@@ -61,7 +63,7 @@ const Home = ({
     try {
       const [sRes, bRes, tRes, iRes, budgetsRes, titheSummaryRes, profileRes] = await Promise.all([
         fetch(`/api/transactions/summary?user_id=${userId}&period=month`),
-        fetch(`/api/monthly-bills?user_id=${userId}`),
+        fetch(`/api/monthly-bills-all?user_id=${userId}`),
         fetch(`/api/transactions?user_id=${userId}&period=month`),
         fetch(`/api/installments?user_id=${userId}`),
         fetch(`/api/budgets?user_id=${userId}`),
@@ -69,8 +71,14 @@ const Home = ({
         fetch(`/api/user-profile?user_id=${userId}`)
       ]);
       setSummary(await sRes.json());
-      const billsData = await bRes.json();
-      setBills(Array.isArray(billsData) ? billsData : []);
+      const allBillsData = await bRes.json();
+      const unpaidBills = Array.isArray(allBillsData.unpaid) ? allBillsData.unpaid : [];
+      const paidCurrentBills = Array.isArray(allBillsData.paid_current) ? allBillsData.paid_current : [];
+      const paidPrevRecent = Array.isArray(allBillsData.paid_previous_recent) ? allBillsData.paid_previous_recent : [];
+
+      setBills(unpaidBills);
+      setPaidBills(paidCurrentBills);
+      setPaidPreviousRecent(paidPrevRecent);
       const txData = await tRes.json();
       setTxs(txData.transactions || []);
       const instData = await iRes.json();
@@ -177,12 +185,7 @@ const Home = ({
   const monthLabel = MONTH_NAMES[now.getMonth()];
   const year = now.getFullYear();
 
-  const pendingBills = bills.filter(b => !b.paid).sort((a, b) => a.due_day - b.due_day);
-  const paidBills = bills.filter(b => b.paid).sort((a, b) => {
-    const dateA = a.paid_at ? new Date(a.paid_at).getTime() : 0;
-    const dateB = b.paid_at ? new Date(b.paid_at).getTime() : 0;
-    return dateB - dateA;
-  });
+  const pendingBills = bills; // já são todas não pagas
   const alerts  = pendingBills.filter(b => b.due_day <= today + 2);
 
   const fmt = (n: number) =>
@@ -264,17 +267,28 @@ const Home = ({
         current: i.current_installment,
         total: i.total_installments
       })),
-    ...(tithePending > 0 && titheActive ? [{ 
-      id: 'tithing', 
-      name: 'Dízimo', 
-      value: tithePending,
-      itemType: 'tithing',
-      titheSummary: titheSummary
-    }] : [])
+    ...(titheActive && titheSummary?.monthly_breakdown ? 
+      titheSummary.monthly_breakdown
+        .filter((m: any) => m.balance_due > 0)
+        .map((m: any) => ({
+          id: `tithing-${m.key}`,
+          name: `Dízimo — ${MONTH_NAMES[m.month - 1]}`,
+          value: m.balance_due,
+          itemType: 'tithing',
+          titheMonth: m
+        }))
+      : []
+    )
   ];
 
   const allPaid = [
-    ...paidBills.map(b => ({ ...b, itemType: 'bill' })),
+    ...paidBills.map(b => ({ ...b, itemType: 'bill', isFromPreviousMonth: false })),
+    ...paidPreviousRecent.map(b => ({ 
+      ...b, 
+      itemType: 'bill', 
+      isFromPreviousMonth: true,
+      previousMonthName: MONTH_NAMES[b.month - 1]
+    })),
     ...installments
       .filter(i => paidInstallmentNames.some(name => i.description?.toLowerCase().includes(name) || name?.includes(i.description?.toLowerCase())))
       .map(i => ({
@@ -515,6 +529,9 @@ const Home = ({
               allPending.map(b => {
                 const isMonthlyBill = b.itemType === 'bill';
                 const daysLeft = isMonthlyBill ? b.due_day - today : null;
+                const isOverdue = b.itemType === 'bill' && 
+                  (b.year < now.getFullYear() || 
+                   (b.year === now.getFullYear() && b.month < now.getMonth() + 1));
                 
                 return (
                   <div key={b.id} onClick={b.itemType === 'tithing' ? () => setShowTitheModal(true) : undefined} className={`bg-white p-7 rounded-[2.5rem] flex items-center justify-between border border-surface-container/50 shadow-sm transition-all hover:shadow-md hover:scale-[1.01] ${b.itemType === 'tithing' ? 'cursor-pointer' : ''}`}>
@@ -525,7 +542,13 @@ const Home = ({
                          getBillIcon(b.name)}
                       </div>
                       <div>
-                        <p className="text-on-surface font-bold text-base font-headline">{b.name}</p>
+                        <p className="text-on-surface font-bold text-base font-headline">{b.name}
+                        {isOverdue && (
+                          <span className="ml-2 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-error/10 text-error">
+                            Atrasado
+                          </span>
+                        )}
+                        </p>
                         {isMonthlyBill ? (
                           <p className={`text-sm mt-0.5 font-bold ${daysLeft !== null && daysLeft <= 2 ? 'text-error' : 'text-on-surface-variant'}`}>
                             {daysLeft === 0 ? 'Vence hoje' : (daysLeft !== null && daysLeft < 0) ? `Atrasado ${Math.abs(daysLeft)}d` : `Vence em ${daysLeft} dias`}
@@ -582,6 +605,11 @@ const Home = ({
                           <CheckCircle2 size={14} fill="currentColor" className="opacity-80" />
                           {b.itemType === 'installment' ? 'Parcela paga este mês' : `Pago em ${day} ${month}`}
                         </p>
+                        {b.isFromPreviousMonth && (
+                          <span className="px-2 py-0.5 mt-1 inline-block rounded-full text-[9px] font-black bg-secondary/10 text-secondary uppercase tracking-widest">
+                            {b.previousMonthName} (anterior)
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-3">

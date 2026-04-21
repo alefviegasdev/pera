@@ -443,6 +443,65 @@ app.get('/bill-due-dates', async (req, res) => {
   }
 });
 
+app.get('/monthly-bills-all', async (req, res) => {
+  try {
+    const { user_id } = req.query;
+    if (!user_id) return res.status(400).json({ error: "user_id required" });
+
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
+
+    // Sync mês atual
+    await syncMonthlyBills(user_id as string, currentMonth, currentYear);
+
+    // Buscar TODAS as bills não pagas (qualquer mês/ano)
+    const { data: unpaidAll, error: e1 } = await supabase
+      .from('monthly_bills')
+      .select('*')
+      .eq('user_id', user_id)
+      .eq('paid', false)
+      .order('year', { ascending: true })
+      .order('month', { ascending: true })
+      .order('due_day', { ascending: true });
+
+    if (e1) throw e1;
+
+    // Buscar bills pagas apenas do mês atual
+    const { data: paidCurrent, error: e2 } = await supabase
+      .from('monthly_bills')
+      .select('*')
+      .eq('user_id', user_id)
+      .eq('paid', true)
+      .eq('month', currentMonth)
+      .eq('year', currentYear)
+      .order('paid_at', { ascending: false });
+
+    if (e2) throw e2;
+
+    // Buscar bills pagas de meses anteriores mas pagas nos últimos 3 dias
+    const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString();
+    const { data: paidPreviousRecent, error: e3 } = await supabase
+      .from('monthly_bills')
+      .select('*')
+      .eq('user_id', user_id)
+      .eq('paid', true)
+      .lt('month', currentMonth) // mês anterior
+      .gte('paid_at', threeDaysAgo)
+      .order('paid_at', { ascending: false });
+
+    if (e3) throw e3;
+
+    res.json({
+      unpaid: unpaidAll || [],
+      paid_current: paidCurrent || [],
+      paid_previous_recent: paidPreviousRecent || []
+    });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.get('/monthly-bills', async (req, res) => {
   try {
     const { user_id, month, year } = req.query;
@@ -608,24 +667,85 @@ app.patch('/user-profile', async (req, res) => {
 app.get('/tithe-summary', async (req, res) => {
   try {
     const { user_id } = req.query;
-    if (!user_id) return res.status(400).json({ error: "user_id is required" });
+    if (!user_id) return res.status(400).json({ error: "user_id required" });
+
+    const now = new Date();
 
     const [profileRes, txRes, paymentsRes] = await Promise.all([
       supabase.from('user_profiles').select('tithe_percentage').eq('user_id', user_id).single(),
-      supabase.from('transactions').select('id, description, value, occurred_at').eq('user_id', user_id).eq('counts_for_tithe', true).eq('type', 'income').order('occurred_at', { ascending: false }),
-      supabase.from('tithe_payments').select('*').eq('user_id', user_id).order('paid_at', { ascending: false })
+      supabase.from('transactions').select('id, description, value, occurred_at')
+        .eq('user_id', user_id).eq('counts_for_tithe', true).eq('type', 'income')
+        .order('occurred_at', { ascending: false }),
+      supabase.from('tithe_payments').select('*')
+        .eq('user_id', user_id).order('paid_at', { ascending: false })
     ]);
 
     const percentage = profileRes.data?.tithe_percentage ?? 10;
     const incomes = txRes.data || [];
     const payments = paymentsRes.data || [];
 
-    const total_titheable = incomes.reduce((sum, tx) => sum + Number(tx.value), 0);
+    // Agrupar receitas por mês/ano
+    const monthlyMap: Record<string, any> = {};
+    incomes.forEach(inc => {
+      const d = new Date(inc.occurred_at);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      if (!monthlyMap[key]) {
+        monthlyMap[key] = {
+          key,
+          month: d.getMonth() + 1,
+          year: d.getFullYear(),
+          total_income: 0,
+          tithe_due: 0,
+          incomes: []
+        };
+      }
+      monthlyMap[key].total_income += Number(inc.value);
+      monthlyMap[key].incomes.push(inc);
+    });
+
+    // Calcular tithe_due por mês
+    Object.values(monthlyMap).forEach((m: any) => {
+      m.tithe_due = m.total_income * (percentage / 100);
+    });
+
+    // Distribuir pagamentos pelos meses (FIFO — paga o mais antigo primeiro)
+    const sortedMonths = Object.values(monthlyMap).sort((a: any, b: any) =>
+      a.key.localeCompare(b.key)
+    );
+
+    let remainingPayments = payments.reduce((sum, p) => sum + Number(p.value), 0);
+    sortedMonths.forEach((m: any) => {
+      if (remainingPayments >= m.tithe_due) {
+        m.paid = m.tithe_due;
+        m.balance_due = 0;
+        remainingPayments -= m.tithe_due;
+      } else {
+        m.paid = remainingPayments;
+        m.balance_due = m.tithe_due - remainingPayments;
+        remainingPayments = 0;
+      }
+    });
+
+    // Totais gerais
+    const total_titheable = incomes.reduce((sum, t) => sum + Number(t.value), 0);
     const tithe_due = total_titheable * (percentage / 100);
     const total_paid = payments.reduce((sum, p) => sum + Number(p.value), 0);
     const balance_due = tithe_due - total_paid;
 
-    res.json({ total_titheable, tithe_due, total_paid, balance_due, titheable_incomes: incomes, payments });
+    // Mês atual
+    const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const currentMonth = monthlyMap[currentKey];
+
+    res.json({
+      total_titheable,
+      tithe_due,
+      total_paid,
+      balance_due,
+      titheable_incomes: incomes,
+      payments,
+      monthly_breakdown: sortedMonths,
+      current_month: currentMonth || null
+    });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
