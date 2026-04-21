@@ -5,6 +5,7 @@ interface FixedDetailsModalProps {
   unpaidBills: any[];
   installments: any[];
   tithingValue: number;
+  totalValue?: number;
   onClose: () => void;
 }
 
@@ -15,6 +16,7 @@ const FixedDetailsModal: React.FC<FixedDetailsModalProps> = ({
   unpaidBills, 
   installments, 
   tithingValue, 
+  totalValue,
   onClose 
 }) => {
   const getIcon = (name: string) => {
@@ -81,9 +83,19 @@ const FixedDetailsModal: React.FC<FixedDetailsModalProps> = ({
             </button>
           </div>
 
-          <div className="bg-secondary-container/30 p-6 rounded-[2rem] border border-secondary-container/20 flex items-center justify-between">
-            <span className="text-on-secondary-container font-black text-xs uppercase tracking-widest opacity-70">Total Previsto</span>
-            <span className="text-on-secondary-container font-headline font-black text-2xl tracking-tight">{fmt(totalRemaining)}</span>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-secondary-container/30 p-5 rounded-[2rem] border border-secondary-container/20">
+              <span className="text-on-secondary-container font-black text-[10px] uppercase tracking-widest opacity-70 block mb-2">Total do Mês</span>
+              <span className="text-on-secondary-container font-headline font-black text-xl tracking-tight">
+                {fmt(totalValue || totalRemaining)}
+              </span>
+            </div>
+            <div className="bg-error-container/20 p-5 rounded-[2rem] border border-error-container/30">
+              <span className="text-error font-black text-[10px] uppercase tracking-widest opacity-70 block mb-2">Falta Pagar</span>
+              <span className="text-error font-headline font-black text-xl tracking-tight">
+                {fmt(totalRemaining)}
+              </span>
+            </div>
           </div>
         </div>
 

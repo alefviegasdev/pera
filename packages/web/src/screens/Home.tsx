@@ -231,12 +231,17 @@ const Home = ({
     .filter(t => t.subtype === 'semifixed' && t.type === 'expense')
     .map(t => t.description?.toLowerCase());
 
+  const paidBillsVal = paidBills.reduce((sum, b) => sum + Number(b.value), 0);
   const totalBills = bills.reduce((sum, b) => sum + Number(b.value), 0);
   const unpaidBillsVal = pendingBills.reduce((sum, b) => sum + Number(b.value), 0);
   const installmentTotal = installments.reduce((sum, i) => sum + Number(i.installment_value), 0);
-  const unpaidInstallmentTotal = installments
-    .filter(i => !paidInstallmentNames.some(name => i.description?.toLowerCase().includes(name) || name?.includes(i.description?.toLowerCase())))
-    .reduce((sum, i) => sum + Number(i.installment_value), 0);
+  const unpaidInstallments = installments.filter(i => 
+    !paidInstallmentNames.some(name => 
+      i.description?.toLowerCase().includes(name) || 
+      name?.includes(i.description?.toLowerCase())
+    )
+  );
+  const unpaidInstallmentTotal = unpaidInstallments.reduce((sum, i) => sum + Number(i.installment_value), 0);
     
     const dizimoBudget = budgets.find(b => b.category === 'Dízimo/Oferta');
     const tithingFallback = dizimoBudget?.monthly_limit 
@@ -247,7 +252,8 @@ const Home = ({
     const tithing = titheActive ? tithePending : 0;
 
   // Values for the Total Card
-  const totalFixedVal = totalBills + installmentTotal + tithing;
+  const titheTotalDue = titheActive ? (titheSummary?.tithe_due || 0) : 0;
+  const totalFixedVal = (totalBills + paidBillsVal) + installmentTotal + titheTotalDue;
   const remainingFixedVal = unpaidBillsVal + unpaidInstallmentTotal + tithing;
   
   const realAvailable = income - expense - remainingFixedVal;
@@ -730,8 +736,9 @@ const Home = ({
       {showFixedModal && (
         <FixedDetailsModal
           unpaidBills={pendingBills}
-          installments={installments}
+          installments={unpaidInstallments}
           tithingValue={tithing}
+          totalValue={totalFixedVal}
           onClose={() => setShowFixedModal(false)}
         />
       )}
