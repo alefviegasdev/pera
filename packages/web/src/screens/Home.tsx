@@ -770,6 +770,7 @@ const Home = ({
           category={selectedCategory}
           period="month"
           userId={userId}
+          initialPeriod="month"
           onClose={() => setSelectedCategory(null)}
         />
       )}

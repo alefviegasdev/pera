@@ -370,6 +370,8 @@ const Analysis = ({
           category={selectedCategory}
           period={period}
           userId={userId}
+          initialPeriod={period}
+          onPeriodChange={(p) => setPeriod(p)}
           onClose={() => setSelectedCategory(null)}
         />
       )}

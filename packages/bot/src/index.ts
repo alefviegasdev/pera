@@ -97,9 +97,10 @@ Adicionar campo "subcategory" ao JSON para as seguintes categorias:
   - "Restaurante": restaurante, almoço, jantar, self-service, rodízio
   - "Lanchonete": hambúrguer, pizza, hot dog, lanche, burguer
   - "Cafeteria": café, starbucks, cafeteria, coffee, cappuccino
+  - "Doces": sorvete, açaí, confeitaria, brigadeiro, bolo de festa, doceria, chocolateria, sobremesa
 
 "Saúde":
-  - "Farmácia": farmácia, remédio, medicamento, drogaria, droga raia
+  - "Farmácia": farmácia, remédio, medicamento, drogaria, droga raia, sabonete, shampoo, condicionador, escova de dentes, pasta de dente, creme, hidratante, cuidados pessoais, higiene pessoal, produtos de higiene
   - "Médico": médico, consulta, dentista, psicólogo, terapia, clínica
   - "Academia": academia, gym, crossfit, natação, musculação, esporte
   - "Exames": exame, laboratório, raio-x, ultrassom, hemograma

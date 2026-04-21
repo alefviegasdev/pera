@@ -19,17 +19,24 @@ interface Props {
   period: string;
   userId: string;
   onClose: () => void;
+  initialPeriod?: string;
+  onPeriodChange?: (p: string) => void;
 }
 
-export default function CategoryDetailsModal({ category, period, userId, onClose }: Props) {
+export default function CategoryDetailsModal({ category, period, userId, onClose, initialPeriod, onPeriodChange }: Props) {
   const [txs, setTxs] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeSubcat, setActiveSubcat] = useState<string>('Geral');
   const [dragStart, setDragStart] = useState<number | null>(null);
   const [dragOffset, setDragOffset] = useState(0);
-  const [modalPeriod, setModalPeriod] = useState<string>('today');
+  const [modalPeriod, setModalPeriod] = useState<string>(initialPeriod || 'today');
   const [periodDropdownOpen, setPeriodDropdownOpen] = useState(false);
   const contentRef = React.useRef<HTMLDivElement>(null);
+
+  const handlePeriodChange = (p: string) => {
+    setModalPeriod(p);
+    onPeriodChange?.(p);
+  };
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -186,7 +193,7 @@ export default function CategoryDetailsModal({ category, period, userId, onClose
                 {PERIODS.map(p => (
                   <button
                     key={p.id}
-                    onClick={() => { setModalPeriod(p.id); setPeriodDropdownOpen(false); }}
+                    onClick={() => { handlePeriodChange(p.id); setPeriodDropdownOpen(false); }}
                     className={`w-full text-left px-4 py-2.5 text-xs font-bold transition-colors ${
                       modalPeriod === p.id ? 'bg-primary/5 text-primary' : 'text-on-surface-variant hover:bg-surface-container-low'
                     }`}
