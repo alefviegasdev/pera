@@ -7,6 +7,7 @@ import {
   AlertCircle, 
   ChevronDown,
   ArrowUpRight,
+  Calendar
 } from 'lucide-react';
 import CategoryDetailsModal from '../components/CategoryDetailsModal';
 
@@ -43,6 +44,8 @@ const Analysis = ({
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [periodDropdownOpen, setPeriodDropdownOpen] = useState(false);
+  const periodDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { fetchData(); }, [userId, period]);
   
@@ -62,6 +65,9 @@ const Analysis = ({
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsDropdownOpen(false);
+      }
+      if (periodDropdownRef.current && !periodDropdownRef.current.contains(event.target as Node)) {
+        setPeriodDropdownOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -150,31 +156,42 @@ const Analysis = ({
 
   return (
     <div className="screen bg-surface scrollbar-hide">
-      <header className="page-header pt-12 pb-6 px-6">
-        <h1 className="text-4xl font-headline font-extrabold tracking-tight text-on-surface mb-2">Análise</h1>
-        <p className="text-on-surface-variant font-body">Veja como seu dinheiro se moveu no período selecionado.</p>
+      <header className="page-header pt-12 pb-6 px-6 flex items-end justify-between">
+        <div>
+          <h1 className="text-4xl font-headline font-extrabold tracking-tight text-on-surface mb-2">Análise</h1>
+          <p className="text-on-surface-variant font-body">Veja como seu dinheiro se moveu no período selecionado.</p>
+        </div>
+        <div className="relative flex-shrink-0 pb-1" ref={periodDropdownRef}>
+          <button
+            onClick={() => setPeriodDropdownOpen(!periodDropdownOpen)}
+            className="flex items-center gap-2 bg-surface-container px-4 py-2.5 rounded-full text-[11px] font-black uppercase tracking-widest text-on-surface-variant border border-surface-container-high active:scale-95 transition-all shadow-sm"
+          >
+            <Calendar size={14} className="text-primary" />
+            {periods.find(p => p.id === period)?.label}
+            <ChevronDown size={12} className={`transition-transform ${periodDropdownOpen ? 'rotate-180' : ''}`} />
+          </button>
+          {periodDropdownOpen && (
+            <div className="absolute right-0 top-full mt-2 bg-white rounded-2xl shadow-xl border border-surface-container overflow-hidden z-50 w-40">
+              {periods.map(p => (
+                <button
+                  key={p.id}
+                  onClick={() => { setPeriod(p.id); setPeriodDropdownOpen(false); }}
+                  className={`w-full text-left px-4 py-3 text-xs font-bold transition-colors flex items-center gap-2 ${
+                    period === p.id ? 'bg-primary/5 text-primary' : 'text-on-surface-variant hover:bg-surface-container-low'
+                  }`}
+                >
+                  {period === p.id && <div className="w-1.5 h-1.5 rounded-full bg-primary" />}
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </header>
 
       <div className="page-content px-6 space-y-8 pb-32">
         
-        {/* Period Selector Chips */}
-        <section className="overflow-x-auto scrollbar-hide -mx-6 px-6 max-w-full">
-          <div className="flex gap-2 min-w-max">
-            {periods.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => setPeriod(p.id)}
-                className={`px-6 py-2 rounded-full font-label font-bold text-sm transition-all active:scale-95 ${
-                  period === p.id 
-                    ? 'bg-primary text-on-primary' 
-                    : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high'
-                }`}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-        </section>
+
 
         {/* Summary Cards */}
         <section className="grid grid-cols-1 gap-4">

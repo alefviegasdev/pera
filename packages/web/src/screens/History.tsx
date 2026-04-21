@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Calendar, ChevronDown } from 'lucide-react';
 import { catColor, catEmoji } from '../utils/categories';
 import TransactionModal from '../components/TransactionModal';
 import InstallmentsModal from '../components/InstallmentsModal';
@@ -19,6 +20,8 @@ const History = ({
   const [selectedTx, setSelectedTx] = useState<any>(null);
   const [showInstallments, setShowInstallments] = useState(false);
   const [period, setPeriod] = useState('today');
+  const [periodDropdownOpen, setPeriodDropdownOpen] = useState(false);
+  const periodDropdownRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (selectedTx || showInstallments) {
@@ -27,6 +30,16 @@ const History = ({
       onModalClose?.();
     }
   }, [selectedTx, showInstallments]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (periodDropdownRef.current && !periodDropdownRef.current.contains(event.target as Node)) {
+        setPeriodDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => { fetchAll(); }, [userId, period]);
   
@@ -97,27 +110,38 @@ const History = ({
 
   return (
     <div className="screen bg-surface">
-      <header className="page-header pt-12 pb-4 px-6 sticky top-0 bg-surface/80 backdrop-blur-lg z-50">
+      <header className="page-header pt-12 pb-4 px-6 sticky top-0 bg-surface/80 backdrop-blur-lg z-50 flex items-end justify-between">
         <h1 className="font-headline tracking-tighter text-on-surface text-4xl font-extrabold leading-none">Histórico</h1>
+        <div className="relative flex-shrink-0 pb-1" ref={periodDropdownRef}>
+          <button
+            onClick={() => setPeriodDropdownOpen(!periodDropdownOpen)}
+            className="flex items-center gap-2 bg-surface-container px-4 py-2.5 rounded-full text-[11px] font-black uppercase tracking-widest text-on-surface-variant border border-surface-container-high active:scale-95 transition-all shadow-sm"
+          >
+            <Calendar size={14} className="text-primary" />
+            {periods.find(p => p.id === period)?.label}
+            <ChevronDown size={12} className={`transition-transform ${periodDropdownOpen ? 'rotate-180' : ''}`} />
+          </button>
+          {periodDropdownOpen && (
+            <div className="absolute right-0 top-full mt-2 bg-white rounded-2xl shadow-xl border border-surface-container overflow-hidden z-50 w-40">
+              {periods.map(p => (
+                <button
+                  key={p.id}
+                  onClick={() => { setPeriod(p.id); setPeriodDropdownOpen(false); }}
+                  className={`w-full text-left px-4 py-3 text-xs font-bold transition-colors flex items-center gap-2 ${
+                    period === p.id ? 'bg-primary/5 text-primary' : 'text-on-surface-variant hover:bg-surface-container-low'
+                  }`}
+                >
+                  {period === p.id && <div className="w-1.5 h-1.5 rounded-full bg-primary" />}
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </header>
 
       <main className="page-content px-6 space-y-8 mt-4">
-        {/* Period Filter Chips */}
-        <section className="overflow-x-auto scrollbar-hide flex items-center gap-2 -mx-6 px-6 py-1 max-w-full">
-          {periods.map(p => (
-            <button
-              key={p.id}
-              onClick={() => setPeriod(p.id)}
-              className={`px-5 py-2.5 rounded-full font-semibold text-sm whitespace-nowrap transition-all ${
-                period === p.id 
-                  ? 'bg-primary text-on-primary shadow-lg shadow-primary/20' 
-                  : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high'
-              }`}
-            >
-              {p.label}
-            </button>
-          ))}
-        </section>
+
 
         {/* Transaction Summary Card */}
         <section className="card-white rounded-[2rem] p-8 flex flex-col gap-1 shadow-sm">
