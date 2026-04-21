@@ -705,9 +705,21 @@ app.get('/tithe-summary', async (req, res) => {
       monthlyMap[key].incomes.push(inc);
     });
 
+    // Buscar dados de mudança de porcentagem
+    const changedAt = profileRes.data?.tithe_percentage_changed_at;
+    const previousPct = profileRes.data?.tithe_percentage_previous ?? percentage;
+
     // Calcular tithe_due por mês
     Object.values(monthlyMap).forEach((m: any) => {
-      m.tithe_due = m.total_income * (percentage / 100);
+      // Determinar qual % usar para este mês
+      // Se changedAt existe e o início do mês é anterior a changedAt,
+      // usar previousPct. Caso contrário, usar percentage atual.
+      const monthStart = new Date(m.year, m.month - 1, 1);
+      const pctForMonth = (changedAt && monthStart < new Date(changedAt))
+        ? previousPct
+        : percentage;
+      m.tithe_due = m.total_income * (pctForMonth / 100);
+      m.tithe_pct = pctForMonth;
     });
 
     // Distribuir pagamentos pelos meses (FIFO — paga o mais antigo primeiro)
@@ -729,9 +741,6 @@ app.get('/tithe-summary', async (req, res) => {
     });
 
     // Totais gerais
-    // Buscar dados de mudança de porcentagem
-    const changedAt = profileRes.data?.tithe_percentage_changed_at;
-    const previousPct = profileRes.data?.tithe_percentage_previous ?? percentage;
 
     // Calcular tithe_due por receita respeitando a data de mudança
     let tithe_due = 0;

@@ -296,7 +296,7 @@ const Settings = ({
                         const num = parseInt(pctInput);
                         if (!isNaN(num) && num >= 10 && num <= 100) {
                           setTithePercentage(num);
-                          handleTithePercentageSave(num);
+                          setPendingPct(num);
                           setEditingPct(false);
                           setPctError('');
                         } else {
@@ -630,9 +630,23 @@ const Settings = ({
               </button>
               <button
                 onClick={async () => {
-                  // TODO: implementar tithe_percentage_changed_at em user_profiles
-                  // para diferenciar recalculo total vs. apenas novos recebimentos
-                  await handleTithePercentageSave(pendingPct);
+                  // Ponto de corte = início do mês atual
+                  const startOfMonth = new Date();
+                  startOfMonth.setDate(1);
+                  startOfMonth.setHours(0, 0, 0, 0);
+                  
+                  await fetch('/api/user-profile', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      user_id: userId,
+                      tithe_percentage: pendingPct,
+                      tithe_percentage_previous: tithePercentage,
+                      tithe_percentage_changed_at: startOfMonth.toISOString()
+                    })
+                  });
+                  localStorage.setItem(`tithe_pct_${userId}`, String(pendingPct));
+                  setTithePercentage(pendingPct);
                   setPendingPct(null);
                 }}
                 className="w-full bg-primary text-on-primary py-4 rounded-full font-bold text-sm active:scale-95 transition-all text-left px-6 shadow-lg shadow-primary/20"
