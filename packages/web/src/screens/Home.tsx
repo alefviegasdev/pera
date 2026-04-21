@@ -244,7 +244,7 @@ const Home = ({
       : income * 0.10;
 
     const tithePending = titheSummary?.balance_due > 0 ? titheSummary.balance_due : 0;
-    const tithing = titheActive ? (tithePending > 0 ? tithePending : tithingFallback) : 0;
+    const tithing = titheActive ? tithePending : 0;
 
   // Values for the Total Card
   const totalFixedVal = totalBills + installmentTotal + tithing;
@@ -297,7 +297,25 @@ const Home = ({
         value: i.installment_value,
         itemType: 'installment',
         paid_at: new Date().toISOString() // Approximate
-      }))
+      })),
+    ...(titheActive && titheSummary?.payments?.length > 0 ?
+      titheSummary.payments
+        .filter((p: any) => {
+          const paidDate = new Date(p.paid_at);
+          const now = new Date();
+          return paidDate.getMonth() === now.getMonth() && 
+                 paidDate.getFullYear() === now.getFullYear();
+        })
+        .map((p: any) => ({
+          id: `tithe-paid-${p.id}`,
+          name: 'Dízimo',
+          value: p.value,
+          itemType: 'tithing',
+          paid_at: p.paid_at,
+          isFromPreviousMonth: false
+        }))
+      : []
+    )
   ].sort((a,b) => {
     const dateA = a.paid_at ? new Date(a.paid_at).getTime() : 0;
     const dateB = b.paid_at ? new Date(b.paid_at).getTime() : 0;
@@ -596,8 +614,11 @@ const Home = ({
                   <div key={b.id} className="bg-white/50 opacity-60 p-7 rounded-[2.5rem] flex items-center justify-between border border-surface-container/30 shadow-sm">
                     <div className="flex items-center gap-5">
                       <div className="w-14 h-14 bg-tertiary-container/30 rounded-2xl flex items-center justify-center">
-                        {b.itemType === 'installment' ? <CreditCard size={24} className="text-tertiary" /> :
-                         getBillIcon(b.name).props && React.cloneElement(getBillIcon(b.name), { className: 'text-tertiary' })}
+                        {b.itemType === 'tithing' ? 
+                          <Heart size={24} className="text-tertiary" fill="currentColor" /> :
+                          b.itemType === 'installment' ? <CreditCard size={24} className="text-tertiary" /> :
+                          getBillIcon(b.name).props && React.cloneElement(getBillIcon(b.name), { className: 'text-tertiary' })
+                        }
                       </div>
                       <div>
                         <p className="text-on-surface-variant font-bold text-base font-headline">{b.name}</p>

@@ -422,6 +422,15 @@ Quanto mais detalhes você der, melhor eu classifico!
         if (record && table) {
           if (aiData.delete === true) {
             await supabase.from(table).delete().eq("id", record.id);
+            
+            if (table === 'transactions' && record.category === 'Dízimo/Oferta') {
+              await supabase
+                .from('tithe_payments')
+                .delete()
+                .eq('short_code', replyCode)
+                .eq('user_id', supabaseUserId);
+            }
+            
             return ctx.reply(`🗑️ Transação #${replyCode} apagada.`);
           }
           
@@ -498,6 +507,16 @@ Possíveis motivos:
       // --- Caso: APAGAR ---
       if (aiData.delete === true) {
         await supabase.from(table).delete().eq("id", record.id);
+        
+        // Se era uma transação de dízimo, limpar tithe_payments também
+        if (table === 'transactions' && record.category === 'Dízimo/Oferta') {
+          await supabase
+            .from('tithe_payments')
+            .delete()
+            .eq('short_code', record.short_code)
+            .eq('user_id', supabaseUserId);
+        }
+        
         return ctx.reply(`🗑️ Transação #${code} apagada.`);
       }
 
