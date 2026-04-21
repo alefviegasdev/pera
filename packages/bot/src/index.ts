@@ -669,33 +669,54 @@ Exemplos que funcionam:
 
         // --- Lógica Especial: Dízimo ---
         if (item.description.toLowerCase().includes('dízimo') || item.description.toLowerCase().includes('oferta')) {
-          const { data: budgetConfig } = await supabase
-            .from('budgets')
-            .select('monthly_limit')
+          // 1. Buscar perfil para pegar porcentagem
+          const { data: userProfile } = await supabase
+            .from('user_profiles')
+            .select('tithe_percentage')
             .eq('user_id', supabaseUserId)
-            .eq('category', 'Dízimo/Oferta')
             .maybeSingle();
 
-          let tithingValue = 0;
-          if (budgetConfig?.monthly_limit) {
-            tithingValue = Number(budgetConfig.monthly_limit);
-          } else {
-            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-            const { data: incomeTxs } = await supabase
-              .from('transactions')
-              .select('value')
-              .eq('user_id', supabaseUserId)
-              .eq('type', 'income')
-              .gte('occurred_at', startOfMonth);
-            
-            const totalIncome = incomeTxs?.reduce((sum, tx) => sum + Number(tx.value), 0) || 0;
-            tithingValue = totalIncome * 0.10;
+          const tithePercentage = userProfile?.tithe_percentage ?? 10;
+
+          // 2. Buscar APENAS receitas com counts_for_tithe = true
+          const { data: titheableIncomes } = await supabase
+            .from('transactions')
+            .select('value')
+            .eq('user_id', supabaseUserId)
+            .eq('type', 'income')
+            .eq('counts_for_tithe', true);
+
+          const totalTitheable = titheableIncomes?.reduce((sum, tx) => sum + Number(tx.value), 0) || 0;
+          const titheDue = totalTitheable * (tithePercentage / 100);
+
+          // 3. Buscar total já pago em tithe_payments
+          const { data: existingPayments } = await supabase
+            .from('tithe_payments')
+            .select('value')
+            .eq('user_id', supabaseUserId);
+
+          const totalPaid = existingPayments?.reduce((sum, p) => sum + Number(p.value), 0) || 0;
+          const balanceDue = titheDue - totalPaid;
+
+          if (balanceDue <= 0) {
+            return ctx.reply(`✅ Dízimo já está em dia!\n💰 Total devido: R$ ${titheDue.toFixed(2)}\n✔️ Total pago: R$ ${totalPaid.toFixed(2)}`);
           }
 
           const shortCode = generateShortCode();
-          await supabase.from("transactions").insert({
+
+          // 4. Inserir em tithe_payments (para o app reconhecer)
+          await supabase.from('tithe_payments').insert({
             user_id: supabaseUserId,
-            value: tithingValue,
+            value: balanceDue,
+            description: 'Dízimo pago via Telegram',
+            short_code: shortCode,
+            paid_at: new Date().toISOString()
+          });
+
+          // 5. Inserir também em transactions (para o histórico)
+          await supabase.from('transactions').insert({
+            user_id: supabaseUserId,
+            value: balanceDue,
             type: 'expense',
             category: 'Dízimo/Oferta',
             subtype: 'fixed',
@@ -705,7 +726,7 @@ Exemplos que funcionam:
             short_code: shortCode
           });
 
-          return ctx.reply(`✅ Dízimo registrado! #${shortCode}\n💰 R$ ${Number(tithingValue).toFixed(2)}`);
+          return ctx.reply(`✅ Dízimo registrado! #${shortCode}\n💰 R$ ${Number(balanceDue).toFixed(2)}\n📊 Baseado em R$ ${totalTitheable.toFixed(2)} em receitas computáveis`);
         }
 
         const { data: bills, error: findError } = await supabase
