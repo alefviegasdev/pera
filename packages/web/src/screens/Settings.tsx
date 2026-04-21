@@ -41,6 +41,7 @@ const Settings = ({
   const cachedPct = localStorage.getItem(`tithe_pct_${userId}`);
   const [titheActive, setTitheActive] = useState<boolean>(cachedActive !== null ? cachedActive === 'true' : true);
   const [totalIncome, setTotalIncome] = useState(0);
+  const [titheableIncome, setTitheableIncome] = useState(0);
   const [categorySpending, setCategorySpending] = useState<any[]>([]);
   const [tithePercentage, setTithePercentage] = useState<number>(cachedPct !== null ? parseInt(cachedPct) : 10);
   const [editingPct, setEditingPct] = useState(false);
@@ -96,24 +97,27 @@ const Settings = ({
   const fetchData = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const [fRes, gRes, bRes, sRes, profileRes] = await Promise.all([
+      const [fRes, gRes, bRes, sRes, profileRes, titheSummaryRes] = await Promise.all([
         fetch(`/api/monthly-bills?user_id=${userId}`),
         fetch(`/api/goals?user_id=${userId}`),
         fetch(`/api/budgets?user_id=${userId}`),
         fetch(`/api/transactions/summary?user_id=${userId}&period=month`),
-        fetch(`/api/user-profile?user_id=${userId}`)
+        fetch(`/api/user-profile?user_id=${userId}`),
+        fetch(`/api/tithe-summary?user_id=${userId}`)
       ]);
-      const [fData, gData, bData, sData, profileData] = await Promise.all([
+      const [fData, gData, bData, sData, profileData, titheSummaryData] = await Promise.all([
         fRes.json(), 
         gRes.json(), 
         bRes.json(),
         sRes.json(),
-        profileRes.json()
+        profileRes.json(),
+        titheSummaryRes.json()
       ]);
       setFixed(Array.isArray(fData) ? fData : []);
       setGoals(Array.isArray(gData) ? gData : []);
       setBudgets(Array.isArray(bData) ? bData : []);
       if (sData?.total_income) setTotalIncome(Number(sData.total_income));
+      if (titheSummaryData?.total_titheable) setTitheableIncome(Number(titheSummaryData.total_titheable));
       if (sData?.by_category) setCategorySpending(sData.by_category);
       
       if (profileData?.tithe_percentage) {
@@ -266,7 +270,7 @@ const Settings = ({
               <div>
                 <p className="text-on-surface-variant text-[10px] font-black uppercase tracking-[0.2em] mb-2">Valor Calculado</p>
                 <p className="font-headline text-3xl font-black text-primary leading-tight">
-                  {fmt(totalIncome * (tithePercentage / 100))}
+                  {fmt(titheableIncome * (tithePercentage / 100))}
                 </p>
               </div>
               {editingPct ? (
@@ -361,7 +365,7 @@ const Settings = ({
             </div>
 
             <p className="text-xs text-on-surface-variant leading-relaxed font-medium">
-              Baseado na sua renda mensal de <span className="font-bold text-on-background">{fmt(totalIncome)}</span>. O valor é provisionado automaticamente ao receber depósitos.
+              Baseado em <span className="font-bold text-on-background">{fmt(titheableIncome)}</span> em recebimentos computáveis este mês. O valor é provisionado automaticamente ao receber depósitos.
             </p>
           </div>
         </section>
@@ -609,7 +613,7 @@ const Settings = ({
                   await handleTithePercentageSave(pendingPct);
                   setPendingPct(null);
                 }}
-                className="w-full bg-surface-container-low text-on-surface py-4 rounded-full font-bold text-sm active:scale-95 transition-all text-left px-6"
+                className="w-full bg-surface-container-low text-on-surface py-4 rounded-[1.5rem] font-bold text-sm active:scale-95 transition-all text-left px-6 border-2 border-surface-container"
               >
                 <p className="font-black">A partir dos próximos recebimentos</p>
                 <p className="text-xs text-on-surface-variant font-medium mt-0.5">Recebimentos anteriores mantêm o percentual antigo</p>
@@ -623,8 +627,8 @@ const Settings = ({
                 }}
                 className="w-full bg-primary text-on-primary py-4 rounded-full font-bold text-sm active:scale-95 transition-all text-left px-6 shadow-lg shadow-primary/20"
               >
-                <p className="font-black">Recalcular desde o início</p>
-                <p className="text-xs text-on-primary/70 font-medium mt-0.5">Aplica o novo % em todos os recebimentos</p>
+                <p className="font-black">Aplicar ao mês atual</p>
+                <p className="text-xs text-on-primary/70 font-medium mt-0.5">Recalcula com base nos recebimentos deste mês</p>
               </button>
               <button
                 onClick={() => {
