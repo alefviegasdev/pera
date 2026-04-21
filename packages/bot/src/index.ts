@@ -137,6 +137,17 @@ EXEMPLOS que devem retornar type: 'payment':
 
 NÃO retorne not_financial para mensagens com 'paguei/pagar/quitei'.
 
+RECONHECIMENTO DE DÍZIMO — PRIORIDADE ALTA:
+Se a mensagem tiver QUALQUER intenção de pagar dízimo, mesmo com
+erros de digitação, variações ou palavras parecidas como:
+"dizimo", "dízimo", "disimo", "dissimo", "dissimu", "dízmo",
+"dizmo", "tithe", "décimo", "decimo", "pagar dizimo", "paguei dizimo"
+ou qualquer variação fonética próxima → retornar SEMPRE:
+{ "type": "payment", "description": "dízimo" }
+
+NÃO retornar not_financial para essas mensagens.
+
+
 Se a mensagem não contiver informações financeiras, retorne: {"error": "not_financial"}.
 
 MENSAGEM DO USUÁRIO:
