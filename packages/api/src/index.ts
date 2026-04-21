@@ -641,12 +641,14 @@ app.get('/user-profile', async (req, res) => {
 
 app.patch('/user-profile', async (req, res) => {
   try {
-    const { user_id, tithe_active, tithe_percentage } = req.body;
+    const { user_id, tithe_active, tithe_percentage, tithe_percentage_changed_at, tithe_percentage_previous } = req.body;
     if (!user_id) return res.status(400).json({ error: "user_id is required" });
     
     const updates: any = {};
     if (tithe_active !== undefined) updates.tithe_active = tithe_active;
     if (tithe_percentage !== undefined) updates.tithe_percentage = tithe_percentage;
+    if (tithe_percentage_changed_at !== undefined) updates.tithe_percentage_changed_at = tithe_percentage_changed_at;
+    if (tithe_percentage_previous !== undefined) updates.tithe_percentage_previous = tithe_percentage_previous;
 
     const { data: existing } = await supabase.from('user_profiles').select('id').eq('user_id', user_id).single();
 
@@ -672,7 +674,7 @@ app.get('/tithe-summary', async (req, res) => {
     const now = new Date();
 
     const [profileRes, txRes, paymentsRes] = await Promise.all([
-      supabase.from('user_profiles').select('tithe_percentage').eq('user_id', user_id).single(),
+      supabase.from('user_profiles').select('tithe_percentage, tithe_percentage_previous, tithe_percentage_changed_at').eq('user_id', user_id).single(),
       supabase.from('transactions').select('id, description, value, occurred_at')
         .eq('user_id', user_id).eq('counts_for_tithe', true).eq('type', 'income')
         .order('occurred_at', { ascending: false }),
@@ -727,8 +729,22 @@ app.get('/tithe-summary', async (req, res) => {
     });
 
     // Totais gerais
-    const total_titheable = incomes.reduce((sum, t) => sum + Number(t.value), 0);
-    const tithe_due = total_titheable * (percentage / 100);
+    // Buscar dados de mudança de porcentagem
+    const changedAt = profileRes.data?.tithe_percentage_changed_at;
+    const previousPct = profileRes.data?.tithe_percentage_previous ?? percentage;
+
+    // Calcular tithe_due por receita respeitando a data de mudança
+    let tithe_due = 0;
+    const total_titheable = incomes.reduce((sum, tx) => sum + Number(tx.value), 0);
+
+    incomes.forEach((inc: any) => {
+      const incDate = new Date(inc.occurred_at);
+      const pctToUse = (changedAt && incDate < new Date(changedAt)) 
+        ? previousPct 
+        : percentage;
+      tithe_due += Number(inc.value) * (pctToUse / 100);
+      inc.tithe_pct = pctToUse; // adicionar ao objeto para o frontend
+    });
     const total_paid = payments.reduce((sum, p) => sum + Number(p.value), 0);
     const balance_due = tithe_due - total_paid;
 
@@ -744,7 +760,8 @@ app.get('/tithe-summary', async (req, res) => {
       titheable_incomes: incomes,
       payments,
       monthly_breakdown: sortedMonths,
-      current_month: currentMonth || null
+      current_month: currentMonth || null,
+      tithe_pct_current: percentage
     });
   } catch (e: any) {
     res.status(500).json({ error: e.message });

@@ -281,11 +281,41 @@ const Home = ({
           name: `Dízimo — ${MONTH_NAMES[m.month - 1]}`,
           value: m.balance_due,
           itemType: 'tithing',
-          titheMonth: m
+          titheMonth: m,
+          tithePct: titheSummary?.tithe_pct_current || 10
         }))
       : []
     )
   ];
+
+  // Agrupar pagamentos de dízimo por mês
+  const tithePaymentsByMonth: Record<string, any> = {};
+  (titheSummary?.payments || [])
+    .filter((p: any) => {
+      const paidDate = new Date(p.paid_at);
+      const now = new Date();
+      return paidDate.getMonth() === now.getMonth() && 
+             paidDate.getFullYear() === now.getFullYear();
+    })
+    .forEach((p: any) => {
+      const key = `${new Date(p.paid_at).getFullYear()}-${new Date(p.paid_at).getMonth()}`;
+      if (!tithePaymentsByMonth[key]) {
+        tithePaymentsByMonth[key] = {
+          id: `tithe-paid-${key}`,
+          name: 'Dízimo',
+          value: 0,
+          itemType: 'tithing',
+          paid_at: p.paid_at,
+          isFromPreviousMonth: false,
+          tithePct: titheSummary?.tithe_pct_current || 10,
+          paymentCount: 0
+        };
+      }
+      tithePaymentsByMonth[key].value += Number(p.value);
+      tithePaymentsByMonth[key].paymentCount += 1;
+    });
+
+  const tithesPaidThisMonth = titheActive ? Object.values(tithePaymentsByMonth) : [];
 
   const allPaid = [
     ...paidBills.map(b => ({ ...b, itemType: 'bill', isFromPreviousMonth: false })),
@@ -304,24 +334,7 @@ const Home = ({
         itemType: 'installment',
         paid_at: new Date().toISOString() // Approximate
       })),
-    ...(titheActive && titheSummary?.payments?.length > 0 ?
-      titheSummary.payments
-        .filter((p: any) => {
-          const paidDate = new Date(p.paid_at);
-          const now = new Date();
-          return paidDate.getMonth() === now.getMonth() && 
-                 paidDate.getFullYear() === now.getFullYear();
-        })
-        .map((p: any) => ({
-          id: `tithe-paid-${p.id}`,
-          name: 'Dízimo',
-          value: p.value,
-          itemType: 'tithing',
-          paid_at: p.paid_at,
-          isFromPreviousMonth: false
-        }))
-      : []
-    )
+    ...tithesPaidThisMonth
   ].sort((a,b) => {
     const dateA = a.paid_at ? new Date(a.paid_at).getTime() : 0;
     const dateB = b.paid_at ? new Date(b.paid_at).getTime() : 0;
@@ -582,6 +595,11 @@ const Home = ({
                             <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest mt-1 inline-block ${b.itemType === 'installment' ? 'bg-secondary/10 text-secondary' : 'bg-tertiary/10 text-tertiary'}`}>
                               {b.itemType === 'installment' ? 'Parcela' : 'Dízimo'}
                             </span>
+                            {b.itemType === 'tithing' && (
+                              <span className="text-[10px] text-on-surface-variant font-medium mt-1 inline-block">
+                                {(b as any).tithePct}% sobre recebimentos computáveis
+                              </span>
+                            )}
                             {b.itemType === 'installment' && (
                               <span className="text-[10px] text-on-surface-variant font-medium">
                                 Parcela {(b as any).current + 1} de {(b as any).total}
@@ -630,7 +648,10 @@ const Home = ({
                         <p className="text-on-surface-variant font-bold text-base font-headline">{b.name}</p>
                         <p className="text-tertiary text-xs font-bold flex items-center gap-1">
                           <CheckCircle2 size={14} fill="currentColor" className="opacity-80" />
-                          {b.itemType === 'installment' ? 'Parcela paga este mês' : `Pago em ${day} ${month}`}
+                          {b.itemType === 'tithing' 
+                            ? `${(b as any).tithePct}% · ${(b as any).paymentCount > 1 ? `${(b as any).paymentCount} pagamentos` : 'Pago'}`
+                            : b.itemType === 'installment' ? 'Parcela paga este mês' 
+                            : `Pago em ${day} ${month}`}
                         </p>
                         {b.isFromPreviousMonth && (
                           <span className="px-2 py-0.5 mt-1 inline-block rounded-full text-[9px] font-black bg-secondary/10 text-secondary uppercase tracking-widest">

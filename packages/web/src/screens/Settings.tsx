@@ -608,9 +608,19 @@ const Settings = ({
             <div className="flex flex-col gap-3">
               <button
                 onClick={async () => {
-                  // TODO: implementar tithe_percentage_changed_at em user_profiles
-                  // para diferenciar recalculo total vs. apenas novos recebimentos
-                  await handleTithePercentageSave(pendingPct);
+                  // Salva % anterior + data de agora como ponto de corte
+                  await fetch('/api/user-profile', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      user_id: userId,
+                      tithe_percentage: pendingPct,
+                      tithe_percentage_previous: tithePercentage, // % atual vira "anterior"
+                      tithe_percentage_changed_at: new Date().toISOString()
+                    })
+                  });
+                  localStorage.setItem(`tithe_pct_${userId}`, String(pendingPct));
+                  setTithePercentage(pendingPct);
                   setPendingPct(null);
                 }}
                 className="w-full bg-surface-container-low text-on-surface py-4 rounded-[1.5rem] font-bold text-sm active:scale-95 transition-all text-left px-6 border-2 border-surface-container"
