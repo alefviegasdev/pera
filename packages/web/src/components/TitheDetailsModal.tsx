@@ -3,8 +3,6 @@ import React, { useState, useEffect } from 'react';
 const TitheDetailsModal = ({ userId, titheSummary, onClose }: { userId: string, titheSummary: any, onClose: () => void }) => {
   const [dragStart, setDragStart] = useState<number | null>(null);
   const [dragOffset, setDragOffset] = useState(0);
-  const [payingAmount, setPayingAmount] = useState<string>('');
-  const [paying, setPaying] = useState(false);
   const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending');
   const [removingIncome, setRemovingIncome] = useState<any | null>(null);
   const contentRef = React.useRef<HTMLDivElement>(null);
@@ -32,44 +30,6 @@ const TitheDetailsModal = ({ userId, titheSummary, onClose }: { userId: string, 
       setDragOffset(0);
     }
     setDragStart(null);
-  };
-
-  const handlePayTithe = async () => {
-    const value = parseFloat(payingAmount);
-    if (isNaN(value) || value <= 0) return;
-    setPaying(true);
-    try {
-      const shortCode = 'id' + Math.random().toString(36).substring(2, 6).toUpperCase();
-      await fetch('/api/tithe-payments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: userId,
-          value,
-          description: 'Dízimo pago',
-          short_code: shortCode
-        })
-      });
-      // Também inserir como transação
-      await fetch('/api/transactions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: userId,
-          value,
-          type: 'expense',
-          category: 'Dízimo/Oferta',
-          subtype: 'fixed',
-          urgency: 'planned',
-          description: 'Dízimo',
-          source: 'text',
-          short_code: shortCode
-        })
-      });
-      setPayingAmount('');
-      onClose();
-    } catch(e) { console.error(e); }
-    finally { setPaying(false); }
   };
 
   const fmt = (n: number) => n?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) ?? 'R$ 0,00';
@@ -168,26 +128,6 @@ const TitheDetailsModal = ({ userId, titheSummary, onClose }: { userId: string, 
                       </div>
                     ))
                   )}
-                </div>
-              </div>
-
-              <div className="mt-8">
-                <label className="block text-[11px] uppercase font-black tracking-widest text-on-surface-variant mb-2 pl-2">Pagar agora (R$)</label>
-                <div className="flex gap-3">
-                  <input 
-                    type="number"
-                    value={payingAmount}
-                    onChange={e => setPayingAmount(e.target.value)}
-                    placeholder="0.00"
-                    className="flex-1 bg-surface-container-low border-none rounded-2xl px-4 py-3 font-headline font-bold text-lg focus:ring-2 focus:ring-primary/20"
-                  />
-                  <button 
-                    disabled={!payingAmount || paying}
-                    onClick={handlePayTithe}
-                    className="bg-primary hover:bg-primary/90 text-white font-bold rounded-2xl px-6 py-3 transition-colors active:scale-95 disabled:opacity-50 disabled:active:scale-100"
-                  >
-                    Registrar
-                  </button>
                 </div>
               </div>
             </>
