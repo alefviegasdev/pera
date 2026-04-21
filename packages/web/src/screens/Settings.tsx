@@ -625,13 +625,13 @@ const Settings = ({
                     body: JSON.stringify({
                       user_id: userId,
                       tithe_percentage: pendingPct,
-                      tithe_percentage_previous: tithePercentage, // % atual vira "anterior"
+                      tithe_percentage_previous: savedPct, // % atual vira "anterior"
                       tithe_percentage_changed_at: new Date().toISOString()
                     })
                   });
                   localStorage.setItem(`tithe_pct_${userId}`, String(pendingPct));
-                  setTithePercentage(pendingPct);
                   setSavedPct(pendingPct);
+                  setTithePercentage(pendingPct);
                   setPendingPct(null);
                 }}
                 className="w-full bg-surface-container-low text-on-surface py-4 rounded-[1.5rem] font-bold text-sm active:scale-95 transition-all text-left px-6 border-2 border-surface-container"
@@ -652,13 +652,13 @@ const Settings = ({
                     body: JSON.stringify({
                       user_id: userId,
                       tithe_percentage: pendingPct,
-                      tithe_percentage_previous: tithePercentage,
+                      tithe_percentage_previous: savedPct,
                       tithe_percentage_changed_at: startOfMonth.toISOString()
                     })
                   });
                   localStorage.setItem(`tithe_pct_${userId}`, String(pendingPct));
-                  setTithePercentage(pendingPct);
                   setSavedPct(pendingPct);
+                  setTithePercentage(pendingPct);
                   setPendingPct(null);
                 }}
                 className="w-full bg-primary text-on-primary py-4 rounded-full font-bold text-sm active:scale-95 transition-all text-left px-6 shadow-lg shadow-primary/20"
