@@ -51,6 +51,9 @@ const Settings = ({
   const [editBudget, setEditBudget] = useState<{ category: string; budget?: any } | null>(null);
   const [newLimit, setNewLimit] = useState('');
   const [pendingPct, setPendingPct] = useState<number | null>(null);
+  const [savedPct, setSavedPct] = useState<number>(
+    cachedPct !== null ? parseInt(cachedPct) : 10
+  );
 
   // Modal states
   const [showNewBill, setShowNewBill] = useState(false);
@@ -122,6 +125,7 @@ const Settings = ({
       
       if (profileData?.tithe_percentage) {
         setTithePercentage(profileData.tithe_percentage);
+        setSavedPct(profileData.tithe_percentage);
         localStorage.setItem(`tithe_pct_${userId}`, String(profileData.tithe_percentage));
       }
       if (profileData?.tithe_active !== undefined) {
@@ -351,8 +355,14 @@ const Settings = ({
                 step="1"
                 value={tithePercentage}
                 onChange={(e) => setTithePercentage(parseInt(e.target.value))}
-                onMouseUp={() => setPendingPct(tithePercentage)}
-                onTouchEnd={() => setPendingPct(tithePercentage)}
+                onMouseUp={(e) => {
+                  const val = parseInt((e.target as HTMLInputElement).value);
+                  if (val !== savedPct) setPendingPct(val);
+                }}
+                onTouchEnd={(e) => {
+                  const val = parseInt((e.target as HTMLInputElement).value);
+                  if (val !== savedPct) setPendingPct(val);
+                }}
                 className="w-full h-3 rounded-full appearance-none cursor-pointer"
                 style={{
                   background: `linear-gradient(to right, var(--primary) ${(tithePercentage - 10) / 90 * 100}%, var(--surface-container-low) ${(tithePercentage - 10) / 90 * 100}%)`
@@ -621,6 +631,7 @@ const Settings = ({
                   });
                   localStorage.setItem(`tithe_pct_${userId}`, String(pendingPct));
                   setTithePercentage(pendingPct);
+                  setSavedPct(pendingPct);
                   setPendingPct(null);
                 }}
                 className="w-full bg-surface-container-low text-on-surface py-4 rounded-[1.5rem] font-bold text-sm active:scale-95 transition-all text-left px-6 border-2 border-surface-container"
@@ -647,6 +658,7 @@ const Settings = ({
                   });
                   localStorage.setItem(`tithe_pct_${userId}`, String(pendingPct));
                   setTithePercentage(pendingPct);
+                  setSavedPct(pendingPct);
                   setPendingPct(null);
                 }}
                 className="w-full bg-primary text-on-primary py-4 rounded-full font-bold text-sm active:scale-95 transition-all text-left px-6 shadow-lg shadow-primary/20"
@@ -656,6 +668,7 @@ const Settings = ({
               </button>
               <button
                 onClick={() => {
+                  setTithePercentage(savedPct); // reverter visual
                   setPendingPct(null);
                 }}
                 className="w-full text-on-surface-variant py-3 rounded-full font-bold text-sm active:scale-95 transition-all"

@@ -722,7 +722,7 @@ app.get('/tithe-summary', async (req, res) => {
       });
       // % do mês = % da última receita do mês (para exibição)
       m.tithe_pct = m.incomes.length > 0
-        ? m.incomes[m.incomes.length - 1].tithe_pct
+        ? m.incomes[0].tithe_pct
         : percentage;
     });
 
