@@ -16,6 +16,7 @@ const InstallmentsModal: React.FC<InstallmentsModalProps> = ({ userId, onClose }
 
   const [dragStart, setDragStart] = useState<number | null>(null);
   const [dragOffset, setDragOffset] = useState(0);
+  const contentRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -39,9 +40,13 @@ const InstallmentsModal: React.FC<InstallmentsModalProps> = ({ userId, onClose }
     }
   };
 
-  const handleTouchStart = (e: React.TouchEvent) => setDragStart(e.touches[0].clientY);
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (contentRef.current?.contains(e.target as Node)) return;
+    setDragStart(e.touches[0].clientY);
+  };
   const handleTouchMove = (e: React.TouchEvent) => {
     if (dragStart === null) return;
+    if (contentRef.current?.contains(e.target as Node)) return;
     const offset = e.touches[0].clientY - dragStart;
     if (offset > 0) setDragOffset(offset);
   };
@@ -83,7 +88,7 @@ const InstallmentsModal: React.FC<InstallmentsModalProps> = ({ userId, onClose }
           </button>
         </div>
 
-        <div className="overflow-y-auto flex-1 scrollbar-hide px-6 pb-8" style={{ overscrollBehavior: 'contain', touchAction: 'pan-y', overflowX: 'hidden' }}>
+        <div ref={contentRef} className="overflow-y-auto flex-1 scrollbar-hide px-6 pb-8" style={{ overscrollBehavior: 'contain', touchAction: 'pan-y', overflowX: 'hidden' }}>
         {loading ? (
           <div className="flex flex-col gap-4 py-8">
             <div className="skeleton h-24 w-full rounded-xl" />

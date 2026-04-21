@@ -30,6 +30,7 @@ export default function IncomeDetailsModal({ userId, onClose }: Props) {
   
   const [dragStart, setDragStart] = useState<number | null>(null);
   const [dragOffset, setDragOffset] = useState(0);
+  const contentRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -60,10 +61,12 @@ export default function IncomeDetailsModal({ userId, onClose }: Props) {
   const fmt = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   const handleTouchStart = (e: React.TouchEvent) => {
+    if (contentRef.current?.contains(e.target as Node)) return;
     setDragStart(e.touches[0].clientY);
   };
   const handleTouchMove = (e: React.TouchEvent) => {
     if (dragStart === null) return;
+    if (contentRef.current?.contains(e.target as Node)) return;
     const offset = e.touches[0].clientY - dragStart;
     if (offset > 0) setDragOffset(offset);
   };
@@ -141,7 +144,7 @@ export default function IncomeDetailsModal({ userId, onClose }: Props) {
         </div>
 
         {/* Lista com scroll */}
-        <div className="overflow-y-auto flex-1 space-y-4 pr-1" style={{ overflowX: 'hidden', overscrollBehavior: 'contain', touchAction: 'pan-y' }}>
+        <div ref={contentRef} className="overflow-y-auto flex-1 space-y-4 pr-1" style={{ overflowX: 'hidden', overscrollBehavior: 'contain', touchAction: 'pan-y' }}>
           {loading ? (
             <div className="flex justify-center p-8 opacity-50"><p>Carregando...</p></div>
           ) : txs.length === 0 ? (

@@ -30,15 +30,20 @@ const FixedDetailsModal: React.FC<FixedDetailsModalProps> = ({
 
   const [dragStart, setDragStart] = useState<number | null>(null);
   const [dragOffset, setDragOffset] = useState(0);
+  const contentRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = ''; };
   }, []);
 
-  const handleTouchStart = (e: React.TouchEvent) => setDragStart(e.touches[0].clientY);
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (contentRef.current?.contains(e.target as Node)) return;
+    setDragStart(e.touches[0].clientY);
+  };
   const handleTouchMove = (e: React.TouchEvent) => {
     if (dragStart === null) return;
+    if (contentRef.current?.contains(e.target as Node)) return;
     const offset = e.touches[0].clientY - dragStart;
     if (offset > 0) setDragOffset(offset);
   };
@@ -99,7 +104,7 @@ const FixedDetailsModal: React.FC<FixedDetailsModalProps> = ({
           </div>
         </div>
 
-        <div className="px-8 pb-12 overflow-y-auto space-y-4 scrollbar-hide" style={{ overscrollBehavior: 'contain', touchAction: 'pan-y', overflowX: 'hidden' }}>
+        <div ref={contentRef} className="px-8 pb-12 overflow-y-auto space-y-4 scrollbar-hide" style={{ overscrollBehavior: 'contain', touchAction: 'pan-y', overflowX: 'hidden' }}>
           {/* Tithing */}
           {tithingValue > 0 && (
             <div className="bg-white p-6 rounded-[2rem] border border-surface-container/50 flex items-center justify-between shadow-sm">

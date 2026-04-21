@@ -34,6 +34,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ tx, onRefresh, onCl
 
   const [dragStart, setDragStart] = useState<number | null>(null);
   const [dragOffset, setDragOffset] = useState(0);
+  const contentRef = React.useRef<HTMLDivElement>(null);
 
   const [deleting, setDeleting] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -79,9 +80,13 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ tx, onRefresh, onCl
     return () => { document.body.style.overflow = ''; };
   }, []);
 
-  const handleTouchStart = (e: React.TouchEvent) => setDragStart(e.touches[0].clientY);
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (contentRef.current?.contains(e.target as Node)) return;
+    setDragStart(e.touches[0].clientY);
+  };
   const handleTouchMove = (e: React.TouchEvent) => {
     if (dragStart === null) return;
+    if (contentRef.current?.contains(e.target as Node)) return;
     const offset = e.touches[0].clientY - dragStart;
     if (offset > 0) setDragOffset(offset);
   };
@@ -111,7 +116,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ tx, onRefresh, onCl
       >
         <div className="modal-handle" />
 
-        <div className="overflow-y-auto flex-1 scrollbar-hide" style={{ overscrollBehavior: 'contain', touchAction: 'pan-y', overflowX: 'hidden' }}>
+        <div ref={contentRef} className="overflow-y-auto flex-1 scrollbar-hide" style={{ overscrollBehavior: 'contain', touchAction: 'pan-y', overflowX: 'hidden' }}>
 
         {/* Header Section */}
         <div className="flex items-start gap-5 mb-8">
