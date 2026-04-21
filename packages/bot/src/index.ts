@@ -984,6 +984,11 @@ Exemplos que funcionam:
 
         await ctx.reply(`✅ Limite de **${item.category}** atualizado para R$ ${Number(item.limit_value).toFixed(2)} 🍐`);
       } else {
+        if (!item.value && item.value !== 0) {
+          console.log(`[SKIP] Item sem valor ignorado: ${item.description}`);
+          continue;
+        }
+
         const { error } = await supabase.from("transactions").insert({
           user_id: supabaseUserId,
           value: item.value,
@@ -1064,10 +1069,6 @@ bot.on('callback_query:data', async (ctx) => {
   }
 });
 
-bot.start();
-console.log("Bot Pera rodando (Direct API mode)!");
-
-// Servidor HTTP mínimo para health check do Render
 const port = process.env.PORT || 3000;
 const server = http.createServer((req, res) => {
   res.writeHead(200, { "Content-Type": "text/plain" });
@@ -1076,4 +1077,7 @@ const server = http.createServer((req, res) => {
 
 server.listen(port, () => {
   console.log(`Servidor HTTP rodando na porta ${port} para health check`);
+  // Iniciar o bot DEPOIS do servidor HTTP estar pronto
+  bot.start();
+  console.log("Bot Pera rodando (Direct API mode)!");
 });
