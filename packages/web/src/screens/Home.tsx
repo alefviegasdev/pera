@@ -298,7 +298,8 @@ const Home = ({
              paidDate.getFullYear() === now.getFullYear();
     })
     .forEach((p: any) => {
-      const key = `${new Date(p.paid_at).getFullYear()}-${new Date(p.paid_at).getMonth()}`;
+      const pct = p.tithe_pct || titheSummary?.tithe_pct_current || 10;
+      const key = `${new Date(p.paid_at).getFullYear()}-${new Date(p.paid_at).getMonth()}-${pct}`;
       if (!tithePaymentsByMonth[key]) {
         tithePaymentsByMonth[key] = {
           id: `tithe-paid-${key}`,
@@ -307,7 +308,7 @@ const Home = ({
           itemType: 'tithing',
           paid_at: p.paid_at,
           isFromPreviousMonth: false,
-          tithePct: p.tithe_pct || titheSummary?.tithe_pct_current || 10,
+          tithePct: pct,
           paymentCount: 0
         };
       }

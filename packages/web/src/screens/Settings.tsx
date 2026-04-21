@@ -300,9 +300,9 @@ const Settings = ({
                         const num = parseInt(pctInput);
                         if (!isNaN(num) && num >= 10 && num <= 100) {
                           setTithePercentage(num);
-                          setPendingPct(num);
                           setEditingPct(false);
                           setPctError('');
+                          if (num !== savedPct) setPendingPct(num);
                         } else {
                           // Resetar para o último valor válido em vez de manter o inválido
                           setPctInput(String(tithePercentage));
