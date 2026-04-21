@@ -307,7 +307,7 @@ const Home = ({
           itemType: 'tithing',
           paid_at: p.paid_at,
           isFromPreviousMonth: false,
-          tithePct: titheSummary?.tithe_pct_current || 10,
+          tithePct: p.tithe_pct || titheSummary?.tithe_pct_current || 10,
           paymentCount: 0
         };
       }

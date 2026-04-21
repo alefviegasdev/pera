@@ -729,7 +729,8 @@ Exemplos que funcionam:
             value: balanceDue,
             description: 'Dízimo pago via Telegram',
             short_code: shortCode,
-            paid_at: new Date().toISOString()
+            paid_at: new Date().toISOString(),
+            tithe_pct: tithePercentage
           });
 
           // 5. Inserir também em transactions (para o histórico)

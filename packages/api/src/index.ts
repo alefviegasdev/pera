@@ -709,17 +709,21 @@ app.get('/tithe-summary', async (req, res) => {
     const changedAt = profileRes.data?.tithe_percentage_changed_at;
     const previousPct = profileRes.data?.tithe_percentage_previous ?? percentage;
 
-    // Calcular tithe_due por mês
+    // Calcular tithe_due por transação individual dentro de cada mês
     Object.values(monthlyMap).forEach((m: any) => {
-      // Determinar qual % usar para este mês
-      // Se changedAt existe e o início do mês é anterior a changedAt,
-      // usar previousPct. Caso contrário, usar percentage atual.
-      const monthStart = new Date(m.year, m.month - 1, 1);
-      const pctForMonth = (changedAt && monthStart < new Date(changedAt))
-        ? previousPct
+      m.tithe_due = 0;
+      m.incomes.forEach((inc: any) => {
+        const incDate = new Date(inc.occurred_at);
+        const pctToUse = (changedAt && incDate < new Date(changedAt))
+          ? previousPct
+          : percentage;
+        m.tithe_due += Number(inc.value) * (pctToUse / 100);
+        inc.tithe_pct = pctToUse;
+      });
+      // % do mês = % da última receita do mês (para exibição)
+      m.tithe_pct = m.incomes.length > 0
+        ? m.incomes[m.incomes.length - 1].tithe_pct
         : percentage;
-      m.tithe_due = m.total_income * (pctForMonth / 100);
-      m.tithe_pct = pctForMonth;
     });
 
     // Distribuir pagamentos pelos meses (FIFO — paga o mais antigo primeiro)
@@ -779,11 +783,12 @@ app.get('/tithe-summary', async (req, res) => {
 
 app.post('/tithe-payments', async (req, res) => {
   try {
-    const { user_id, value, description, short_code } = req.body;
+    const { user_id, value, description, short_code, tithe_pct } = req.body;
     if (!user_id) return res.status(400).json({ error: "user_id is required" });
 
     const { data, error } = await supabase.from('tithe_payments').insert({
-      user_id, value, description, short_code
+      user_id, value, description, short_code,
+      tithe_pct: tithe_pct || null
     }).select();
 
     if (error) throw error;
