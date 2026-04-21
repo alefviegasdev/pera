@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, ChevronDown } from 'lucide-react';
+import { Calendar, ChevronDown, Plus, ChevronUp, X } from 'lucide-react';
 import { catColor, catEmoji } from '../utils/categories';
 import TransactionModal from '../components/TransactionModal';
 import InstallmentsModal from '../components/InstallmentsModal';
@@ -22,6 +22,18 @@ const History = ({
   const [period, setPeriod] = useState('today');
   const [periodDropdownOpen, setPeriodDropdownOpen] = useState(false);
   const periodDropdownRef = React.useRef<HTMLDivElement>(null);
+  
+  // Persistência via localStorage
+  const [listOpen, setListOpen] = useState<boolean>(() => {
+    return localStorage.getItem(`shopping_list_open_${userId}`) !== 'false';
+  });
+  const [listItems, setListItems] = useState<{id: string; text: string; checked: boolean}[]>(() => {
+    try {
+      const saved = localStorage.getItem(`shopping_list_${userId}`);
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+  const [newItem, setNewItem] = useState('');
 
   useEffect(() => {
     if (selectedTx || showInstallments) {
@@ -97,6 +109,42 @@ const History = ({
 
   const fmt = (n: number) =>
     n?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) ?? 'R$\u00a00,00';
+
+  const toggleList = () => {
+    const next = !listOpen;
+    setListOpen(next);
+    localStorage.setItem(`shopping_list_open_${userId}`, String(next));
+  };
+
+  const saveItems = (items: typeof listItems) => {
+    setListItems(items);
+    localStorage.setItem(`shopping_list_${userId}`, JSON.stringify(items));
+  };
+
+  const addItem = () => {
+    if (!newItem.trim()) return;
+    const updated = [...listItems, {
+      id: Date.now().toString(),
+      text: newItem.trim(),
+      checked: false
+    }];
+    saveItems(updated);
+    setNewItem('');
+  };
+
+  const toggleItem = (id: string) => {
+    saveItems(listItems.map(i => i.id === id ? { ...i, checked: !i.checked } : i));
+  };
+
+  const removeChecked = () => {
+    saveItems(listItems.filter(i => !i.checked));
+  };
+
+  const deleteItem = (id: string) => {
+    saveItems(listItems.filter(i => i.id !== id));
+  };
+
+  const hasChecked = listItems.some(i => i.checked);
 
   const periods = [
     { id: 'today', label: 'Hoje' },
@@ -206,6 +254,109 @@ const History = ({
           ) : (
             <div className="bg-surface-container-low p-6 rounded-[2rem] border border-dashed border-outline-variant text-center">
               <p className="text-xs font-medium text-on-surface-variant opacity-60">Nenhum parcelamento ativo no momento.</p>
+            </div>
+          )}
+        </section>
+
+        {/* Shopping List */}
+        <section className="space-y-4">
+          <div className="flex justify-between items-center px-1">
+            <h3 className="font-headline font-extrabold text-lg tracking-tight text-on-surface">
+              Lista de Compras
+            </h3>
+            <button
+              onClick={toggleList}
+              className="text-primary text-xs font-black uppercase tracking-wider hover:opacity-70 transition-opacity flex items-center gap-1"
+            >
+              {listOpen ? (
+                <>Recolher <ChevronUp size={14} /></>
+              ) : (
+                <>Expandir <ChevronDown size={14} /></>
+              )}
+            </button>
+          </div>
+
+          {listOpen && (
+            <div className="bg-white rounded-[2rem] border border-surface-container/30 shadow-sm overflow-hidden">
+              
+              {/* Input para adicionar item */}
+              <div className="flex items-center gap-3 p-4 border-b border-surface-container/20">
+                <input
+                  type="text"
+                  value={newItem}
+                  onChange={e => setNewItem(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && addItem()}
+                  placeholder="Adicionar item..."
+                  className="flex-1 bg-surface-container-low rounded-xl px-4 py-2.5 text-sm font-medium text-on-surface border-none focus:ring-2 focus:ring-primary/20 placeholder:text-on-surface-variant/40"
+                />
+                <button
+                  onClick={addItem}
+                  disabled={!newItem.trim()}
+                  className="w-9 h-9 bg-primary text-on-primary rounded-full flex items-center justify-center active:scale-95 transition-all disabled:opacity-30"
+                >
+                  <Plus size={18} />
+                </button>
+              </div>
+
+              {/* Lista de itens */}
+              {listItems.length === 0 ? (
+                <div className="py-10 text-center">
+                  <p className="text-on-surface-variant text-sm font-medium opacity-50">
+                    Nenhum item na lista ainda.
+                  </p>
+                </div>
+              ) : (
+                <div className="divide-y divide-surface-container/20">
+                  {listItems.map(item => (
+                    <div
+                      key={item.id}
+                      className="flex items-center gap-3 px-4 py-3 group"
+                    >
+                      <button
+                        onClick={() => toggleItem(item.id)}
+                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${
+                          item.checked
+                            ? 'bg-primary border-primary'
+                            : 'border-outline-variant'
+                        }`}
+                      >
+                        {item.checked && (
+                          <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                            <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        )}
+                      </button>
+                      <span className={`flex-1 text-sm font-medium transition-all ${
+                        item.checked ? 'line-through text-on-surface-variant opacity-50' : 'text-on-surface'
+                      }`}>
+                        {item.text}
+                      </span>
+                      <button
+                        onClick={() => deleteItem(item.id)}
+                        className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded-full text-on-surface-variant hover:text-error transition-all active:scale-95"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Botão de salvar (remover marcados) */}
+              {listItems.length > 0 && (
+                <div className="p-4 border-t border-surface-container/20">
+                  <button
+                    onClick={removeChecked}
+                    disabled={!hasChecked}
+                    className="w-full py-3 rounded-full font-bold text-sm transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed bg-primary text-on-primary shadow-sm shadow-primary/20"
+                  >
+                    {hasChecked
+                      ? `Remover ${listItems.filter(i => i.checked).length} item${listItems.filter(i => i.checked).length > 1 ? 's' : ''} comprado${listItems.filter(i => i.checked).length > 1 ? 's' : ''}`
+                      : 'Marque itens para remover'
+                    }
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </section>
