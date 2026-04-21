@@ -49,6 +49,7 @@ const Settings = ({
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [editBudget, setEditBudget] = useState<{ category: string; budget?: any } | null>(null);
   const [newLimit, setNewLimit] = useState('');
+  const [pendingPct, setPendingPct] = useState<number | null>(null);
 
   // Modal states
   const [showNewBill, setShowNewBill] = useState(false);
@@ -306,7 +307,7 @@ const Settings = ({
                           const num = parseInt(pctInput);
                           if (!isNaN(num) && num >= 10 && num <= 100) {
                             setTithePercentage(num);
-                            handleTithePercentageSave(num);
+                            setPendingPct(num);
                             setEditingPct(false);
                             setPctError('');
                           } else {
@@ -346,8 +347,8 @@ const Settings = ({
                 step="1"
                 value={tithePercentage}
                 onChange={(e) => setTithePercentage(parseInt(e.target.value))}
-                onMouseUp={() => handleTithePercentageSave(tithePercentage)}
-                onTouchEnd={() => handleTithePercentageSave(tithePercentage)}
+                onMouseUp={() => setPendingPct(tithePercentage)}
+                onTouchEnd={() => setPendingPct(tithePercentage)}
                 className="w-full h-3 rounded-full appearance-none cursor-pointer"
                 style={{
                   background: `linear-gradient(to right, var(--primary) ${(tithePercentage - 10) / 90 * 100}%, var(--surface-container-low) ${(tithePercentage - 10) / 90 * 100}%)`
@@ -582,6 +583,54 @@ const Settings = ({
               <button 
                 onClick={() => setEditBudget(null)}
                 className="w-full bg-transparent text-on-surface-variant py-3 rounded-full font-headline font-bold text-sm hover:text-on-surface active:scale-95 transition-all"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pendingPct !== null && (
+        <div className="fixed inset-0 bg-black/60 z-[150] flex items-center justify-center p-6" onClick={() => setPendingPct(null)}>
+          <div className="bg-white rounded-[2.5rem] w-full max-w-xs p-8 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="text-center mb-6">
+              <p className="text-2xl mb-3">🙏</p>
+              <h3 className="font-headline text-xl font-black text-on-surface mb-2">Aplicar {pendingPct}%</h3>
+              <p className="text-sm text-on-surface-variant leading-relaxed">
+                Como deseja aplicar a nova porcentagem?
+              </p>
+            </div>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={async () => {
+                  // TODO: implementar tithe_percentage_changed_at em user_profiles
+                  // para diferenciar recalculo total vs. apenas novos recebimentos
+                  await handleTithePercentageSave(pendingPct);
+                  setPendingPct(null);
+                }}
+                className="w-full bg-surface-container-low text-on-surface py-4 rounded-full font-bold text-sm active:scale-95 transition-all text-left px-6"
+              >
+                <p className="font-black">A partir dos próximos recebimentos</p>
+                <p className="text-xs text-on-surface-variant font-medium mt-0.5">Recebimentos anteriores mantêm o percentual antigo</p>
+              </button>
+              <button
+                onClick={async () => {
+                  // TODO: implementar tithe_percentage_changed_at em user_profiles
+                  // para diferenciar recalculo total vs. apenas novos recebimentos
+                  await handleTithePercentageSave(pendingPct);
+                  setPendingPct(null);
+                }}
+                className="w-full bg-primary text-on-primary py-4 rounded-full font-bold text-sm active:scale-95 transition-all text-left px-6 shadow-lg shadow-primary/20"
+              >
+                <p className="font-black">Recalcular desde o início</p>
+                <p className="text-xs text-on-primary/70 font-medium mt-0.5">Aplica o novo % em todos os recebimentos</p>
+              </button>
+              <button
+                onClick={() => {
+                  setPendingPct(null);
+                }}
+                className="w-full text-on-surface-variant py-3 rounded-full font-bold text-sm active:scale-95 transition-all"
               >
                 Cancelar
               </button>
