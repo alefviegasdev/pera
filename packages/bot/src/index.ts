@@ -194,6 +194,33 @@ Exemplos:
 MENSAGEM:
 `;
 
+const SHOPPING_PROMPT = `
+Você é um assistente que detecta intenção de adicionar itens
+a uma lista de compras. Analise a mensagem e retorne um JSON.
+
+Se a mensagem expressar intenção de comprar, precisar de algo,
+lembrar de comprar, adicionar à lista, etc → retorne:
+{
+  "is_shopping": true,
+  "items": ["item1", "item2"]
+}
+
+Exemplos:
+- "preciso comprar arroz e feijão" → { "is_shopping": true, "items": ["arroz", "feijão"] }
+- "comprar 5 de detergente" → { "is_shopping": true, "items": ["detergente (5)"] }
+- "lembra de pegar leite" → { "is_shopping": true, "items": ["leite"] }
+- "add shampoo na lista" → { "is_shopping": true, "items": ["shampoo"] }
+- "to precisando de papel higiênico e sabão" → { "is_shopping": true, "items": ["papel higiênico", "sabão"] }
+- "kmprar pão amanha" → { "is_shopping": true, "items": ["pão"] }
+- "gastei 50 no mercado" → { "is_shopping": false }
+- "recebi 3000" → { "is_shopping": false }
+
+Aceite erros de digitação e gramática. Foque na intenção.
+Se não for lista de compras, retorne: { "is_shopping": false }
+
+MENSAGEM:
+\`;
+
 function generateShortCode() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let code = 'id';
@@ -634,6 +661,38 @@ O que você pode mudar:
       if (updateErr) throw updateErr;
 
       return ctx.reply(`✏️ #${code} atualizado!\n${changeLogs.join('\n')}`);
+    }
+
+    // 2a. DETECÇÃO DE LISTA DE COMPRAS
+    const shoppingUrl = \`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=\${geminiKey}\`;
+    const shoppingResponse = await fetch(shoppingUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: SHOPPING_PROMPT + text }] }]
+      })
+    });
+    if (shoppingResponse.ok) {
+      const shoppingResult = await shoppingResponse.json();
+      const shoppingText = shoppingResult.candidates?.[0]?.content?.parts?.[0]?.text
+        ?.trim().replace(/\`\`\`json|\`\`\`/g, "") || "";
+      try {
+        const shoppingData = JSON.parse(shoppingText);
+        if (shoppingData.is_shopping && shoppingData.items?.length > 0) {
+          // Inserir todos os itens na tabela
+          const inserts = shoppingData.items.map((item: string) => ({
+            user_id: supabaseUserId,
+            text: item,
+            checked: false
+          }));
+          await supabase.from('shopping_list').insert(inserts);
+          
+          const itemsList = shoppingData.items.map((i: string) => \`• \${i}\`).join('\\n');
+          return ctx.reply(\`🛒 Adicionado à lista de compras!\\n\\n\${itemsList}\\n\\nVeja no app em Histórico > Lista de Compras\`);
+        }
+      } catch (e) {
+        // não era lista de compras, continuar
+      }
     }
 
     // 2. PROCESSAMENTO FINANCEIRO COM GEMINI

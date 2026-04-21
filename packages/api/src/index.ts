@@ -798,6 +798,73 @@ app.post('/tithe-payments', async (req, res) => {
   }
 });
 
+app.get('/shopping-list', async (req, res) => {
+  try {
+    const { user_id } = req.query;
+    if (!user_id) return res.status(400).json({ error: "user_id required" });
+    const { data, error } = await supabase
+      .from('shopping_list')
+      .select('*')
+      .eq('user_id', user_id)
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    res.json(data || []);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/shopping-list', async (req, res) => {
+  try {
+    const { user_id, text } = req.body;
+    if (!user_id || !text) return res.status(400).json({ error: "user_id and text required" });
+    const { data, error } = await supabase
+      .from('shopping_list')
+      .insert({ user_id, text, checked: false })
+      .select();
+    if (error) throw error;
+    res.json(data[0]);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+app.patch('/shopping-list/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { checked } = req.body;
+    const { data, error } = await supabase
+      .from('shopping_list')
+      .update({ checked })
+      .eq('id', id)
+      .select();
+    if (error) throw error;
+    res.json(data[0]);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/shopping-list/checked', async (req, res) => {
+  try {
+    const { user_id } = req.query;
+    if (!user_id) return res.status(400).json({ error: "user_id required" });
+    const { error } = await supabase
+      .from('shopping_list')
+      .delete()
+      .eq('user_id', user_id)
+      .eq('checked', true);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/shopping-list/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { error } = await supabase
+      .from('shopping_list')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
 app.listen(port, () => {
   console.log(`API Pera rodando na porta ${port}`);
 });

@@ -27,13 +27,11 @@ const History = ({
   const [listOpen, setListOpen] = useState<boolean>(() => {
     return localStorage.getItem(`shopping_list_open_${userId}`) !== 'false';
   });
-  const [listItems, setListItems] = useState<{id: string; text: string; checked: boolean}[]>(() => {
-    try {
-      const saved = localStorage.getItem(`shopping_list_${userId}`);
-      return saved ? JSON.parse(saved) : [];
-    } catch { return []; }
-  });
+  const [listItems, setListItems] = useState<{id: string; text: string; checked: boolean}[]>([]);
+  const [listLoading, setListLoading] = useState(false);
   const [newItem, setNewItem] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [confirmDeleteText, setConfirmDeleteText] = useState<string>('');
 
   useEffect(() => {
     if (selectedTx || showInstallments) {
@@ -53,7 +51,7 @@ const History = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  useEffect(() => { fetchAll(); }, [userId, period]);
+  useEffect(() => { fetchAll(); fetchShoppingList(); }, [userId, period]);
   
   const periodRef = React.useRef(period);
   useEffect(() => {
@@ -63,6 +61,7 @@ const History = ({
   useEffect(() => {
     const interval = setInterval(() => {
       fetchAll(true);
+      fetchShoppingList();
     }, 15000);
     return () => clearInterval(interval);
   }, [userId, period]);
@@ -110,38 +109,59 @@ const History = ({
   const fmt = (n: number) =>
     n?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) ?? 'R$\u00a00,00';
 
+  const fetchShoppingList = async () => {
+    try {
+      const res = await fetch(`/api/shopping-list?user_id=${userId}`);
+      const data = await res.json();
+      setListItems(Array.isArray(data) ? data : []);
+    } catch (e) { console.error(e); }
+  };
+
   const toggleList = () => {
     const next = !listOpen;
     setListOpen(next);
     localStorage.setItem(`shopping_list_open_${userId}`, String(next));
   };
 
-  const saveItems = (items: typeof listItems) => {
-    setListItems(items);
-    localStorage.setItem(`shopping_list_${userId}`, JSON.stringify(items));
-  };
-
-  const addItem = () => {
+  const addItem = async () => {
     if (!newItem.trim()) return;
-    const updated = [...listItems, {
-      id: Date.now().toString(),
-      text: newItem.trim(),
-      checked: false
-    }];
-    saveItems(updated);
-    setNewItem('');
+    try {
+      const res = await fetch('/api/shopping-list', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId, text: newItem.trim() })
+      });
+      const data = await res.json();
+      setListItems(prev => [...prev, data]);
+      setNewItem('');
+    } catch (e) { console.error(e); }
   };
 
-  const toggleItem = (id: string) => {
-    saveItems(listItems.map(i => i.id === id ? { ...i, checked: !i.checked } : i));
+  const toggleItem = async (id: string) => {
+    const item = listItems.find(i => i.id === id);
+    if (!item) return;
+    setListItems(prev => prev.map(i => i.id === id ? { ...i, checked: !i.checked } : i));
+    try {
+      await fetch(`/api/shopping-list/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ checked: !item.checked })
+      });
+    } catch (e) { console.error(e); }
   };
 
-  const removeChecked = () => {
-    saveItems(listItems.filter(i => !i.checked));
+  const removeChecked = async () => {
+    try {
+      await fetch(`/api/shopping-list/checked?user_id=${userId}`, { method: 'DELETE' });
+      setListItems(prev => prev.filter(i => !i.checked));
+    } catch (e) { console.error(e); }
   };
 
-  const deleteItem = (id: string) => {
-    saveItems(listItems.filter(i => i.id !== id));
+  const deleteItem = async (id: string) => {
+    try {
+      await fetch(`/api/shopping-list/${id}`, { method: 'DELETE' });
+      setListItems(prev => prev.filter(i => i.id !== id));
+    } catch (e) { console.error(e); }
   };
 
   const hasChecked = listItems.some(i => i.checked);
@@ -287,7 +307,8 @@ const History = ({
                   onChange={e => setNewItem(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && addItem()}
                   placeholder="Adicionar item..."
-                  className="flex-1 bg-surface-container-low rounded-xl px-4 py-2.5 text-sm font-medium text-on-surface border-none focus:ring-2 focus:ring-primary/20 placeholder:text-on-surface-variant/40"
+                  className="flex-1 bg-surface-container-low rounded-xl px-4 py-2.5 font-medium text-on-surface border-none focus:ring-2 focus:ring-primary/20 placeholder:text-on-surface-variant/40"
+                  style={{ fontSize: '16px' }}
                 />
                 <button
                   onClick={addItem}
@@ -332,8 +353,11 @@ const History = ({
                         {item.text}
                       </span>
                       <button
-                        onClick={() => deleteItem(item.id)}
-                        className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded-full text-on-surface-variant hover:text-error transition-all active:scale-95"
+                        onClick={() => {
+                          setConfirmDeleteId(item.id);
+                          setConfirmDeleteText(item.text);
+                        }}
+                        className="w-6 h-6 rounded-full text-on-surface-variant hover:text-error transition-all active:scale-95 flex-shrink-0"
                       >
                         <X size={14} />
                       </button>
@@ -350,13 +374,41 @@ const History = ({
                     disabled={!hasChecked}
                     className="w-full py-3 rounded-full font-bold text-sm transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed bg-primary text-on-primary shadow-sm shadow-primary/20"
                   >
-                    {hasChecked
-                      ? `Remover ${listItems.filter(i => i.checked).length} item${listItems.filter(i => i.checked).length > 1 ? 's' : ''} comprado${listItems.filter(i => i.checked).length > 1 ? 's' : ''}`
-                      : 'Marque itens para remover'
-                    }
+                    {hasChecked ? 'Comprei! ✓' : 'Marque os itens comprados'}
                   </button>
                 </div>
               )}
+
+              {confirmDeleteId && (
+                <div className="fixed inset-0 bg-black/40 z-[200] flex items-center justify-center p-6"
+                  onClick={() => setConfirmDeleteId(null)}>
+                  <div className="bg-white rounded-[2rem] w-full max-w-xs p-6 shadow-2xl"
+                    onClick={e => e.stopPropagation()}>
+                    <p className="font-headline font-black text-on-surface text-lg mb-1">Remover item?</p>
+                    <p className="text-sm text-on-surface-variant mb-6">
+                      "<span className="font-bold text-on-surface">{confirmDeleteText}</span>" será removido da lista.
+                    </p>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => setConfirmDeleteId(null)}
+                        className="flex-1 py-3 rounded-full bg-surface-container-low text-on-surface-variant font-bold text-sm active:scale-95 transition-all"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (confirmDeleteId) deleteItem(confirmDeleteId);
+                          setConfirmDeleteId(null);
+                        }}
+                        className="flex-1 py-3 rounded-full bg-error text-white font-bold text-sm active:scale-95 transition-all"
+                      >
+                        Remover
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
             </div>
           )}
         </section>
