@@ -246,6 +246,29 @@ Se não for lista de compras, retorne: { "is_shopping": false }
 MENSAGEM:
 `;
 
+const BOUGHT_PROMPT = `
+Você detecta quando alguém diz que comprou algo que estava
+na lista de compras. Analise a mensagem e retorne JSON.
+
+Se a mensagem indicar que algo foi comprado → retorne:
+{ "is_bought": true, "items": ["item1", "item2"] }
+
+Exemplos:
+- "comprei desodorante" → { "is_bought": true, "items": ["desodorante"] }
+- "já comprei o leite" → { "is_bought": true, "items": ["leite"] }
+- "peguei o pão e o queijo" → { "is_bought": true, "items": ["pão", "queijo"] }
+- "comprei os ovos" → { "is_bought": true, "items": ["ovos"] }
+- "c o desodorante" → { "is_bought": true, "items": ["desodorante"] }
+- "gastei 50 no mercado" → { "is_bought": false }
+- "preciso comprar leite" → { "is_bought": false }
+
+Aceite erros de digitação. Foque na intenção de ter COMPRADO,
+não de precisar comprar.
+Se não for compra realizada, retorne: { "is_bought": false }
+
+MENSAGEM:
+`;
+
 function generateShortCode() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let code = 'id';
@@ -700,6 +723,94 @@ O que você pode mudar:
       return ctx.reply(`✏️ #${code} atualizado!\n${changeLogs.join('\n')}`);
     }
 
+    // 2a. DETECÇÃO DE ITEM COMPRADO DA LISTA
+    const boughtUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
+    const boughtResponse = await fetch(boughtUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: BOUGHT_PROMPT + text }] }]
+      })
+    });
+    if (boughtResponse.ok) {
+      const boughtResult = await boughtResponse.json();
+      const boughtText = boughtResult.candidates?.[0]?.content?.parts?.[0]?.text
+        ?.trim().replace(/```json|```/g, "") || "";
+      try {
+        const boughtData = JSON.parse(boughtText);
+        if (boughtData.is_bought && boughtData.items?.length > 0) {
+          // Buscar lista de compras do usuário
+          const { data: listItems } = await supabase
+            .from('shopping_list')
+            .select('*')
+            .eq('user_id', supabaseUserId)
+            .eq('checked', false);
+
+          if (listItems && listItems.length > 0) {
+            const removedNames: string[] = [];
+
+            for (const boughtItem of boughtData.items) {
+              // Encontrar item mais parecido na lista
+              const match = listItems.find(li => {
+                const a = li.text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                const b = boughtItem.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                return a.includes(b) || b.includes(a) || levenshteinDistance(a, b) <= 3;
+              });
+
+              if (match) {
+                await supabase
+                  .from('shopping_list')
+                  .update({ checked: true })
+                  .eq('id', match.id);
+                removedNames.push(match.text);
+              }
+            }
+
+            if (removedNames.length > 0) {
+              const names = removedNames.map(n => `• ${n}`).join('\n');
+              return ctx.reply(`✅ Marcado como comprado!\n\n${names}`);
+            }
+          }
+          
+          return ctx.reply(`🛒 Não encontrei esses itens na sua lista de compras pendente.`);
+        }
+      } catch (e) {
+        // não era compra, continuar
+      }
+    }
+
+    // 2b. DETECÇÃO DE LISTA DE COMPRAS
+    const shoppingUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
+    const shoppingResponse = await fetch(shoppingUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: SHOPPING_PROMPT + text }] }]
+      })
+    });
+    if (shoppingResponse.ok) {
+      const shoppingResult = await shoppingResponse.json();
+      const shoppingText = shoppingResult.candidates?.[0]?.content?.parts?.[0]?.text
+        ?.trim().replace(/```json|```/g, "") || "";
+      try {
+        const shoppingData = JSON.parse(shoppingText);
+        if (shoppingData.is_shopping && shoppingData.items?.length > 0) {
+          // Inserir todos os itens na tabela
+          const inserts = shoppingData.items.map((item: string) => ({
+            user_id: supabaseUserId,
+            text: item,
+            checked: false
+          }));
+          await supabase.from('shopping_list').insert(inserts);
+          
+          const itemsList = shoppingData.items.map((i: string) => `• ${i}`).join('\n');
+          return ctx.reply(`🛒 Adicionado à lista de compras!\n\n${itemsList}\n\nVeja no app em Histórico > Lista de Compras`);
+        }
+      } catch (e) {
+        // não era lista de compras, continuar
+      }
+    }
+
     // 2. PROCESSAMENTO FINANCEIRO COM GEMINI
     console.log("Tipo detectado: financeiro");
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
@@ -725,117 +836,6 @@ O que você pode mudar:
     const data = JSON.parse(responseText);
 
     if (data.error === "not_financial") {
-      const BOUGHT_PROMPT = `
-Você detecta quando alguém diz que comprou algo que estava
-na lista de compras. Analise a mensagem e retorne JSON.
-
-Se a mensagem indicar que algo foi comprado → retorne:
-{ "is_bought": true, "items": ["item1", "item2"] }
-
-Exemplos:
-- "comprei desodorante" → { "is_bought": true, "items": ["desodorante"] }
-- "já comprei o leite" → { "is_bought": true, "items": ["leite"] }
-- "peguei o pão e o queijo" → { "is_bought": true, "items": ["pão", "queijo"] }
-- "comprei os ovos" → { "is_bought": true, "items": ["ovos"] }
-- "c o desodorante" → { "is_bought": true, "items": ["desodorante"] }
-- "gastei 50 no mercado" → { "is_bought": false }
-- "preciso comprar leite" → { "is_bought": false }
-
-Aceite erros de digitação. Foque na intenção de ter COMPRADO,
-não de precisar comprar.
-Se não for compra realizada, retorne: { "is_bought": false }
-
-MENSAGEM:
-`;
-
-      // 2b. DETECÇÃO DE ITEM COMPRADO DA LISTA
-      const boughtUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
-      const boughtResponse = await fetch(boughtUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: BOUGHT_PROMPT + text }] }]
-        })
-      });
-      if (boughtResponse.ok) {
-        const boughtResult = await boughtResponse.json();
-        const boughtText = boughtResult.candidates?.[0]?.content?.parts?.[0]?.text
-          ?.trim().replace(/\`\`\`json|\`\`\`/g, "") || "";
-        try {
-          const boughtData = JSON.parse(boughtText);
-          if (boughtData.is_bought && boughtData.items?.length > 0) {
-            // Buscar lista de compras do usuário
-            const { data: listItems } = await supabase
-              .from('shopping_list')
-              .select('*')
-              .eq('user_id', supabaseUserId)
-              .eq('checked', false);
-
-            if (listItems && listItems.length > 0) {
-              const removedNames: string[] = [];
-
-              for (const boughtItem of boughtData.items) {
-                // Encontrar item mais parecido na lista
-                const match = listItems.find(li => {
-                  const a = li.text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-                  const b = boughtItem.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-                  return a.includes(b) || b.includes(a) || levenshteinDistance(a, b) <= 3;
-                });
-
-                if (match) {
-                  await supabase
-                    .from('shopping_list')
-                    .update({ checked: true })
-                    .eq('id', match.id);
-                  removedNames.push(match.text);
-                }
-              }
-
-              if (removedNames.length > 0) {
-                const names = removedNames.map(n => `• ${n}`).join('\n');
-                return ctx.reply(`✅ Marcado como comprado!\n\n${names}`);
-              }
-            }
-            
-            return ctx.reply(`🛒 Não encontrei esses itens na sua lista de compras pendente.`);
-          }
-        } catch (e) {
-          // não era compra, continuar
-        }
-      }
-
-      // 2a. DETECÇÃO DE LISTA DE COMPRAS
-      const shoppingUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
-      const shoppingResponse = await fetch(shoppingUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: SHOPPING_PROMPT + text }] }]
-        })
-      });
-      if (shoppingResponse.ok) {
-        const shoppingResult = await shoppingResponse.json();
-        const shoppingText = shoppingResult.candidates?.[0]?.content?.parts?.[0]?.text
-          ?.trim().replace(/\`\`\`json|\`\`\`/g, "") || "";
-        try {
-          const shoppingData = JSON.parse(shoppingText);
-          if (shoppingData.is_shopping && shoppingData.items?.length > 0) {
-            // Inserir todos os itens na tabela
-            const inserts = shoppingData.items.map((item: string) => ({
-              user_id: supabaseUserId,
-              text: item,
-              checked: false
-            }));
-            await supabase.from('shopping_list').insert(inserts);
-            
-            const itemsList = shoppingData.items.map((i: string) => `• ${i}`).join('\n');
-            return ctx.reply(`🛒 Adicionado à lista de compras!\n\n${itemsList}\n\nVeja no app em Histórico > Lista de Compras`);
-          }
-        } catch (e) {
-          // não era lista de compras, continuar
-        }
-      }
-
       const lowerText = text.toLowerCase();
       let hint = "";
 
