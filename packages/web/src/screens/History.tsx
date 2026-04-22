@@ -331,10 +331,10 @@ const History = ({
                   {listItems.map(item => (
                     <div
                       key={item.id}
-                      className="flex items-center gap-3 px-4 py-3 group"
+                      className="flex items-center gap-3 px-4 py-3 cursor-pointer active:bg-surface-container-low/50 transition-colors"
+                      onClick={() => toggleItem(item.id)}
                     >
                       <button
-                        onClick={() => toggleItem(item.id)}
                         className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${
                           item.checked
                             ? 'bg-primary border-primary'
@@ -353,7 +353,8 @@ const History = ({
                         {item.text}
                       </span>
                       <button
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           setConfirmDeleteId(item.id);
                           setConfirmDeleteText(item.text);
                         }}

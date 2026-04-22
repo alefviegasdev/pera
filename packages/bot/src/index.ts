@@ -300,6 +300,18 @@ function isDizimo(text: string): boolean {
   return words.some(w => w.length >= 4 && levenshtein(w, 'dizimo') <= 2);
 }
 
+function levenshteinDistance(a: string, b: string): number {
+  const dp = Array.from({ length: a.length + 1 }, (_, i) =>
+    Array.from({ length: b.length + 1 }, (_, j) => i === 0 ? j : j === 0 ? i : 0)
+  );
+  for (let i = 1; i <= a.length; i++)
+    for (let j = 1; j <= b.length; j++)
+      dp[i][j] = a[i-1] === b[j-1]
+        ? dp[i-1][j-1]
+        : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+  return dp[a.length][b.length];
+}
+
 bot.on("message:text", async (ctx) => {
   const text = ctx.message.text.trim();
   const userId = ctx.from.id.toString();
@@ -661,6 +673,85 @@ O que você pode mudar:
       if (updateErr) throw updateErr;
 
       return ctx.reply(`✏️ #${code} atualizado!\n${changeLogs.join('\n')}`);
+    }
+
+    const BOUGHT_PROMPT = `
+Você detecta quando alguém diz que comprou algo que estava
+na lista de compras. Analise a mensagem e retorne JSON.
+
+Se a mensagem indicar que algo foi comprado → retorne:
+{ "is_bought": true, "items": ["item1", "item2"] }
+
+Exemplos:
+- "comprei desodorante" → { "is_bought": true, "items": ["desodorante"] }
+- "já comprei o leite" → { "is_bought": true, "items": ["leite"] }
+- "peguei o pão e o queijo" → { "is_bought": true, "items": ["pão", "queijo"] }
+- "comprei os ovos" → { "is_bought": true, "items": ["ovos"] }
+- "c o desodorante" → { "is_bought": true, "items": ["desodorante"] }
+- "gastei 50 no mercado" → { "is_bought": false }
+- "preciso comprar leite" → { "is_bought": false }
+
+Aceite erros de digitação. Foque na intenção de ter COMPRADO,
+não de precisar comprar.
+Se não for compra realizada, retorne: { "is_bought": false }
+
+MENSAGEM:
+`;
+
+    // 2b. DETECÇÃO DE ITEM COMPRADO DA LISTA
+    const boughtUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
+    const boughtResponse = await fetch(boughtUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: BOUGHT_PROMPT + text }] }]
+      })
+    });
+    if (boughtResponse.ok) {
+      const boughtResult = await boughtResponse.json();
+      const boughtText = boughtResult.candidates?.[0]?.content?.parts?.[0]?.text
+        ?.trim().replace(/\`\`\`json|\`\`\`/g, "") || "";
+      try {
+        const boughtData = JSON.parse(boughtText);
+        if (boughtData.is_bought && boughtData.items?.length > 0) {
+          // Buscar lista de compras do usuário
+          const { data: listItems } = await supabase
+            .from('shopping_list')
+            .select('*')
+            .eq('user_id', supabaseUserId)
+            .eq('checked', false);
+
+          if (listItems && listItems.length > 0) {
+            const removedNames: string[] = [];
+
+            for (const boughtItem of boughtData.items) {
+              // Encontrar item mais parecido na lista
+              const match = listItems.find(li => {
+                const a = li.text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                const b = boughtItem.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                return a.includes(b) || b.includes(a) || levenshteinDistance(a, b) <= 3;
+              });
+
+              if (match) {
+                await supabase
+                  .from('shopping_list')
+                  .update({ checked: true })
+                  .eq('id', match.id);
+                removedNames.push(match.text);
+              }
+            }
+
+            if (removedNames.length > 0) {
+              const names = removedNames.map(n => `• ${n}`).join('\n');
+              return ctx.reply(`✅ Marcado como comprado!\n\n${names}`);
+            }
+          }
+          
+          return ctx.reply(`🛒 Não encontrei esses itens na sua lista de compras pendente.`);
+        }
+      } catch (e) {
+        // não era compra, continuar
+      }
     }
 
     // 2a. DETECÇÃO DE LISTA DE COMPRAS
