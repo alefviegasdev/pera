@@ -664,7 +664,7 @@ O que você pode mudar:
     }
 
     // 2a. DETECÇÃO DE LISTA DE COMPRAS
-    const shoppingUrl = \`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=\${geminiKey}\`;
+    const shoppingUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
     const shoppingResponse = await fetch(shoppingUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -687,8 +687,8 @@ O que você pode mudar:
           }));
           await supabase.from('shopping_list').insert(inserts);
           
-          const itemsList = shoppingData.items.map((i: string) => \`• \${i}\`).join('\\n');
-          return ctx.reply(\`🛒 Adicionado à lista de compras!\\n\\n\${itemsList}\\n\\nVeja no app em Histórico > Lista de Compras\`);
+          const itemsList = shoppingData.items.map((i: string) => `• ${i}`).join('\n');
+          return ctx.reply(`🛒 Adicionado à lista de compras!\n\n${itemsList}\n\nVeja no app em Histórico > Lista de Compras`);
         }
       } catch (e) {
         // não era lista de compras, continuar
@@ -1069,16 +1069,15 @@ bot.on('callback_query:data', async (ctx) => {
   }
 });
 
-const port = process.env.PORT || 3000;
+const port = parseInt(process.env.PORT || '3000', 10);
 const server = http.createServer((req, res) => {
   res.writeHead(200, { "Content-Type": "text/plain" });
   res.end("OK");
 });
 
-server.listen(port, () => {
+server.listen(port, '0.0.0.0', () => {
   console.log(`Servidor HTTP rodando na porta ${port}`);
 });
 
-// Iniciar bot separadamente, sem bloquear o servidor HTTP
 bot.start().catch(console.error);
 console.log("Bot Pera iniciando...");
