@@ -136,6 +136,15 @@ EXEMPLOS que devem retornar type: 'payment':
 - 'quitei o aluguel' → { type: 'payment', description: 'aluguel' }
 - 'pagar academia' → { type: 'payment', description: 'academia' }
 
+VALOR + PRODUTO SEM CONTEXTO EXPLÍCITO:
+Quando a mensagem for um número seguido de produto SEM verbos
+de intenção de compra, interpretar o número como valor em reais:
+- "3 limão" → { type: "expense", value: 3, description: "limão", category: "Alimentação" }
+- "0,47 limão" → { type: "expense", value: 0.47, description: "limão", category: "Alimentação" }
+- "10 desodorante" → { type: "expense", value: 10, description: "desodorante", category: "Saúde" }
+- "5 pão" → { type: "expense", value: 5, description: "pão", category: "Alimentação" }
+- "15 uber" → { type: "expense", value: 15, description: "uber", category: "Transporte" }
+
 NÃO retorne not_financial para mensagens com 'paguei/pagar/quitei'.
 
 RECONHECIMENTO DE DÍZIMO — PRIORIDADE ALTA:
@@ -148,31 +157,6 @@ ou qualquer variação fonética próxima → retornar SEMPRE:
 
 NÃO retornar not_financial para essas mensagens.
 
-
-REGRA DE LISTA DE COMPRAS vs TRANSAÇÃO:
-
-Retorne {"error": "not_financial"} (será tratado como lista de compras) quando:
-
-1. A mensagem for APENAS um nome de produto sem valor monetário:
-   - "limão", "ovos", "leite", "desodorante", "shampoo"
-
-2. A mensagem tiver verbo de intenção de compra + produto:
-   - Verbos: comprar, pegar, buscar, trazer, adquirir, obter
-   - "comprar ovos", "pegar leite", "buscar desodorante"
-   - "vou comprar arroz", "preciso comprar 5 ovos"
-
-3. A mensagem tiver "preciso" + produto (com ou sem quantidade):
-   - "preciso de ovos", "preciso 3 leites", "preciso de shampoo"
-
-4. Quantidade + produto SEM contexto financeiro:
-   - "5 ovos", "2 leites", "0,47 limão", "1kg de arroz"
-
-Retorne transação normalmente quando houver contexto financeiro claro:
-- Palavras como: gastei, paguei, comprei, custou, R$, reais, valor
-- "gastei 5 em ovos" → expense
-- "comprei desodorante por 15" → expense  
-- "5 reais de limão" → expense
-- "paguei 0,47 no limão" → expense
 
 Se a mensagem não contiver informações financeiras, retorne: {"error": "not_financial"}.
 
