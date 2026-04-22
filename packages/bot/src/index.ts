@@ -1195,5 +1195,12 @@ server.listen(port, '0.0.0.0', () => {
   console.log(`Servidor HTTP rodando na porta ${port}`);
 });
 
-bot.start().catch(console.error);
+bot.start().catch((err) => {
+  if (err?.error_code === 409) {
+    console.log('Conflito de instância detectado, aguardando...');
+    setTimeout(() => bot.start().catch(console.error), 5000);
+  } else {
+    console.error(err);
+  }
+});
 console.log("Bot Pera iniciando...");
