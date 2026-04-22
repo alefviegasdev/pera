@@ -220,23 +220,33 @@ MENSAGEM:
 `;
 
 const SHOPPING_PROMPT = `
-Você é um assistente que detecta intenção de adicionar itens
-a uma lista de compras. Analise a mensagem e retorne um JSON.
+Você detecta intenção de adicionar itens a uma lista de compras.
+Retorne SEMPRE um JSON.
 
-Se a mensagem expressar intenção de comprar, precisar de algo,
-lembrar de comprar, adicionar à lista, etc → retorne:
-{
-  "is_shopping": true,
-  "items": ["item1", "item2"]
-}
+REGRA PRINCIPAL:
+- Se a mensagem for APENAS o nome de um produto SEM número → lista
+- Se tiver verbo de intenção de compra + produto (com ou sem número) → lista
+- Se tiver "preciso" + produto (com ou sem número) → lista
+- Se tiver número + produto SEM verbo de intenção → NÃO é lista (é transação)
 
-Exemplos:
-- "preciso comprar arroz e feijão" → { "is_shopping": true, "items": ["arroz", "feijão"] }
-- "comprar 5 de detergente" → { "is_shopping": true, "items": ["detergente (5)"] }
+Verbos de intenção: comprar, pegar, buscar, trazer, adquirir, obter,
+precisar comprar, quero comprar, vou comprar, lembra de pegar, etc.
+
+EXEMPLOS que devem retornar is_shopping: true:
+- "desodorante" → { "is_shopping": true, "items": ["desodorante"] }
+- "leite" → { "is_shopping": true, "items": ["leite"] }
+- "comprar 10 desodorante" → { "is_shopping": true, "items": ["desodorante (10)"] }
+- "preciso de ovos" → { "is_shopping": true, "items": ["ovos"] }
+- "preciso comprar 5 ovos" → { "is_shopping": true, "items": ["ovos (5)"] }
 - "lembra de pegar leite" → { "is_shopping": true, "items": ["leite"] }
-- "add shampoo na lista" → { "is_shopping": true, "items": ["shampoo"] }
-- "to precisando de papel higiênico e sabão" → { "is_shopping": true, "items": ["papel higiênico", "sabão"] }
-- "kmprar pão amanha" → { "is_shopping": true, "items": ["pão"] }
+- "kmprar pão" → { "is_shopping": true, "items": ["pão"] }
+- "arroz e feijão" → { "is_shopping": true, "items": ["arroz", "feijão"] }
+
+EXEMPLOS que devem retornar is_shopping: false (são transações):
+- "0,47 limão" → { "is_shopping": false }
+- "3 limão" → { "is_shopping": false }
+- "10 desodorante" → { "is_shopping": false }
+- "5 ovos" → { "is_shopping": false }
 - "gastei 50 no mercado" → { "is_shopping": false }
 - "recebi 3000" → { "is_shopping": false }
 
