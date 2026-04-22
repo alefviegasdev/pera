@@ -219,7 +219,7 @@ Aceite erros de digitação e gramática. Foque na intenção.
 Se não for lista de compras, retorne: { "is_shopping": false }
 
 MENSAGEM:
-\`;
+`;
 
 function generateShortCode() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
