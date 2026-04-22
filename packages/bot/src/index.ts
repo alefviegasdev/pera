@@ -149,26 +149,30 @@ ou qualquer variação fonética próxima → retornar SEMPRE:
 NÃO retornar not_financial para essas mensagens.
 
 
-DISTINÇÃO ENTRE QUANTIDADE E VALOR MONETÁRIO:
-Se a mensagem mencionar um número seguido de um item de compra
-SEM contexto financeiro claro (sem "reais", "R$", "gastei",
-"paguei", "custou", "comprei", etc.), interprete como quantidade
-e retorne {"error": "not_financial"}.
+REGRA DE LISTA DE COMPRAS vs TRANSAÇÃO:
 
-EXEMPLOS que devem retornar not_financial:
-- "5 ovos" → not_financial (quantidade)
-- "2 litros de leite" → not_financial (quantidade)
-- "3 caixas de suco" → not_financial (quantidade)
-- "4 bananas" → not_financial (quantidade)
-- "0,47 limão" → not_financial (quantidade/peso)
-- "1kg de arroz" → not_financial (quantidade)
-- "comprar 5 ovos" → not_financial (intenção de compra)
-- "preciso de 2 leites" → not_financial (intenção de compra)
+Retorne {"error": "not_financial"} (será tratado como lista de compras) quando:
 
-EXEMPLOS que devem retornar transação:
+1. A mensagem for APENAS um nome de produto sem valor monetário:
+   - "limão", "ovos", "leite", "desodorante", "shampoo"
+
+2. A mensagem tiver verbo de intenção de compra + produto:
+   - Verbos: comprar, pegar, buscar, trazer, adquirir, obter
+   - "comprar ovos", "pegar leite", "buscar desodorante"
+   - "vou comprar arroz", "preciso comprar 5 ovos"
+
+3. A mensagem tiver "preciso" + produto (com ou sem quantidade):
+   - "preciso de ovos", "preciso 3 leites", "preciso de shampoo"
+
+4. Quantidade + produto SEM contexto financeiro:
+   - "5 ovos", "2 leites", "0,47 limão", "1kg de arroz"
+
+Retorne transação normalmente quando houver contexto financeiro claro:
+- Palavras como: gastei, paguei, comprei, custou, R$, reais, valor
 - "gastei 5 em ovos" → expense
+- "comprei desodorante por 15" → expense  
 - "5 reais de limão" → expense
-- "paguei 3 no mercado" → expense
+- "paguei 0,47 no limão" → expense
 
 Se a mensagem não contiver informações financeiras, retorne: {"error": "not_financial"}.
 
