@@ -1076,8 +1076,9 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(port, () => {
-  console.log(`Servidor HTTP rodando na porta ${port} para health check`);
-  // Iniciar o bot DEPOIS do servidor HTTP estar pronto
-  bot.start();
-  console.log("Bot Pera rodando (Direct API mode)!");
+  console.log(`Servidor HTTP rodando na porta ${port}`);
 });
+
+// Iniciar bot separadamente, sem bloquear o servidor HTTP
+bot.start().catch(console.error);
+console.log("Bot Pera iniciando...");
