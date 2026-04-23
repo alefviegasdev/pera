@@ -5,7 +5,7 @@ import FixedDetailsModal from '../components/FixedDetailsModal';
 import CategoryDetailsModal from '../components/CategoryDetailsModal';
 import IncomeDetailsModal from '../components/IncomeDetailsModal';
 import TitheDetailsModal from '../components/TitheDetailsModal';
-import { ArrowRight, ArrowUpRight, ArrowDownRight, AlertTriangle, CreditCard, ChevronRight, Zap, Wifi, Home as HomeIcon, Dumbbell, Pin, AlertCircle, CheckCircle2, Heart } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, ArrowDownRight, AlertTriangle, CreditCard, ChevronRight, Zap, Wifi, Home as HomeIcon, Dumbbell, Pin, AlertCircle, CheckCircle2, Heart, Eye, EyeOff } from 'lucide-react';
 
 const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
@@ -38,6 +38,17 @@ const Home = ({
   const [titheSummary, setTitheSummary] = useState<any>(null);
   const [showTitheModal, setShowTitheModal] = useState(false);
   const [titheActive, setTitheActive] = useState(true);
+  const [hideMaster, setHideMaster] = useState(() => localStorage.getItem('pera_hide_master') === 'true');
+
+  const toggleHideMaster = () => {
+    setHideMaster(prev => {
+      const next = !prev;
+      localStorage.setItem('pera_hide_master', String(next));
+      return next;
+    });
+  };
+
+  const maskValue = (value: string, hide: boolean) => hide ? '•••••' : value;
 
   useEffect(() => {
     if (selectedTx || showFixedModal || selectedCategory || showIncomeModal || showTitheModal) {
@@ -383,6 +394,9 @@ const Home = ({
         </div>
         <div className="flex items-center gap-4">
           <div className="text-2xl font-black tracking-tighter text-[#5d3fd3]">Pera</div>
+          <button onClick={toggleHideMaster} className="p-1.5 rounded-full text-on-surface-variant hover:bg-surface-container active:scale-90 transition-all">
+            {hideMaster ? <EyeOff size={20} /> : <Eye size={20} />}
+          </button>
         </div>
       </header>
 
@@ -392,10 +406,10 @@ const Home = ({
           <h2 className="text-on-surface-variant font-medium font-body text-sm">Saldo Geral</h2>
           <div className="flex items-baseline gap-1">
             <span className={`font-black text-5xl tracking-tight font-headline ${(summary?.balance || 0) < 0 ? 'text-error' : 'text-primary'}`}>
-              {balanceParts.int}
+              {hideMaster ? '•••••' : balanceParts.int}
             </span>
             <span className={`font-bold text-2xl font-headline ${(summary?.balance || 0) < 0 ? 'text-error opacity-70' : 'text-primary-container'}`}>
-              {balanceParts.dec}
+              {hideMaster ? '' : balanceParts.dec}
             </span>
           </div>
         </section>
@@ -426,7 +440,7 @@ const Home = ({
               <span className="text-[9px] font-black uppercase tracking-[0.1em] text-on-primary-container opacity-60">Saídas</span>
             </div>
             <p className="text-on-primary-container font-headline font-black text-xl tracking-tight">
-              {fmt(expense)}
+              {maskValue(fmt(expense), hideMaster)}
             </p>
           </div>
 
@@ -442,10 +456,10 @@ const Home = ({
             </div>
             <div>
               <p className="text-on-secondary-container font-headline font-black text-xl tracking-tight leading-tight">
-                {fmt(totalFixedVal)}
+                {maskValue(fmt(totalFixedVal), hideMaster)}
               </p>
               <p className="text-on-secondary-container/70 text-[10px] font-bold mt-1">
-                Falta pagar: {fmt(remainingFixedVal)}
+                Falta pagar: {maskValue(fmt(remainingFixedVal), hideMaster)}
               </p>
             </div>
           </div>
@@ -467,10 +481,10 @@ const Home = ({
             </p>
             <div className="flex items-baseline gap-1">
               <span className={`font-headline font-black text-5xl tracking-tight ${isNegative ? 'text-error' : 'text-tertiary'}`}>
-                {splitFmt(realAvailable).int}
+                {hideMaster ? '•••••' : splitFmt(realAvailable).int}
               </span>
               <span className={`font-headline font-black text-2xl ${isNegative ? 'text-error/60' : 'text-tertiary/60'}`}>
-                {splitFmt(realAvailable).dec}
+                {hideMaster ? '' : splitFmt(realAvailable).dec}
               </span>
             </div>
           </div>
@@ -500,14 +514,14 @@ const Home = ({
                   <div className="w-3 h-3 rounded-full bg-primary-dim"></div>
                   <span className="opacity-80 uppercase tracking-widest text-[10px]">Gastos realizados</span>
                 </div>
-                <span className="text-on-surface font-black">− {fmt(expense)}</span>
+                <span className="text-on-surface font-black">− {maskValue(fmt(expense), hideMaster)}</span>
               </div>
               <div className="flex items-center justify-between text-xs font-bold text-on-surface-variant">
                 <div className="flex items-center gap-3">
                   <div className="w-3 h-3 rounded-full bg-primary-container"></div>
                   <span className="opacity-80 uppercase tracking-widest text-[10px]">Contas fixas previstas</span>
                 </div>
-                <span className="text-on-surface font-black">− {fmt(remainingFixedVal)}</span>
+                <span className="text-on-surface font-black">− {maskValue(fmt(remainingFixedVal), hideMaster)}</span>
               </div>
 
             </div>

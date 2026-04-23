@@ -7,7 +7,9 @@ import {
   AlertCircle, 
   ChevronDown,
   ArrowUpRight,
-  Calendar
+  Calendar,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import CategoryDetailsModal from '../components/CategoryDetailsModal';
 
@@ -46,6 +48,34 @@ const Analysis = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [periodDropdownOpen, setPeriodDropdownOpen] = useState(false);
   const periodDropdownRef = useRef<HTMLDivElement>(null);
+  const [hideAnalysis, setHideAnalysis] = useState(() => localStorage.getItem('pera_hide_analysis') === 'true');
+  const [hideMaster, setHideMaster] = useState(() => localStorage.getItem('pera_hide_master') === 'true');
+
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'pera_hide_master') {
+        setHideMaster(e.newValue === 'true');
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
+  // Re-read master on every render to catch same-tab changes
+  useEffect(() => {
+    setHideMaster(localStorage.getItem('pera_hide_master') === 'true');
+  });
+
+  const toggleHideAnalysis = () => {
+    setHideAnalysis(prev => {
+      const next = !prev;
+      localStorage.setItem('pera_hide_analysis', String(next));
+      return next;
+    });
+  };
+
+  const effectiveHide = hideMaster || hideAnalysis;
+  const maskValue = (value: string, hide: boolean) => hide ? '•••••' : value;
 
   useEffect(() => { fetchData(); }, [userId, period]);
   
@@ -158,7 +188,12 @@ const Analysis = ({
     <div className="screen bg-surface scrollbar-hide">
       <header className="page-header pt-12 pb-6 px-6 flex items-end justify-between">
         <div>
-          <h1 className="text-4xl font-headline font-extrabold tracking-tight text-on-surface mb-2">Análise</h1>
+          <div className="flex items-center gap-3 mb-2">
+            <h1 className="text-4xl font-headline font-extrabold tracking-tight text-on-surface">Análise</h1>
+            <button onClick={toggleHideAnalysis} className="p-1.5 rounded-full text-on-surface-variant hover:bg-surface-container active:scale-90 transition-all">
+              {effectiveHide ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
+          </div>
           <p className="text-on-surface-variant font-body">Veja como seu dinheiro se moveu no período selecionado.</p>
         </div>
         <div className="relative flex-shrink-0 pb-1" ref={periodDropdownRef}>
@@ -205,7 +240,7 @@ const Analysis = ({
               </div>
               <div className="mt-4">
                 <h2 className="text-3xl font-headline font-bold text-on-tertiary-container">
-                  {loading ? '...' : fmt(summary?.total_income ?? 0)}
+                  {loading ? '...' : maskValue(fmt(summary?.total_income ?? 0), effectiveHide)}
                 </h2>
               </div>
             </div>
@@ -225,7 +260,7 @@ const Analysis = ({
               </div>
               <div className="mt-4">
                 <h2 className="text-3xl font-headline font-bold text-on-primary-container">
-                  {loading ? '...' : fmt(summary?.total_expense ?? 0)}
+                  {loading ? '...' : maskValue(fmt(summary?.total_expense ?? 0), effectiveHide)}
                 </h2>
               </div>
             </div>

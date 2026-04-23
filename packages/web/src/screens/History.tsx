@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, ChevronDown, Plus, ChevronUp, X } from 'lucide-react';
+import { Calendar, ChevronDown, Plus, ChevronUp, X, Eye, EyeOff } from 'lucide-react';
 import { catColor, catEmoji } from '../utils/categories';
 import TransactionModal from '../components/TransactionModal';
 import InstallmentsModal from '../components/InstallmentsModal';
@@ -32,6 +32,34 @@ const History = ({
   const [newItem, setNewItem] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [confirmDeleteText, setConfirmDeleteText] = useState<string>('');
+  const [hideHistory, setHideHistory] = useState(() => localStorage.getItem('pera_hide_history') === 'true');
+  const [hideMaster, setHideMaster] = useState(() => localStorage.getItem('pera_hide_master') === 'true');
+
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'pera_hide_master') {
+        setHideMaster(e.newValue === 'true');
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
+  // Re-read master on every render to catch same-tab changes
+  useEffect(() => {
+    setHideMaster(localStorage.getItem('pera_hide_master') === 'true');
+  });
+
+  const toggleHideHistory = () => {
+    setHideHistory(prev => {
+      const next = !prev;
+      localStorage.setItem('pera_hide_history', String(next));
+      return next;
+    });
+  };
+
+  const effectiveHide = hideMaster || hideHistory;
+  const maskValue = (value: string, hide: boolean) => hide ? '•••••' : value;
 
   useEffect(() => {
     if (selectedTx || showInstallments) {
@@ -179,7 +207,12 @@ const History = ({
   return (
     <div className="screen bg-surface">
       <header className="page-header pt-12 pb-4 px-6 sticky top-0 bg-surface/80 backdrop-blur-lg z-50 flex items-end justify-between">
-        <h1 className="font-headline tracking-tighter text-on-surface text-4xl font-extrabold leading-none">Histórico</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="font-headline tracking-tighter text-on-surface text-4xl font-extrabold leading-none">Histórico</h1>
+          <button onClick={toggleHideHistory} className="p-1.5 rounded-full text-on-surface-variant hover:bg-surface-container active:scale-90 transition-all">
+            {effectiveHide ? <EyeOff size={20} /> : <Eye size={20} />}
+          </button>
+        </div>
         <div className="relative flex-shrink-0 pb-1" ref={periodDropdownRef}>
           <button
             onClick={() => setPeriodDropdownOpen(!periodDropdownOpen)}
@@ -216,7 +249,7 @@ const History = ({
           <span className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant opacity-60">Volume Total</span>
           <div className="flex flex-col">
             <h2 className="font-headline font-extrabold text-4xl text-on-surface tracking-tighter">
-              {loading ? '...' : fmt(total)}
+              {loading ? '...' : maskValue(fmt(total), effectiveHide)}
             </h2>
             <p className="text-primary font-bold text-xs mt-1.5">{txs.length} transações no período</p>
           </div>
