@@ -75,8 +75,14 @@ export default function CategoryDetailsModal({ category, period, userId, onClose
       if (!map[sub]) map[sub] = [];
       map[sub].push(t);
     });
-    // Remove 'Geral' if empty
-    if (map['Geral'].length === 0) delete map['Geral'];
+
+    if (category === 'Lazer') {
+      // Geral always shows ALL transactions for Lazer
+      map['Geral'] = [...txs];
+    } else {
+      // Remove 'Geral' if empty for other categories
+      if (map['Geral'].length === 0) delete map['Geral'];
+    }
     
     // Sort transactions within groups by date descending
     Object.keys(map).forEach(key => {
@@ -84,7 +90,7 @@ export default function CategoryDetailsModal({ category, period, userId, onClose
     });
     
     return map;
-  }, [txs, hasSubCategories]);
+  }, [txs, hasSubCategories, category]);
 
   useEffect(() => {
     if (Object.keys(grouped).length > 0 && !grouped[activeSubcat]) {
@@ -163,7 +169,7 @@ export default function CategoryDetailsModal({ category, period, userId, onClose
 
         <div className="flex items-center justify-between gap-2 mb-2 flex-shrink-0">
           {/* Chips de subcategoria à esquerda */}
-          <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2 flex-1" style={{ touchAction: 'pan-x', overscrollBehaviorX: 'contain' }}>
+          <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2 flex-1" style={{ touchAction: 'pan-x', overscrollBehavior: 'contain' }} onTouchStart={e => e.stopPropagation()} onTouchMove={e => e.stopPropagation()}>
             {hasSubCategories && subcatKeys.map(sub => (
               <button
                 key={sub}
