@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { X, ChevronDown } from 'lucide-react';
 import { catEmoji } from '../utils/categories';
 
-const HAS_SUBCATEGORIES = ['Alimentação', 'Fast Food', 'Saúde', 'Transporte'];
+const HAS_SUBCATEGORIES = ['Alimentação', 'Lazer', 'Saúde', 'Transporte'];
 
 interface Transaction {
   id: string;

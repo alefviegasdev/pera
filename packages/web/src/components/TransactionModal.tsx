@@ -20,7 +20,7 @@ const getInitials = (str: string) => {
 
 const SUBCATEGORIES: Record<string, string[]> = {
   'Alimentação': ['Mercado', 'Padaria'],
-  'Fast Food': ['Delivery', 'Restaurante', 'Lanchonete', 'Cafeteria', 'Doces'],
+  'Lazer': ['Fast Food', 'Delivery', 'Restaurante', 'Lanchonete', 'Cafeteria', 'Doces', 'Cinema', 'Streaming', 'Jogos', 'Viagem', 'Outros'],
   'Saúde': ['Farmácia', 'Médico', 'Academia', 'Exames'],
   'Transporte': ['Uber/Táxi', 'Combustível', 'Transporte Público'],
 };
@@ -45,7 +45,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ tx, onRefresh, onCl
     tx.subcategory || (SUBCATEGORIES[tx.category]?.[0] || '')
   );
 
-  const CATEGORIES = ['Alimentação','Fast Food','Transporte','Saúde',
+  const CATEGORIES = ['Alimentação','Transporte','Saúde',
     'Lazer','Educação','Contas','Vestuário','Eletrônicos',
     'Dízimo/Oferta','Outros'];
 

@@ -17,7 +17,6 @@ const catColor = (category: string): string => {
 const catEmoji = (category: string): string => {
   const map: Record<string, string> = {
     "Alimentação": "🛒",
-    "Fast Food": "🍔",
     "Transporte": "🚗",
     "Saúde": "💊",
     "Lazer": "🎬",

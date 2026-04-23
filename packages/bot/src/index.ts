@@ -58,11 +58,10 @@ REGRAS DE CLASSIFICAÇÃO:
 
 6. CATEGORIAS PADRONIZADAS (OBRIGATÓRIO):
    A categoria DEVE ser uma destas exatamente:
-   - "Alimentação": mercado, padaria, pão, bolo, salgado, pão de queijo, coxinha, produtos de panificadora, hortifruti, açougue, rancho. IMPORTANTE: Qualquer compra em padaria = "Alimentação", independente do item. Só vai para "Fast Food" se for refeição completa consumida no local (almoço, jantar, hamburgueres, pizzas, cafeterias, restaurantes, etc).
-   - "Fast Food": pizza, hambúrguer, lanchonete, cafeteria, sorvete, delivery, restaurante, bar.
+   - "Alimentação": mercado, padaria, pão, bolo, salgado, pão de queijo, coxinha, produtos de panificadora, hortifruti, açougue, rancho. IMPORTANTE: Qualquer compra em padaria = "Alimentação", independente do item.
    - "Transporte": uber, táxi, combustível, gasolina, estacionamento, ônibus, metrô, passagem.
    - "Saúde": farmácia, médico, plano de saúde, exames, hospital, academia, esportes, terapia.
-   - "Lazer": cinema, streaming, netflix, spotify, jogos, viagem, entretenimento.
+   - "Lazer": cinema, streaming, netflix, spotify, jogos, viagem, entretenimento, restaurante, lanchonete, cafeteria, sorvete, delivery, pizza, hambúrguer, bar, fast food.
    - "Educação": curso, livro, school, faculdade, material escolar.
    - "Contas": luz, água, internet, aluguel, condomínio, telefone, gás, iptu, ipva.
    - "Vestuário": roupa, calçado, tênis, sapato, acessório, bolsa.
@@ -70,7 +69,7 @@ REGRAS DE CLASSIFICAÇÃO:
    - "Dízimo/Oferta": dízimo, oferta, contribuição, doação para igreja.
    - "Outros": qualquer gasto que não se encaixe nas categorias acima.
    
-   REGRA ESPECIAL PADARIA: ATENÇÃO: A palavra 'padaria' sozinha indica categoria 'Alimentação', não 'Fast Food'. Fast Food é apenas para restaurantes, lanchonetes, pizzarias e similares.
+   REGRA ESPECIAL PADARIA: ATENÇÃO: A palavra 'padaria' sozinha indica categoria 'Alimentação', não 'Lazer'. Lazer inclui restaurantes, lanchonetes, pizzarias, fast food e similares.
 
 7. LIMITE DE ORÇAMENTO:
    Se a mensagem mencionar alteração de limite ou orçamento para uma categoria, retorne type: "budget_limit" com:
@@ -92,7 +91,8 @@ Adicionar campo "subcategory" ao JSON para as seguintes categorias:
   - "Mercado": supermercado, mercadinho, extra, atacadão, rancho, feira
   - "Padaria": padaria, pão, bolo, salgado, confeitaria, pão de queijo
 
-"Fast Food":
+"Lazer":
+  - "Fast Food": pizza, hambúrguer, lanchonete, cafeteria, fast food genérico, refeição rápida
   - "Delivery": ifood, rappi, uber eats, pedido online, delivery
   - "Restaurante": restaurante, almoço, jantar, self-service, rodízio
   - "Lanchonete": hambúrguer, pizza, hot dog, lanche, burguer
@@ -110,14 +110,14 @@ Adicionar campo "subcategory" ao JSON para as seguintes categorias:
   - "Combustível": gasolina, combustível, posto, etanol, abasteci
   - "Transporte Público": ônibus, metrô, passagem, bilhete único, trem
 
-Para outras categorias (Lazer, Contas, Vestuário, etc.), não incluir subcategory.
+Para outras categorias (Contas, Vestuário, etc.), não incluir subcategory.
 
 JSON Structure (dentro do array):
 {
   "value": número (decimal, se for expense/income),
   "limit_value": número (decimal, se for budget_limit),
   "type": "expense" | "income" | "payment" | "bill" | "budget_limit",
-  "category": "Alimentação" | "Fast Food" | "Transporte" | "Saúde" | "Lazer" | "Educação" | "Contas" | "Vestuário" | "Eletrônicos" | "Dízimo/Oferta" | "Outros",
+  "category": "Alimentação" | "Transporte" | "Saúde" | "Lazer" | "Educação" | "Contas" | "Vestuário" | "Eletrônicos" | "Dízimo/Oferta" | "Outros",
   "subtype": "fixed" | "semifixed" | "variable",
   "urgency": "urgent" | "planned",
   "description": string curta,
@@ -491,10 +491,12 @@ Quanto mais detalhes você der, melhor eu classifico!
         const SUBCAT_TO_CAT: Record<string, {category: string, subcategory: string}> = {
           'mercado': { category: 'Alimentação', subcategory: 'Mercado' },
           'padaria': { category: 'Alimentação', subcategory: 'Padaria' },
-          'delivery': { category: 'Fast Food', subcategory: 'Delivery' },
-          'restaurante': { category: 'Fast Food', subcategory: 'Restaurante' },
-          'lanchonete': { category: 'Fast Food', subcategory: 'Lanchonete' },
-          'cafeteria': { category: 'Fast Food', subcategory: 'Cafeteria' },
+          'delivery': { category: 'Lazer', subcategory: 'Delivery' },
+          'restaurante': { category: 'Lazer', subcategory: 'Restaurante' },
+          'lanchonete': { category: 'Lazer', subcategory: 'Lanchonete' },
+          'cafeteria': { category: 'Lazer', subcategory: 'Cafeteria' },
+          'fast food': { category: 'Lazer', subcategory: 'Fast Food' },
+          'doces': { category: 'Lazer', subcategory: 'Doces' },
           'farmácia': { category: 'Saúde', subcategory: 'Farmácia' },
           'médico': { category: 'Saúde', subcategory: 'Médico' },
           'academia': { category: 'Saúde', subcategory: 'Academia' },
@@ -644,7 +646,7 @@ Possíveis motivos:
 
       if (aiData.value !== null) updates.value = aiData.value;
       if (aiData.description !== null) updates.description = aiData.description;
-      const CATS_WITH_SUBCATEGORY = ['Alimentação', 'Fast Food', 'Saúde', 'Transporte'];
+      const CATS_WITH_SUBCATEGORY = ['Alimentação', 'Lazer', 'Saúde', 'Transporte'];
       if (aiData.category !== null) {
         updates.category = aiData.category;
         if (!CATS_WITH_SUBCATEGORY.includes(aiData.category)) {
