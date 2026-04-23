@@ -48,33 +48,18 @@ const Analysis = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [periodDropdownOpen, setPeriodDropdownOpen] = useState(false);
   const periodDropdownRef = useRef<HTMLDivElement>(null);
-  const [hideAnalysis, setHideAnalysis] = useState(() => localStorage.getItem('pera_hide_analysis') === 'true');
-  const [hideMaster, setHideMaster] = useState(() => localStorage.getItem('pera_hide_master') === 'true');
+  const [hideAnalysis, setHideAnalysis] = useState(false);
 
+  // On mount (tab switch), read master and reset local state
   useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === 'pera_hide_master') {
-        setHideMaster(e.newValue === 'true');
-      }
-    };
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
+    const master = localStorage.getItem('pera_hide_master') === 'true';
+    setHideAnalysis(master);
   }, []);
 
-  // Re-read master on every render to catch same-tab changes
-  useEffect(() => {
-    setHideMaster(localStorage.getItem('pera_hide_master') === 'true');
-  });
-
   const toggleHideAnalysis = () => {
-    setHideAnalysis(prev => {
-      const next = !prev;
-      localStorage.setItem('pera_hide_analysis', String(next));
-      return next;
-    });
+    setHideAnalysis(prev => !prev);
   };
 
-  const effectiveHide = hideMaster || hideAnalysis;
   const maskValue = (value: string, hide: boolean) => hide ? '•••••' : value;
 
   useEffect(() => { fetchData(); }, [userId, period]);
@@ -190,8 +175,8 @@ const Analysis = ({
         <div>
           <div className="flex items-center gap-3 mb-2">
             <h1 className="text-4xl font-headline font-extrabold tracking-tight text-on-surface">Análise</h1>
-            <button onClick={toggleHideAnalysis} className="p-1.5 rounded-full text-on-surface-variant hover:bg-surface-container active:scale-90 transition-all">
-              {effectiveHide ? <EyeOff size={20} /> : <Eye size={20} />}
+            <button onClick={toggleHideAnalysis} className="p-1.5 rounded-full bg-primary/10 text-primary active:scale-90 transition-all">
+              {hideAnalysis ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
           <p className="text-on-surface-variant font-body">Veja como seu dinheiro se moveu no período selecionado.</p>
@@ -240,7 +225,7 @@ const Analysis = ({
               </div>
               <div className="mt-4">
                 <h2 className="text-3xl font-headline font-bold text-on-tertiary-container">
-                  {loading ? '...' : maskValue(fmt(summary?.total_income ?? 0), effectiveHide)}
+                  {loading ? '...' : maskValue(fmt(summary?.total_income ?? 0), hideAnalysis)}
                 </h2>
               </div>
             </div>
@@ -260,7 +245,7 @@ const Analysis = ({
               </div>
               <div className="mt-4">
                 <h2 className="text-3xl font-headline font-bold text-on-primary-container">
-                  {loading ? '...' : maskValue(fmt(summary?.total_expense ?? 0), effectiveHide)}
+                  {loading ? '...' : maskValue(fmt(summary?.total_expense ?? 0), hideAnalysis)}
                 </h2>
               </div>
             </div>

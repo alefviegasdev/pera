@@ -32,33 +32,18 @@ const History = ({
   const [newItem, setNewItem] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [confirmDeleteText, setConfirmDeleteText] = useState<string>('');
-  const [hideHistory, setHideHistory] = useState(() => localStorage.getItem('pera_hide_history') === 'true');
-  const [hideMaster, setHideMaster] = useState(() => localStorage.getItem('pera_hide_master') === 'true');
+  const [hideHistory, setHideHistory] = useState(false);
 
+  // On mount (tab switch), read master and reset local state
   useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === 'pera_hide_master') {
-        setHideMaster(e.newValue === 'true');
-      }
-    };
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
+    const master = localStorage.getItem('pera_hide_master') === 'true';
+    setHideHistory(master);
   }, []);
 
-  // Re-read master on every render to catch same-tab changes
-  useEffect(() => {
-    setHideMaster(localStorage.getItem('pera_hide_master') === 'true');
-  });
-
   const toggleHideHistory = () => {
-    setHideHistory(prev => {
-      const next = !prev;
-      localStorage.setItem('pera_hide_history', String(next));
-      return next;
-    });
+    setHideHistory(prev => !prev);
   };
 
-  const effectiveHide = hideMaster || hideHistory;
   const maskValue = (value: string, hide: boolean) => hide ? '•••••' : value;
 
   useEffect(() => {
@@ -209,8 +194,8 @@ const History = ({
       <header className="page-header pt-12 pb-4 px-6 sticky top-0 bg-surface/80 backdrop-blur-lg z-50 flex items-end justify-between">
         <div className="flex items-center gap-3">
           <h1 className="font-headline tracking-tighter text-on-surface text-4xl font-extrabold leading-none">Histórico</h1>
-          <button onClick={toggleHideHistory} className="p-1.5 rounded-full text-on-surface-variant hover:bg-surface-container active:scale-90 transition-all">
-            {effectiveHide ? <EyeOff size={20} /> : <Eye size={20} />}
+          <button onClick={toggleHideHistory} className="p-1.5 rounded-full bg-primary/10 text-primary active:scale-90 transition-all">
+            {hideHistory ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
         </div>
         <div className="relative flex-shrink-0 pb-1" ref={periodDropdownRef}>
@@ -249,7 +234,7 @@ const History = ({
           <span className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant opacity-60">Volume Total</span>
           <div className="flex flex-col">
             <h2 className="font-headline font-extrabold text-4xl text-on-surface tracking-tighter">
-              {loading ? '...' : maskValue(fmt(total), effectiveHide)}
+              {loading ? '...' : maskValue(fmt(total), hideHistory)}
             </h2>
             <p className="text-primary font-bold text-xs mt-1.5">{txs.length} transações no período</p>
           </div>

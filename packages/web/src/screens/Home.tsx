@@ -394,8 +394,8 @@ const Home = ({
         </div>
         <div className="flex items-center gap-4">
           <div className="text-2xl font-black tracking-tighter text-[#5d3fd3]">Pera</div>
-          <button onClick={toggleHideMaster} className="p-1.5 rounded-full text-on-surface-variant hover:bg-surface-container active:scale-90 transition-all">
-            {hideMaster ? <EyeOff size={20} /> : <Eye size={20} />}
+          <button onClick={toggleHideMaster} className="p-1.5 rounded-full bg-primary/10 text-primary active:scale-90 transition-all">
+            {hideMaster ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
         </div>
       </header>
@@ -426,7 +426,7 @@ const Home = ({
                 <ArrowDownRight size={22} className="text-on-tertiary-fixed" />
               </div>
               <p className="text-on-tertiary-container font-headline font-black text-2xl tracking-tight">
-                {fmt(income)}
+                {maskValue(fmt(income), hideMaster)}
               </p>
             </div>
             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-on-tertiary-fixed opacity-70 relative z-10">Entradas</span>
