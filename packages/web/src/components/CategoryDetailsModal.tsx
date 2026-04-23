@@ -71,7 +71,7 @@ export default function CategoryDetailsModal({ category, period, userId, onClose
     }
     const map: Record<string, Transaction[]> = { 'Geral': [] };
     txs.forEach(t => {
-      const sub = t.subcategory || 'Geral';
+      const sub = t.subcategory || (category === 'Lazer' ? 'Fast Food' : 'Geral');
       if (!map[sub]) map[sub] = [];
       map[sub].push(t);
     });
@@ -163,7 +163,7 @@ export default function CategoryDetailsModal({ category, period, userId, onClose
 
         <div className="flex items-center justify-between gap-2 mb-2 flex-shrink-0">
           {/* Chips de subcategoria à esquerda */}
-          <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2 flex-1">
+          <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2 flex-1" style={{ touchAction: 'pan-x', overscrollBehaviorX: 'contain' }}>
             {hasSubCategories && subcatKeys.map(sub => (
               <button
                 key={sub}

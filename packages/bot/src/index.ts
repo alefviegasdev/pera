@@ -240,25 +240,26 @@ Se não for lista de compras, retorne: { "is_shopping": false }
 MENSAGEM:
 `;
 
-const BOUGHT_PROMPT = `
-Você detecta quando alguém diz que comprou algo que estava
-na lista de compras. Analise a mensagem e retorne JSON.
+const AMBIGUOUS_PROMPT = `
+Detecta mensagens com verbo de ação no passado + produto
+SEM valor monetário. Exemplos: "comprei amendoim",
+"peguei leite", "trouxe pão", "fui na farmácia buscar shampoo".
 
-Se a mensagem indicar que algo foi comprado → retorne:
-{ "is_bought": true, "items": ["item1", "item2"] }
+Se detectar esse padrão → retorne:
+{
+  "is_ambiguous": true,
+  "verb_used": "comprei",
+  "verb_infinitive": "comprar",
+  "product": "amendoim"
+}
 
-Exemplos:
-- "comprei desodorante" → { "is_bought": true, "items": ["desodorante"] }
-- "já comprei o leite" → { "is_bought": true, "items": ["leite"] }
-- "peguei o pão e o queijo" → { "is_bought": true, "items": ["pão", "queijo"] }
-- "comprei os ovos" → { "is_bought": true, "items": ["ovos"] }
-- "c o desodorante" → { "is_bought": true, "items": ["desodorante"] }
-- "gastei 50 no mercado" → { "is_bought": false }
-- "preciso comprar leite" → { "is_bought": false }
+Se não for esse padrão → retorne: { "is_ambiguous": false }
 
-Aceite erros de digitação. Foque na intenção de ter COMPRADO,
-não de precisar comprar.
-Se não for compra realizada, retorne: { "is_bought": false }
+Não considerar ambíguo quando:
+- Tiver valor monetário: "comprei amendoim por 2,29"
+- For infinitivo: "comprar amendoim"
+- For só o produto: "amendoim"
+- Tiver "paguei" + valor (é transação clara)
 
 MENSAGEM:
 `;
@@ -719,59 +720,28 @@ O que você pode mudar:
       return ctx.reply(`✏️ #${code} atualizado!\n${changeLogs.join('\n')}`);
     }
 
-    // 2a. DETECÇÃO DE ITEM COMPRADO DA LISTA
-    const boughtUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
-    const boughtResponse = await fetch(boughtUrl, {
+    // 2a. DETECÇÃO DE MENSAGEM AMBÍGUA (verbo passado sem valor)
+    const ambiguousUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
+    const ambiguousResponse = await fetch(ambiguousUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: BOUGHT_PROMPT + text }] }]
+        contents: [{ parts: [{ text: AMBIGUOUS_PROMPT + text }] }]
       })
     });
-    if (boughtResponse.ok) {
-      const boughtResult = await boughtResponse.json();
-      const boughtText = boughtResult.candidates?.[0]?.content?.parts?.[0]?.text
+    if (ambiguousResponse.ok) {
+      const ambiguousResult = await ambiguousResponse.json();
+      const ambiguousText = ambiguousResult.candidates?.[0]?.content?.parts?.[0]?.text
         ?.trim().replace(/```json|```/g, "") || "";
       try {
-        const boughtData = JSON.parse(boughtText);
-        if (boughtData.is_bought && boughtData.items?.length > 0) {
-          // Buscar lista de compras do usuário
-          const { data: listItems } = await supabase
-            .from('shopping_list')
-            .select('*')
-            .eq('user_id', supabaseUserId)
-            .eq('checked', false);
-
-          if (listItems && listItems.length > 0) {
-            const removedNames: string[] = [];
-
-            for (const boughtItem of boughtData.items) {
-              // Encontrar item mais parecido na lista
-              const match = listItems.find(li => {
-                const a = li.text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-                const b = boughtItem.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-                return a.includes(b) || b.includes(a) || levenshteinDistance(a, b) <= 3;
-              });
-
-              if (match) {
-                await supabase
-                  .from('shopping_list')
-                  .update({ checked: true })
-                  .eq('id', match.id);
-                removedNames.push(match.text);
-              }
-            }
-
-            if (removedNames.length > 0) {
-              const names = removedNames.map(n => `• ${n}`).join('\n');
-              return ctx.reply(`✅ Marcado como comprado!\n\n${names}`);
-            }
-          }
-          
-          return ctx.reply(`🛒 Não encontrei esses itens na sua lista de compras pendente.`);
+        const ambiguousData = JSON.parse(ambiguousText);
+        if (ambiguousData.is_ambiguous) {
+          const verb = ambiguousData.verb_infinitive || 'comprar';
+          const product = ambiguousData.product || 'item';
+          return ctx.reply(`⚠️ Não consegui identificar o que você quis dizer.\n\nSe foi uma transação, reenvie incluindo o valor:\n- "${verb} ${product}" → ex: "2,29 ${product}" ou "gastei 2,29 em ${product}"\n\nSe quiser adicionar à lista de compras, use o infinitivo ou só o nome:\n- "${verb} ${product}" ou apenas "${product}"`);
         }
       } catch (e) {
-        // não era compra, continuar
+        // não era ambíguo, continuar
       }
     }
 
