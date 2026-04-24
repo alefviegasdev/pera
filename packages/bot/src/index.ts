@@ -58,10 +58,11 @@ REGRAS DE CLASSIFICAÇÃO:
 
 6. CATEGORIAS PADRONIZADAS (OBRIGATÓRIO):
    A categoria DEVE ser uma destas exatamente:
-   - "Alimentação": mercado, padaria, pão, bolo, salgado, pão de queijo, coxinha, produtos de panificadora, hortifruti, açougue, rancho. IMPORTANTE: Qualquer compra em padaria = "Alimentação", independente do item.
+   - "Alimentação": itens básicos e essenciais — arroz, feijão, macarrão, carne, frango, peixe, ovos, leite, manteiga, queijo, iogurte, frutas, verduras, legumes, pão simples, bolo caseiro, hortifruti, açougue, padaria, produtos de mercado não industrializados. IMPORTANTE: Qualquer compra em padaria = "Alimentação", independente do item.
    - "Transporte": uber, táxi, combustível, gasolina, estacionamento, ônibus, metrô, passagem.
    - "Saúde": farmácia, médico, plano de saúde, exames, hospital, academia, esportes, terapia.
-   - "Lazer": cinema, streaming, netflix, spotify, jogos, viagem, entretenimento, restaurante, lanchonete, cafeteria, sorvete, delivery, pizza, hambúrguer, bar, fast food.
+   - "Lazer": cinema, streaming, netflix, spotify, jogos, viagem, entretenimento, restaurante, lanchonete, cafeteria, sorvete, delivery, pizza, hambúrguer, bar, fast food. Também inclui produtos industrializados de prazer/snacks: salgadinhos, biscoitos recheados, chocolates, balas, bombons, barras de proteína, energéticos, refrigerantes, chips, amendoim industrializado e similares → subcategoria "Petiscos".
+   REGRA EXPLÍCITA: produto industrializado de prazer/snack (mesmo comprado no mercado) → Lazer/Petiscos. Produto básico/essencial → Alimentação.
    - "Educação": curso, livro, school, faculdade, material escolar.
    - "Contas": luz, água, internet, aluguel, condomínio, telefone, gás, iptu, ipva.
    - "Vestuário": roupa, calçado, tênis, sapato, acessório, bolsa.
@@ -98,6 +99,7 @@ Adicionar campo "subcategory" ao JSON para as seguintes categorias:
   - "Lanchonete": hambúrguer, pizza, hot dog, lanche, burguer
   - "Cafeteria": café, starbucks, cafeteria, coffee, cappuccino
   - "Doces": sorvete, açaí, confeitaria, brigadeiro, bolo de festa, doceria, chocolateria, sobremesa
+  - "Petiscos": salgadinho, pringles, biscoito recheado, chips, barra de chocolate, bombom, chocolate, doce industrializado, bala, goma, pirulito, amendoim industrializado, castanha industrializada, pipoca de micro-ondas, energético, refrigerante, barra de proteína, proteína em pó, petisco industrializado, snack, doce salgado
 
 "Saúde":
   - "Farmácia": farmácia, remédio, medicamento, drogaria, droga raia, sabonete, shampoo, condicionador, escova de dentes, pasta de dente, creme, hidratante, cuidados pessoais, higiene pessoal, produtos de higiene

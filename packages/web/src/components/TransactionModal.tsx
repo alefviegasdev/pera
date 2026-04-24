@@ -20,7 +20,7 @@ const getInitials = (str: string) => {
 
 const SUBCATEGORIES: Record<string, string[]> = {
   'Alimentação': ['Mercado', 'Padaria'],
-  'Lazer': ['Fast Food', 'Delivery', 'Restaurante', 'Lanchonete', 'Cafeteria', 'Doces', 'Cinema', 'Streaming', 'Jogos', 'Viagem', 'Outros'],
+  'Lazer': ['Fast Food', 'Delivery', 'Restaurante', 'Lanchonete', 'Cafeteria', 'Doces', 'Petiscos', 'Cinema', 'Streaming', 'Jogos', 'Viagem', 'Outros'],
   'Saúde': ['Farmácia', 'Médico', 'Academia', 'Exames'],
   'Transporte': ['Uber/Táxi', 'Combustível', 'Transporte Público'],
 };
