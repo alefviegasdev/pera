@@ -850,7 +850,7 @@ Exemplos que funcionam:
 
         if (error) throw error;
 
-        await ctx.reply(`🛍️ Parcelamento registrado!
+        await ctx.reply(`🛍️ Parcelamento registrado! #${shortCode}
 📝 ${item.description}
 💰 Total: R$ ${Number(item.value).toFixed(2)}
 📆 ${item.installment_count}x de R$ ${Number(instValue).toFixed(2)}
@@ -926,7 +926,7 @@ Exemplos que funcionam:
             short_code: shortCode
           });
 
-          return ctx.reply(`✅ Dízimo registrado!\n💰 R$ ${Number(balanceDue).toFixed(2)}\n📊 Baseado em R$ ${totalTitheable.toFixed(2)} em receitas computáveis`);
+          return ctx.reply(`✅ Dízimo registrado! #${shortCode}\n💰 R$ ${Number(balanceDue).toFixed(2)}\n📊 Baseado em R$ ${totalTitheable.toFixed(2)} em receitas computáveis`);
         }
 
         const { data: bills, error: findError } = await supabase
@@ -964,7 +964,7 @@ Exemplos que funcionam:
             short_code: shortCode
           });
 
-          await ctx.reply(`✅ Conta paga!
+          await ctx.reply(`✅ Conta paga! #${shortCode}
 📝 ${bill.name}
 💰 R$ ${Number(bill.value).toFixed(2)}`);
         } else {
@@ -1014,7 +1014,7 @@ Exemplos que funcionam:
 📝 ${installment.description}
 💰 Total pago: R$ ${Number(installment.total_value).toFixed(2)}`);
             } else {
-              await ctx.reply(`✅ Parcela ${currentCount}/${installment.total_installments} paga!
+              await ctx.reply(`✅ Parcela ${currentCount}/${installment.total_installments} paga! #${shortCode}
 📝 ${installment.description}
 💰 R$ ${Number(installment.installment_value).toFixed(2)}`);
             }
@@ -1037,7 +1037,7 @@ Exemplos que funcionam:
 
         if (error) throw error;
 
-        await ctx.reply(`✅ Conta cadastrada!
+        await ctx.reply(`✅ Conta cadastrada! #${shortCode}
 📝 ${item.name}
 💰 R$ ${Number(item.value).toFixed(2)}
 📅 Vence todo dia ${item.due_day} 🍐`);
@@ -1105,14 +1105,14 @@ Exemplos que funcionam:
               .text('❌ Não conta', `tithe_no_${shortCode}`);
 
             await ctx.reply(
-              `✅ Receita registrada!\n💰 R$ ${Number(item.value).toFixed(2)}\n📝 ${item.description || item.category || 'Sem descrição'}\n\n🙏 Essa entrada conta para o cálculo do dízimo?`,
+              `✅ Receita registrada! #${shortCode}\n💰 R$ ${Number(item.value).toFixed(2)}\n📝 ${item.description || item.category || 'Sem descrição'}\n\n🙏 Essa entrada conta para o cálculo do dízimo?`,
               { reply_markup: keyboard }
             );
             continue;
           }
         }
 
-        await ctx.reply(`✅ Registrado!
+        await ctx.reply(`✅ Registrado! #${shortCode}
 💰 R$ ${Number(item.value).toFixed(2)}
 📂 ${item.category}${subcatLine}
 📝 ${item.description || item.category || 'Sem descrição'}
