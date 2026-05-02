@@ -204,6 +204,10 @@ const Settings = ({
     if (e.dataTransfer) {
       e.dataTransfer.effectAllowed = 'move';
       e.dataTransfer.setData('text/plain', name);
+      const card = (e.target as HTMLElement).closest('.category-card');
+      if (card) {
+        e.dataTransfer.setDragImage(card as Element, 20, 20);
+      }
     }
   };
 
@@ -506,15 +510,17 @@ const Settings = ({
               return (
                 <div 
                   key={cat.name} 
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, cat.name)}
                   onDragOver={(e) => handleDragOver(e, cat.name)}
                   onDragEnd={handleDragEnd}
-                  className={`rounded-[2rem] p-7 shadow-sm border border-outline-variant/10 transition-all cursor-grab active:cursor-grabbing ${over ? 'bg-error-container/5 border-error-container/20' : 'bg-white'} ${draggedCategory === cat.name ? 'opacity-50 scale-[0.98]' : ''}`}
+                  className={`category-card rounded-[2rem] p-7 shadow-sm border border-outline-variant/10 transition-all ${over ? 'bg-error-container/5 border-error-container/20' : 'bg-white'} ${draggedCategory === cat.name ? 'opacity-50 scale-[0.98]' : ''}`}
                 >
                   <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-4">
-                      <div className="text-on-surface-variant/30 flex items-center justify-center">
+                      <div 
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, cat.name)}
+                        className="text-on-surface-variant/30 flex items-center justify-center cursor-grab active:cursor-grabbing p-2 -ml-2"
+                      >
                         <GripVertical size={20} />
                       </div>
                       <div className={`w-14 h-14 ${cat.name === 'Alimentação' && over ? 'bg-error-container/20' : cat.color} rounded-2xl flex items-center justify-center ${cat.textColor}`}>
