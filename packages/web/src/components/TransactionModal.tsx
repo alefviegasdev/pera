@@ -99,7 +99,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ tx, onRefresh, onCl
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose} style={{ zIndex: 9999, overflowX: 'hidden' }}>
+    <div className="modal-overlay" onClick={onClose} style={{ zIndex: 9999 }}>
       <div 
         className="modal-card scrollbar-hide" 
         onClick={(e) => e.stopPropagation()} 
@@ -108,7 +108,6 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ tx, onRefresh, onCl
           height: '85dvh',
           display: 'flex',
           flexDirection: 'column',
-          overflowX: 'hidden',
           transform: dragOffset > 0 ? `translateY(${dragOffset}px)` : undefined,
           transition: dragOffset > 0 ? 'none' : 'transform 0.3s ease'
         }}
@@ -118,7 +117,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ tx, onRefresh, onCl
       >
         <div className="modal-handle" />
 
-        <div ref={contentRef} className="overflow-y-auto flex-1 scrollbar-hide" style={{ overscrollBehavior: 'contain', touchAction: 'pan-y', overflowX: 'hidden' }}>
+        <div ref={contentRef} className="overflow-y-auto flex-1 scrollbar-hide" style={{ overscrollBehavior: 'contain', touchAction: 'pan-y' }}>
 
         {/* Header Section */}
         <div className="flex items-start gap-5 mb-8">
@@ -258,7 +257,8 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ tx, onRefresh, onCl
                   type="date"
                   value={editDate}
                   onChange={e => setEditDate(e.target.value)}
-                  className="w-full h-14 bg-surface-container-low rounded-2xl px-4 font-bold text-on-surface border-none focus:ring-2 focus:ring-primary/20"
+                  className="block w-full h-14 bg-surface-container-low rounded-2xl px-4 font-bold text-on-surface border-none focus:ring-2 focus:ring-primary/20"
+                  style={{ minWidth: 0, maxWidth: '100%' }}
                 />
               </div>
               {hasSubcategories(editCategory) && (
