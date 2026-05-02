@@ -130,13 +130,13 @@ JSON Structure (dentro do array):
   "subcategory": string (opcional)
 }
 
-Se o usuário disser 'paguei [nome]', 'pagar [nome]', 'quitei [nome]' SEM mencionar valor, retorne type: 'payment' com description: nome do que foi pago. O sistema vai buscar o valor cadastrado automaticamente.
+Se o usuário disser 'paguei [nome]', 'pagar [nome]', 'quitei [nome]', retorne type: 'payment' com description: nome do que foi pago. Se o usuário incluir o valor pago, adicione também o campo "value". Se não tiver valor, não inclua o campo "value". O sistema usará o valor enviado ou buscará o padrão cadastrado automaticamente.
 
 EXEMPLOS que devem retornar type: 'payment':
 - 'paguei terapia' → { type: 'payment', description: 'terapia' }
-- 'paguei a luz' → { type: 'payment', description: 'luz' }
+- 'paguei 85 da conta de luz' → { type: 'payment', description: 'luz', value: 85 }
 - 'quitei o aluguel' → { type: 'payment', description: 'aluguel' }
-- 'pagar academia' → { type: 'payment', description: 'academia' }
+- 'paguei 120 da academia' → { type: 'payment', description: 'academia', value: 120 }
 
 VALOR + PRODUTO SEM CONTEXTO EXPLÍCITO:
 Quando a mensagem for um número seguido de produto SEM verbos
@@ -944,17 +944,27 @@ Exemplos que funcionam:
         );
 
         if (bill) {
+          const finalValue = item.value !== undefined ? item.value : bill.value;
+
           const { error: payError } = await supabase
             .from("monthly_bills")
-            .update({ paid: true, paid_at: new Date().toISOString() })
+            .update({ paid: true, paid_at: new Date().toISOString(), value: finalValue })
             .eq("id", bill.id);
 
           if (payError) throw payError;
 
+          if (item.value !== undefined && item.value !== bill.value && bill.subtype === 'fixed') {
+             const { data: fixedExpenses } = await supabase.from('fixed_expenses').select('*').eq('user_id', supabaseUserId).eq('active', true);
+             const matchedFixed = fixedExpenses?.find(f => keywords.some(kw => f.name.toLowerCase().includes(kw)));
+             if (matchedFixed) {
+                await supabase.from('fixed_expenses').update({ value: finalValue }).eq('id', matchedFixed.id);
+             }
+          }
+
           const shortCode = generateShortCode();
           await supabase.from("transactions").insert({
             user_id: supabaseUserId,
-            value: bill.value,
+            value: finalValue,
             type: 'expense',
             category: 'Contas',
             subtype: 'fixed',
@@ -966,7 +976,7 @@ Exemplos que funcionam:
 
           await ctx.reply(`✅ Conta paga! #${shortCode}
 📝 ${bill.name}
-💰 R$ ${Number(bill.value).toFixed(2)}`);
+💰 R$ ${Number(finalValue).toFixed(2)}`);
         } else {
           // 2. BUSCA EM PARCELAMENTOS (INSTALLMENTS)
           const { data: installments, error: instError } = await supabase
