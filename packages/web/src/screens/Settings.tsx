@@ -42,7 +42,7 @@ const CategoryCardItem = ({
       value={cat}
       dragListener={false}
       dragControls={controls}
-      className={`rounded-[2rem] p-7 shadow-sm border border-outline-variant/10 transition-all bg-white relative ${over ? '!bg-error-container/5 !border-error-container/20' : ''}`}
+      className={`rounded-[2rem] p-7 shadow-sm border border-outline-variant/10 transition-colors bg-white relative ${over ? '!bg-error-container/5 !border-error-container/20' : ''}`}
     >
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
