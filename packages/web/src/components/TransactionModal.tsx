@@ -40,6 +40,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ tx, onRefresh, onCl
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(String(tx.value));
   const [editCategory, setEditCategory] = useState(tx.category);
+  const [editDate, setEditDate] = useState(tx.occurred_at ? new Date(tx.occurred_at).toISOString().split('T')[0] : '');
 
   const [editSubcategory, setEditSubcategory] = useState<string>(
     tx.subcategory || (SUBCATEGORIES[tx.category]?.[0] || '')
@@ -67,7 +68,8 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ tx, onRefresh, onCl
         body: JSON.stringify({ 
           value: parseFloat(editValue), 
           category: editCategory,
-          subcategory: hasSubcategories(editCategory) ? editSubcategory : null
+          subcategory: hasSubcategories(editCategory) ? editSubcategory : null,
+          occurred_at: editDate
         })
       });
       onRefresh?.();
@@ -249,6 +251,15 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ tx, onRefresh, onCl
                 >
                   {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant opacity-60">Data da Transação</label>
+                <input
+                  type="date"
+                  value={editDate}
+                  onChange={e => setEditDate(e.target.value)}
+                  className="w-full h-14 bg-surface-container-low rounded-2xl px-4 font-bold text-on-surface border-none focus:ring-2 focus:ring-primary/20"
+                />
               </div>
               {hasSubcategories(editCategory) && (
                 <div className="space-y-2">
