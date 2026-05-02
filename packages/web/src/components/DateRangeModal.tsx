@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 
 const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -21,6 +21,7 @@ const quickFilters = [
   { id: 'month', label: 'Este mês' },
   { id: 'last_month', label: 'Mês passado' },
   { id: 'all', label: 'Total' },
+  { id: 'custom', label: 'Personalizado' },
 ];
 
 const DateRangeModal: React.FC<DateRangeModalProps> = ({
@@ -31,6 +32,9 @@ const DateRangeModal: React.FC<DateRangeModalProps> = ({
   onSelectCustomRange,
   onClose,
 }) => {
+  const [localPeriod, setLocalPeriod] = useState(currentPeriod);
+  const [showCalendar, setShowCalendar] = useState(currentPeriod === 'custom');
+
   const [calMonth, setCalMonth] = useState(new Date().getMonth());
   const [calYear, setCalYear] = useState(new Date().getFullYear());
   const [rangeStart, setRangeStart] = useState<Date | null>(
@@ -43,6 +47,13 @@ const DateRangeModal: React.FC<DateRangeModalProps> = ({
   const contentRef = useRef<HTMLDivElement>(null);
   const startYRef = useRef(0);
   const currentYRef = useRef(0);
+
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, []);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     const el = contentRef.current;
@@ -99,14 +110,23 @@ const DateRangeModal: React.FC<DateRangeModalProps> = ({
   };
 
   const handleQuickFilter = (id: string) => {
-    onSelectPeriod(id);
+    setLocalPeriod(id);
+    if (id === 'custom') {
+      setShowCalendar(true);
+    } else {
+      setShowCalendar(false);
+    }
   };
 
   const handleApply = () => {
-    if (rangeStart && rangeEnd) {
-      const fmtD = (d: Date) =>
-        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      onSelectCustomRange(fmtD(rangeStart), fmtD(rangeEnd));
+    if (localPeriod === 'custom') {
+      if (rangeStart && rangeEnd) {
+        const fmtD = (d: Date) =>
+          `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        onSelectCustomRange(fmtD(rangeStart), fmtD(rangeEnd));
+      }
+    } else {
+      onSelectPeriod(localPeriod);
     }
   };
 
@@ -129,21 +149,23 @@ const DateRangeModal: React.FC<DateRangeModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end justify-center">
+    <div className="fixed inset-0 z-[9999] flex items-end justify-center">
       <div
         className="absolute inset-0 bg-on-surface/40 backdrop-blur-[2px]"
         onClick={onClose}
       />
       <div
         ref={contentRef}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
         className="relative w-full max-w-lg bg-white rounded-t-[2rem] shadow-2xl overflow-y-auto p-8 space-y-8"
         style={{ maxHeight: '85dvh' }}
       >
         {/* Handle */}
-        <div className="flex flex-col items-center">
+        <div 
+          className="flex flex-col items-center pb-2"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
           <div className="w-12 h-1.5 bg-outline-variant/30 rounded-full mb-6" />
           <div className="w-full flex justify-between items-center">
             <h2 className="font-headline font-bold text-2xl text-on-surface">
@@ -169,10 +191,10 @@ const DateRangeModal: React.FC<DateRangeModalProps> = ({
                 key={f.id}
                 onClick={() => handleQuickFilter(f.id)}
                 className={`py-3 px-2 rounded-full font-body font-medium text-sm text-center transition-colors ${
-                  currentPeriod === f.id && currentPeriod !== 'custom'
+                  localPeriod === f.id
                     ? 'bg-tertiary-fixed-dim text-on-tertiary-fixed font-bold'
                     : 'border border-outline-variant/20 hover:bg-surface-container-low'
-                } ${f.id === 'all' ? 'col-span-3' : ''}`}
+                } ${f.id === 'custom' ? 'col-span-2' : ''}`}
               >
                 {f.label}
               </button>
@@ -181,76 +203,78 @@ const DateRangeModal: React.FC<DateRangeModalProps> = ({
         </div>
 
         {/* Custom Calendar */}
-        <div className="space-y-4">
-          <p className="font-headline font-bold text-sm tracking-widest text-on-surface-variant uppercase">
-            Período Personalizado
-          </p>
-          <div className="bg-[#F9F9F7] border border-outline-variant/10 rounded-2xl p-6">
-            <div className="flex items-center justify-between px-2 mb-6">
-              <button
-                onClick={prevMonth}
-                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors"
-              >
-                <ChevronLeft size={20} className="text-on-surface-variant" />
-              </button>
-              <span className="font-headline font-extrabold text-base tracking-tight text-on-surface">
-                {MONTH_NAMES[calMonth]} {calYear}
-              </span>
-              <button
-                onClick={nextMonth}
-                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors"
-              >
-                <ChevronRight size={20} className="text-on-surface-variant" />
-              </button>
-            </div>
-            <div className="grid grid-cols-7 gap-y-1 text-center">
-              {DAY_LABELS.map(d => (
-                <div
-                  key={d}
-                  className="text-[11px] font-headline font-bold text-outline-variant uppercase tracking-widest pb-4"
+        {showCalendar && (
+          <div className="space-y-4">
+            <p className="font-headline font-bold text-sm tracking-widest text-on-surface-variant uppercase">
+              Período Personalizado
+            </p>
+            <div className="bg-[#F9F9F7] border border-outline-variant/10 rounded-2xl p-6">
+              <div className="flex items-center justify-between px-2 mb-6">
+                <button
+                  onClick={prevMonth}
+                  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors"
                 >
-                  {d}
-                </div>
-              ))}
-              {/* Previous month trailing days */}
-              {Array.from({ length: firstDayOfWeek }).map((_, i) => (
-                <div
-                  key={`prev-${i}`}
-                  className="py-2.5 text-sm font-medium text-outline-variant/50"
+                  <ChevronLeft size={20} className="text-on-surface-variant" />
+                </button>
+                <span className="font-headline font-extrabold text-base tracking-tight text-on-surface">
+                  {MONTH_NAMES[calMonth]} {calYear}
+                </span>
+                <button
+                  onClick={nextMonth}
+                  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors"
                 >
-                  {prevMonthDays - firstDayOfWeek + 1 + i}
-                </div>
-              ))}
-              {/* Current month days */}
-              {Array.from({ length: daysInMonth }).map((_, i) => {
-                const day = i + 1;
-                const start = isStart(day);
-                const end = isEnd(day);
-                const inRange = isInRange(day);
-                return (
+                  <ChevronRight size={20} className="text-on-surface-variant" />
+                </button>
+              </div>
+              <div className="grid grid-cols-7 gap-y-1 text-center">
+                {DAY_LABELS.map(d => (
                   <div
-                    key={day}
-                    onClick={() => handleDayClick(day)}
-                    className={`py-2.5 text-sm font-semibold cursor-pointer transition-colors flex items-center justify-center
-                      ${start ? 'bg-tertiary-fixed-dim text-on-tertiary-fixed font-bold rounded-l-full z-10' : ''}
-                      ${end ? 'bg-tertiary-fixed-dim text-on-tertiary-fixed font-bold rounded-r-full z-10' : ''}
-                      ${inRange ? 'bg-tertiary-fixed/30 hover:bg-tertiary-fixed/50' : ''}
-                      ${!start && !end && !inRange ? 'hover:bg-surface-container-high rounded-full' : ''}
-                    `}
+                    key={d}
+                    className="text-[11px] font-headline font-bold text-outline-variant uppercase tracking-widest pb-4"
                   >
-                    {day}
+                    {d}
                   </div>
-                );
-              })}
+                ))}
+                {/* Previous month trailing days */}
+                {Array.from({ length: firstDayOfWeek }).map((_, i) => (
+                  <div
+                    key={`prev-${i}`}
+                    className="py-2.5 text-sm font-medium text-outline-variant/50"
+                  >
+                    {prevMonthDays - firstDayOfWeek + 1 + i}
+                  </div>
+                ))}
+                {/* Current month days */}
+                {Array.from({ length: daysInMonth }).map((_, i) => {
+                  const day = i + 1;
+                  const start = isStart(day);
+                  const end = isEnd(day);
+                  const inRange = isInRange(day);
+                  return (
+                    <div
+                      key={day}
+                      onClick={() => handleDayClick(day)}
+                      className={`py-2.5 text-sm font-semibold cursor-pointer transition-colors flex items-center justify-center
+                        ${start ? 'bg-tertiary-fixed-dim text-on-tertiary-fixed font-bold rounded-l-full z-10' : ''}
+                        ${end ? 'bg-tertiary-fixed-dim text-on-tertiary-fixed font-bold rounded-r-full z-10' : ''}
+                        ${inRange ? 'bg-tertiary-fixed/30 hover:bg-tertiary-fixed/50' : ''}
+                        ${!start && !end && !inRange ? 'hover:bg-surface-container-high rounded-full' : ''}
+                      `}
+                    >
+                      {day}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Apply Button */}
         <div className="pt-4 pb-2">
           <button
             onClick={handleApply}
-            disabled={!rangeStart || !rangeEnd}
+            disabled={localPeriod === 'custom' && (!rangeStart || !rangeEnd)}
             className="w-full py-5 bg-[#5D3FD3] text-white rounded-xl font-headline font-bold text-lg shadow-lg shadow-primary/20 active:scale-95 transition-all disabled:opacity-40"
           >
             Aplicar Filtro
