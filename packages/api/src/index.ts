@@ -92,16 +92,14 @@ const getDateRange = (period: string, start_date?: string, end_date?: string) =>
 
 // Helper: Sync monthly bills from fixed expenses and installments
 const syncMonthlyBills = async (user_id: string, month: number, year: number) => {
-  // Check if bills already exist for this month/year
+  // Check existing fixed bills for this month/year to avoid duplicates
   const { data: existing } = await supabase
     .from('monthly_bills')
-    .select('id')
+    .select('name')
     .eq('user_id', user_id)
     .eq('month', month)
     .eq('year', year)
-    .limit(1);
-
-  if (existing && existing.length > 0) return;
+    .eq('subtype', 'fixed');
 
   // Fetch fixed expenses
   const { data: fixed } = await supabase
@@ -110,24 +108,25 @@ const syncMonthlyBills = async (user_id: string, month: number, year: number) =>
     .eq('user_id', user_id)
     .eq('active', true);
 
-
-  const billsToInsert = [];
+  const existingNames = new Set((existing || []).map(b => b.name));
+  const billsToInsert: any[] = [];
 
   if (fixed) {
     fixed.forEach(f => {
-      billsToInsert.push({
-        user_id,
-        name: f.name,
-        value: f.value,
-        due_day: f.due_day,
-        category: f.category,
-        subtype: 'fixed',
-        month,
-        year
-      });
+      if (!existingNames.has(f.name)) {
+        billsToInsert.push({
+          user_id,
+          name: f.name,
+          value: f.value,
+          due_day: f.due_day,
+          category: f.category,
+          subtype: 'fixed',
+          month,
+          year
+        });
+      }
     });
   }
-
 
   if (billsToInsert.length > 0) {
     await supabase.from('monthly_bills').insert(billsToInsert);
