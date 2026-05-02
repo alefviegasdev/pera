@@ -23,6 +23,7 @@ const Home = ({
   onModalClose?: () => void;
 }) => {
   const [summary, setSummary] = useState<any>(null);
+  const [totalSummary, setTotalSummary] = useState<any>(null);
   const [bills, setBills]     = useState<any[]>([]);
   const [paidBills, setPaidBills] = useState<any[]>([]);
   const [paidPreviousRecent, setPaidPreviousRecent] = useState<any[]>([]);
@@ -72,14 +73,15 @@ const Home = ({
   const fetchData = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const [sRes, bRes, tRes, iRes, budgetsRes, titheSummaryRes, profileRes] = await Promise.all([
+      const [sRes, bRes, tRes, iRes, budgetsRes, titheSummaryRes, profileRes, totalRes] = await Promise.all([
         fetch(`/api/transactions/summary?user_id=${userId}&period=month`),
         fetch(`/api/monthly-bills-all?user_id=${userId}`),
         fetch(`/api/transactions?user_id=${userId}&period=month`),
         fetch(`/api/installments?user_id=${userId}`),
         fetch(`/api/budgets?user_id=${userId}`),
         fetch(`/api/tithe-summary?user_id=${userId}`),
-        fetch(`/api/user-profile?user_id=${userId}`)
+        fetch(`/api/user-profile?user_id=${userId}`),
+        fetch(`/api/transactions/summary?user_id=${userId}&period=all`)
       ]);
       setSummary(await sRes.json());
       const allBillsData = await bRes.json();
@@ -102,6 +104,7 @@ const Home = ({
       
       const profileData = await profileRes.json();
       setTitheActive(profileData?.tithe_active !== false);
+      setTotalSummary(await totalRes.json());
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
@@ -231,7 +234,8 @@ const Home = ({
     </div>
   );
 
-  const balanceParts = splitFmt(summary?.balance ?? 0);
+  const totalBalance = totalSummary?.balance ?? 0;
+  const balanceParts = splitFmt(totalBalance);
   const userName = userMetadata?.name?.split(' ')[0] || 'Michel';
 
   // Financial Calculations
@@ -405,10 +409,10 @@ const Home = ({
         <section className="space-y-1">
           <h2 className="text-on-surface-variant font-medium font-body text-sm">Saldo Geral</h2>
           <div className="flex items-baseline gap-1">
-            <span className={`font-black text-5xl tracking-tight font-headline ${(summary?.balance || 0) < 0 ? 'text-error' : 'text-primary'}`}>
+            <span className={`font-black text-5xl tracking-tight font-headline ${totalBalance < 0 ? 'text-error' : 'text-primary'}`}>
               {hideMaster ? '•••••' : balanceParts.int}
             </span>
-            <span className={`font-bold text-2xl font-headline ${(summary?.balance || 0) < 0 ? 'text-error opacity-70' : 'text-primary-container'}`}>
+            <span className={`font-bold text-2xl font-headline ${totalBalance < 0 ? 'text-error opacity-70' : 'text-primary-container'}`}>
               {hideMaster ? '' : balanceParts.dec}
             </span>
           </div>

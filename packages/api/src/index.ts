@@ -28,7 +28,13 @@ const getDateRange = (period: string, start_date?: string, end_date?: string) =>
   const todayEndUTC = new Date(todayStartUTC.getTime() + 24 * 60 * 60 * 1000 - 1);
 
   if (start_date && end_date) {
-    return { start: new Date(start_date), end: new Date(end_date) };
+    const s = new Date(start_date);
+    const e = new Date(end_date);
+    // If end_date is just a date (no time component), cover the full day
+    if (end_date.length === 10) {
+      e.setHours(23, 59, 59, 999);
+    }
+    return { start: s, end: e };
   }
 
   let start = new Date(0); // Epoch
@@ -43,7 +49,13 @@ const getDateRange = (period: string, start_date?: string, end_date?: string) =>
       start = new Date(todayStartUTC.getTime() - 24 * 60 * 60 * 1000);
       end = new Date(todayStartUTC.getTime() - 1);
       break;
-    case 'week':
+    case 'week': {
+      // "Esta semana" = from Sunday of this week
+      const dayOfWeek = nowBrazil.getDay(); // 0=Sun, 1=Mon...
+      const sundayBrazil = new Date(nowBrazil.getFullYear(), nowBrazil.getMonth(), nowBrazil.getDate() - dayOfWeek);
+      start = new Date(sundayBrazil.getTime() - TIMEZONE_OFFSET_MS);
+      break;
+    }
     case '7days':
       start = new Date(todayStartUTC);
       start.setDate(start.getDate() - 7);
@@ -65,6 +77,7 @@ const getDateRange = (period: string, start_date?: string, end_date?: string) =>
       start = new Date(firstDayBrazil.getTime() - TIMEZONE_OFFSET_MS);
       break;
     case 'lastmonth':
+    case 'last_month':
       const firstMonthBR = new Date(nowBrazil.getFullYear(), nowBrazil.getMonth() - 1, 1);
       const lastDayLastMonthBR = new Date(nowBrazil.getFullYear(), nowBrazil.getMonth(), 0, 23, 59, 59, 999);
       start = new Date(firstMonthBR.getTime() - TIMEZONE_OFFSET_MS);
@@ -224,10 +237,10 @@ app.patch('/transactions/:id', async (req, res) => {
 
 app.get('/transactions/summary', async (req, res) => {
   try {
-    const { user_id, period } = req.query;
+    const { user_id, period, start_date, end_date } = req.query;
     if (!user_id) return res.status(400).json({ error: "user_id is required" });
 
-    const { start, end } = getDateRange(period as string);
+    const { start, end } = getDateRange(period as string, start_date as string, end_date as string);
 
     const { data: transactions, error } = await supabase
       .from('transactions')

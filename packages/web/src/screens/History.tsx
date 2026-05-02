@@ -3,6 +3,7 @@ import { Calendar, ChevronDown, Plus, ChevronUp, X, Eye, EyeOff } from 'lucide-r
 import { catColor, catEmoji } from '../utils/categories';
 import TransactionModal from '../components/TransactionModal';
 import InstallmentsModal from '../components/InstallmentsModal';
+import DateRangeModal from '../components/DateRangeModal';
 
 const History = ({ 
   userId, 
@@ -33,6 +34,9 @@ const History = ({
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [confirmDeleteText, setConfirmDeleteText] = useState<string>('');
   const [hideHistory, setHideHistory] = useState(false);
+  const [showDateModal, setShowDateModal] = useState(false);
+  const [customStartDate, setCustomStartDate] = useState<string | null>(null);
+  const [customEndDate, setCustomEndDate] = useState<string | null>(null);
 
   // On mount (tab switch), read master and reset local state
   useEffect(() => {
@@ -64,7 +68,7 @@ const History = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  useEffect(() => { fetchAll(); fetchShoppingList(); }, [userId, period]);
+  useEffect(() => { fetchAll(); fetchShoppingList(); }, [userId, period, customStartDate, customEndDate]);
   
   const periodRef = React.useRef(period);
   useEffect(() => {
@@ -77,13 +81,16 @@ const History = ({
       fetchShoppingList();
     }, 15000);
     return () => clearInterval(interval);
-  }, [userId, period]);
+  }, [userId, period, customStartDate, customEndDate]);
 
   const fetchAll = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
+      const txUrl = period === 'custom' && customStartDate && customEndDate
+        ? `/api/transactions?user_id=${userId}&start_date=${customStartDate}&end_date=${customEndDate}`
+        : `/api/transactions?user_id=${userId}&period=${period}`;
       const [txRes, instRes] = await Promise.all([
-        fetch(`/api/transactions?user_id=${userId}&period=${period}`),
+        fetch(txUrl),
         fetch(`/api/installments?user_id=${userId}`)
       ]);
       const txData = await txRes.json();
@@ -185,9 +192,20 @@ const History = ({
     { id: 'week', label: 'Esta semana' },
     { id: '7days', label: '7 dias' },
     { id: 'month', label: 'Este mês' },
-    { id: '90days', label: '90 dias' },
-    { id: 'all', label: 'Tudo' },
+    { id: 'last_month', label: 'Mês passado' },
+    { id: 'all', label: 'Total' },
+    { id: 'custom', label: 'Personalizado' },
   ];
+
+
+  const getCustomLabel = () => {
+    if (period === 'custom' && customStartDate && customEndDate) {
+      const s = customStartDate.split('-');
+      const e = customEndDate.split('-');
+      return `${s[2]}/${s[1]} - ${e[2]}/${e[1]}`;
+    }
+    return periods.find(p => p.id === period)?.label;
+  };
 
   return (
     <div className="screen bg-surface">
@@ -200,29 +218,13 @@ const History = ({
         </div>
         <div className="relative flex-shrink-0 pb-1" ref={periodDropdownRef}>
           <button
-            onClick={() => setPeriodDropdownOpen(!periodDropdownOpen)}
+            onClick={() => setShowDateModal(true)}
             className="flex items-center gap-2 bg-surface-container px-4 py-2.5 rounded-full text-[11px] font-black uppercase tracking-widest text-on-surface-variant border border-surface-container-high active:scale-95 transition-all shadow-sm"
           >
             <Calendar size={14} className="text-primary" />
-            {periods.find(p => p.id === period)?.label}
-            <ChevronDown size={12} className={`transition-transform ${periodDropdownOpen ? 'rotate-180' : ''}`} />
+            {getCustomLabel()}
+            <ChevronDown size={12} />
           </button>
-          {periodDropdownOpen && (
-            <div className="absolute right-0 top-full mt-2 bg-white rounded-2xl shadow-xl border border-surface-container overflow-hidden z-50 w-40">
-              {periods.map(p => (
-                <button
-                  key={p.id}
-                  onClick={() => { setPeriod(p.id); setPeriodDropdownOpen(false); }}
-                  className={`w-full text-left px-4 py-3 text-xs font-bold transition-colors flex items-center gap-2 ${
-                    period === p.id ? 'bg-primary/5 text-primary' : 'text-on-surface-variant hover:bg-surface-container-low'
-                  }`}
-                >
-                  {period === p.id && <div className="w-1.5 h-1.5 rounded-full bg-primary" />}
-                  {p.label}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
       </header>
 
@@ -496,6 +498,28 @@ const History = ({
 
       {showInstallments && (
         <InstallmentsModal userId={userId} onClose={() => setShowInstallments(false)} />
+      )}
+
+      {/* DateRangeModal */}
+      {showDateModal && (
+        <DateRangeModal
+          currentPeriod={period}
+          customStartDate={customStartDate}
+          customEndDate={customEndDate}
+          onSelectPeriod={(id) => {
+            setPeriod(id);
+            setCustomStartDate(null);
+            setCustomEndDate(null);
+            setShowDateModal(false);
+          }}
+          onSelectCustomRange={(startDate, endDate) => {
+            setCustomStartDate(startDate);
+            setCustomEndDate(endDate);
+            setPeriod('custom');
+            setShowDateModal(false);
+          }}
+          onClose={() => setShowDateModal(false)}
+        />
       )}
     </div>
   );
