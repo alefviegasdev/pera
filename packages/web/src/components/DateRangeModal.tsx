@@ -60,15 +60,34 @@ const DateRangeModal: React.FC<DateRangeModalProps> = ({
     if (el && el.scrollTop > 0) return;
     startYRef.current = e.touches[0].clientY;
     currentYRef.current = e.touches[0].clientY;
+    if (el) {
+      el.style.transition = 'none';
+    }
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
+    const el = contentRef.current;
+    if (el && el.scrollTop > 0) return;
+    
     currentYRef.current = e.touches[0].clientY;
+    const diff = currentYRef.current - startYRef.current;
+    if (diff > 0 && el) {
+      el.style.transform = `translateY(${diff}px)`;
+    }
   };
 
   const handleTouchEnd = () => {
-    if (currentYRef.current - startYRef.current > 80) {
+    const el = contentRef.current;
+    if (!el) return;
+    
+    const diff = currentYRef.current - startYRef.current;
+    const threshold = el.offsetHeight * 0.4; // 40% do tamanho do modal
+    
+    if (diff > threshold) {
       onClose();
+    } else {
+      el.style.transform = 'translateY(0)';
+      el.style.transition = 'transform 0.3s ease-out';
     }
   };
 
@@ -190,7 +209,7 @@ const DateRangeModal: React.FC<DateRangeModalProps> = ({
                 onClick={() => handleQuickFilter(f.id)}
                 className={`py-3 px-2 rounded-full font-body font-medium text-sm text-center transition-colors ${
                   localPeriod === f.id
-                    ? 'bg-tertiary-fixed-dim text-on-tertiary-fixed font-bold'
+                    ? 'bg-tertiary-container text-tertiary font-bold'
                     : 'border border-outline-variant/20 hover:bg-surface-container-low text-on-surface'
                 } ${f.id === 'custom' ? 'col-span-2' : ''}`}
               >
@@ -253,9 +272,9 @@ const DateRangeModal: React.FC<DateRangeModalProps> = ({
                       key={day}
                       onClick={() => handleDayClick(day)}
                       className={`py-2.5 text-sm font-semibold cursor-pointer transition-colors flex items-center justify-center
-                        ${start ? 'bg-tertiary-fixed-dim text-on-tertiary-fixed font-bold rounded-l-full z-10' : ''}
-                        ${end ? 'bg-tertiary-fixed-dim text-on-tertiary-fixed font-bold rounded-r-full z-10' : ''}
-                        ${inRange ? 'bg-tertiary-fixed/30 hover:bg-tertiary-fixed/50' : ''}
+                        ${start ? 'bg-tertiary-container text-tertiary font-bold rounded-l-full z-10' : ''}
+                        ${end ? 'bg-tertiary-container text-tertiary font-bold rounded-r-full z-10' : ''}
+                        ${inRange ? 'bg-tertiary-container/30 hover:bg-tertiary-container/50' : ''}
                         ${!start && !end && !inRange ? 'hover:bg-surface-container-high rounded-full' : ''}
                       `}
                     >
