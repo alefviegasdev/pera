@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Target, Calendar, ChevronRight, User, Heart, LogOut, PlusCircle, Home, Wifi, Utensils, Zap, HelpCircle, Coffee, Car, HeartPulse, Gamepad2, BookOpen, ReceiptText, Shirt, Smartphone, Hand, CircleEllipsis, Pencil } from 'lucide-react';
+import { Target, Calendar, ChevronRight, User, Heart, LogOut, PlusCircle, Home, Wifi, Utensils, Zap, HelpCircle, Coffee, Car, HeartPulse, Gamepad2, BookOpen, ReceiptText, Shirt, Smartphone, Hand, CircleEllipsis, Pencil, GripVertical } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import NewBillModal from '../components/NewBillModal';
 import NewBudgetModal from '../components/NewBudgetModal';
@@ -167,7 +167,7 @@ const Settings = ({
     return <Calendar size={20} className="text-primary" />;
   };
 
-  const CATEGORIES = [
+  const DEFAULT_CATEGORIES = [
     { name: "Alimentação", icon: <Utensils size={24} />, color: "bg-error-container/10", textColor: "text-error" },
     { name: "Fast Food", icon: <Coffee size={24} />, color: "bg-secondary-container/20", textColor: "text-secondary-dim" },
     { name: "Transporte", icon: <Car size={24} />, color: "bg-primary/10", textColor: "text-primary" },
@@ -180,6 +180,53 @@ const Settings = ({
     { name: "Dízimo/Oferta", icon: <Hand size={24} />, color: "bg-tertiary-container/20", textColor: "text-on-tertiary-container" },
     { name: "Outros", icon: <CircleEllipsis size={24} />, color: "bg-surface-container-high", textColor: "text-on-surface" },
   ];
+
+  const [categories, setCategories] = useState(() => {
+    const saved = localStorage.getItem(`budget_categories_order_${userId}`);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        const merged = parsed.map((name: string) => DEFAULT_CATEGORIES.find(c => c.name === name)).filter(Boolean);
+        DEFAULT_CATEGORIES.forEach(c => {
+          if (!merged.find((m: any) => m.name === c.name)) merged.push(c);
+        });
+        return merged as typeof DEFAULT_CATEGORIES;
+      } catch(e) {}
+    }
+    return DEFAULT_CATEGORIES;
+  });
+
+  const [draggedCategory, setDraggedCategory] = useState<string | null>(null);
+
+  const handleDragStart = (e: React.DragEvent, name: string) => {
+    setDraggedCategory(name);
+    // Needed for Firefox
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', name);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent, targetName: string) => {
+    e.preventDefault();
+    if (!draggedCategory || draggedCategory === targetName) return;
+
+    setCategories(prev => {
+      const draggedIdx = prev.findIndex(c => c.name === draggedCategory);
+      const targetIdx = prev.findIndex(c => c.name === targetName);
+      
+      const newItems = [...prev];
+      const [removed] = newItems.splice(draggedIdx, 1);
+      newItems.splice(targetIdx, 0, removed);
+      
+      return newItems;
+    });
+  };
+
+  const handleDragEnd = () => {
+    setDraggedCategory(null);
+    localStorage.setItem(`budget_categories_order_${userId}`, JSON.stringify(categories.map(c => c.name)));
+  };
 
   const handleUpdateLimit = async () => {
     if (!editBudget) return;
@@ -445,7 +492,7 @@ const Settings = ({
         <section className="space-y-4">
           <SectionHeader title="Orçamentos Mensais" />
           <div className="space-y-4">
-            {CATEGORIES.map(cat => {
+            {categories.map(cat => {
               const budget = budgets.find(b => b.category === cat.name);
               const spending = categorySpending.find(s => s.category === cat.name);
               const spent = spending ? Number(spending.total) : (budget?.spent || 0);
@@ -459,10 +506,17 @@ const Settings = ({
               return (
                 <div 
                   key={cat.name} 
-                  className={`rounded-[2rem] p-7 shadow-sm border border-outline-variant/10 transition-all ${over ? 'bg-error-container/5 border-error-container/20' : 'bg-white'}`}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, cat.name)}
+                  onDragOver={(e) => handleDragOver(e, cat.name)}
+                  onDragEnd={handleDragEnd}
+                  className={`rounded-[2rem] p-7 shadow-sm border border-outline-variant/10 transition-all cursor-grab active:cursor-grabbing ${over ? 'bg-error-container/5 border-error-container/20' : 'bg-white'} ${draggedCategory === cat.name ? 'opacity-50 scale-[0.98]' : ''}`}
                 >
                   <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-4">
+                      <div className="text-on-surface-variant/30 flex items-center justify-center">
+                        <GripVertical size={20} />
+                      </div>
                       <div className={`w-14 h-14 ${cat.name === 'Alimentação' && over ? 'bg-error-container/20' : cat.color} rounded-2xl flex items-center justify-center ${cat.textColor}`}>
                         {cat.icon}
                       </div>
