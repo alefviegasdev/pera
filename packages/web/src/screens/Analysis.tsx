@@ -94,12 +94,12 @@ const Analysis = ({
   }, []);
 
   useEffect(() => {
-    if (selectedCategory) {
+    if (selectedCategory || showDateModal) {
       onModalOpen?.();
     } else {
       onModalClose?.();
     }
-  }, [selectedCategory]);
+  }, [selectedCategory, showDateModal, onModalOpen, onModalClose]);
 
   const fetchData = async (silent = false) => {
     if (!silent) setLoading(true);

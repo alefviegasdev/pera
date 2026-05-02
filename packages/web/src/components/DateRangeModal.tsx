@@ -156,16 +156,14 @@ const DateRangeModal: React.FC<DateRangeModalProps> = ({
       />
       <div
         ref={contentRef}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
         className="relative w-full max-w-lg bg-white rounded-t-[2rem] shadow-2xl overflow-y-auto p-8 space-y-8"
         style={{ maxHeight: '85dvh' }}
       >
         {/* Handle */}
-        <div 
-          className="flex flex-col items-center pb-2"
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-        >
+        <div className="flex flex-col items-center pb-2">
           <div className="w-12 h-1.5 bg-outline-variant/30 rounded-full mb-6" />
           <div className="w-full flex justify-between items-center">
             <h2 className="font-headline font-bold text-2xl text-on-surface">
@@ -193,7 +191,7 @@ const DateRangeModal: React.FC<DateRangeModalProps> = ({
                 className={`py-3 px-2 rounded-full font-body font-medium text-sm text-center transition-colors ${
                   localPeriod === f.id
                     ? 'bg-tertiary-fixed-dim text-on-tertiary-fixed font-bold'
-                    : 'border border-outline-variant/20 hover:bg-surface-container-low'
+                    : 'border border-outline-variant/20 hover:bg-surface-container-low text-on-surface'
                 } ${f.id === 'custom' ? 'col-span-2' : ''}`}
               >
                 {f.label}

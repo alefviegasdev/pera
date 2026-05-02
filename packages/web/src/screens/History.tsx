@@ -51,12 +51,12 @@ const History = ({
   const maskValue = (value: string, hide: boolean) => hide ? '•••••' : value;
 
   useEffect(() => {
-    if (selectedTx || showInstallments) {
+    if (selectedTx || showInstallments || showDateModal) {
       onModalOpen?.();
     } else {
       onModalClose?.();
     }
-  }, [selectedTx, showInstallments]);
+  }, [selectedTx, showInstallments, showDateModal, onModalOpen, onModalClose]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
