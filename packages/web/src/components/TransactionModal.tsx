@@ -230,58 +230,60 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ tx, onRefresh, onCl
               </button>
             </>
           ) : (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant opacity-60">Valor (R$)</label>
-                <input
-                  type="number"
-                  value={editValue}
-                  onChange={e => setEditValue(e.target.value)}
-                  className="w-full h-14 bg-surface-container-low rounded-2xl px-4 font-headline font-bold text-xl text-on-surface border-none focus:ring-2 focus:ring-primary/20"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant opacity-60">Categoria</label>
-                <select
-                  value={editCategory}
-                  onChange={e => {
-                    const newCat = e.target.value;
-                    setEditCategory(newCat);
-                    setEditSubcategory(SUBCATEGORIES[newCat]?.[0] || '');
-                  }}
-                  className="w-full h-14 bg-surface-container-low rounded-2xl px-4 font-bold text-on-surface border-none focus:ring-2 focus:ring-primary/20"
-                >
-                  {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant opacity-60">Data da Transação</label>
-                <div className="w-full overflow-hidden rounded-2xl">
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant opacity-60">Valor (R$)</label>
                   <input
-                    type="date"
-                    value={editDate}
-                    onChange={e => setEditDate(e.target.value)}
-                    className="block w-full h-14 bg-surface-container-low px-4 font-bold text-on-surface border-none focus:ring-2 focus:ring-primary/20"
-                    style={{ minWidth: 0, width: '100%', boxSizing: 'border-box' }}
+                    type="number"
+                    value={editValue}
+                    onChange={e => setEditValue(e.target.value)}
+                    className="w-full h-14 bg-surface-container-low rounded-2xl px-4 font-bold text-lg text-on-surface border-2 border-dashed border-primary/10 hover:border-primary/30 focus:border-solid focus:border-primary focus:ring-0 transition-all"
                   />
                 </div>
-              </div>
-              {hasSubcategories(editCategory) && (
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant opacity-60">
-                    Subcategoria
-                  </label>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant opacity-60">Data</label>
+                  <div className="w-full h-14 overflow-hidden rounded-2xl border-2 border-dashed border-primary/10 hover:border-primary/30 focus-within:border-solid focus-within:border-primary transition-all">
+                    <input
+                      type="date"
+                      value={editDate}
+                      onChange={e => setEditDate(e.target.value)}
+                      className="block w-full h-full bg-surface-container-low px-4 font-bold text-sm text-on-surface border-none focus:ring-0"
+                      style={{ minWidth: 0, width: '100%', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant opacity-60">Categoria</label>
                   <select
-                    value={editSubcategory}
-                    onChange={e => setEditSubcategory(e.target.value)}
-                    className="w-full h-14 bg-surface-container-low rounded-2xl px-4 font-bold text-on-surface border-none focus:ring-2 focus:ring-primary/20"
+                    value={editCategory}
+                    onChange={e => {
+                      const newCat = e.target.value;
+                      setEditCategory(newCat);
+                      setEditSubcategory(SUBCATEGORIES[newCat]?.[0] || '');
+                    }}
+                    className="w-full h-14 bg-surface-container-low rounded-2xl px-4 font-bold text-sm text-on-surface border-2 border-dashed border-primary/10 hover:border-primary/30 focus:border-solid focus:border-primary focus:ring-0 transition-all"
                   >
-                    {SUBCATEGORIES[editCategory].map(sub => (
-                      <option key={sub} value={sub}>{sub}</option>
-                    ))}
+                    {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
-              )}
+                {hasSubcategories(editCategory) && (
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant opacity-60">
+                      Subcategoria
+                    </label>
+                    <select
+                      value={editSubcategory}
+                      onChange={e => setEditSubcategory(e.target.value)}
+                      className="w-full h-14 bg-surface-container-low rounded-2xl px-4 font-bold text-sm text-on-surface border-2 border-dashed border-primary/10 hover:border-primary/30 focus:border-solid focus:border-primary focus:ring-0 transition-all"
+                    >
+                      {SUBCATEGORIES[editCategory].map(sub => (
+                        <option key={sub} value={sub}>{sub}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
               <div className="flex gap-3">
                 <button
                   onClick={() => setEditing(false)}
