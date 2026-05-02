@@ -101,13 +101,16 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ tx, onRefresh, onCl
   return (
     <div className="modal-overlay" onClick={onClose} style={{ zIndex: 9999 }}>
       <div 
-        className="modal-card scrollbar-hide" 
+        className="modal-card scrollbar-hide mx-auto" 
         onClick={(e) => e.stopPropagation()} 
         style={{ 
           borderRadius: '2.5rem',
           height: '85dvh',
           display: 'flex',
           flexDirection: 'column',
+          maxWidth: '430px',
+          width: '100%',
+          overflow: 'hidden',
           transform: dragOffset > 0 ? `translateY(${dragOffset}px)` : undefined,
           transition: dragOffset > 0 ? 'none' : 'transform 0.3s ease'
         }}
@@ -253,13 +256,15 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ tx, onRefresh, onCl
               </div>
               <div className="space-y-2">
                 <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant opacity-60">Data da Transação</label>
-                <input
-                  type="date"
-                  value={editDate}
-                  onChange={e => setEditDate(e.target.value)}
-                  className="block w-full h-14 bg-surface-container-low rounded-2xl px-4 font-bold text-on-surface border-none focus:ring-2 focus:ring-primary/20"
-                  style={{ minWidth: 0, maxWidth: '100%' }}
-                />
+                <div className="w-full overflow-hidden rounded-2xl">
+                  <input
+                    type="date"
+                    value={editDate}
+                    onChange={e => setEditDate(e.target.value)}
+                    className="block w-full h-14 bg-surface-container-low px-4 font-bold text-on-surface border-none focus:ring-2 focus:ring-primary/20"
+                    style={{ minWidth: 0, width: '100%', boxSizing: 'border-box' }}
+                  />
+                </div>
               </div>
               {hasSubcategories(editCategory) && (
                 <div className="space-y-2">
