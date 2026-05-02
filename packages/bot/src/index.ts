@@ -529,7 +529,7 @@ Quanto mais detalhes você der, melhor eu classifico!
           return ctx.reply(`✏️ #${replyCode} atualizado!\n📂 categoria: ${record.category} → ${mapped.category} | ${mapped.subcategory}`);
         }
 
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${geminiKey}`;
         const response = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -609,7 +609,7 @@ Quanto mais detalhes você der, melhor eu classifico!
       console.log("Tipo detectado: comando/correção (IA)");
       const code = cmdMatch[1].replace('#', '').toUpperCase();
       
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${geminiKey}`;
       const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -750,7 +750,7 @@ O que você pode mudar:
     }
 
     // 2a. DETECÇÃO DE MENSAGEM AMBÍGUA (verbo passado sem valor)
-    const ambiguousUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`;
+    const ambiguousUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${geminiKey}`;
     const ambiguousResponse = await fetch(ambiguousUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -775,7 +775,7 @@ O que você pode mudar:
     }
 
     // 2b. DETECÇÃO DE LISTA DE COMPRAS
-    const shoppingUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`;
+    const shoppingUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${geminiKey}`;
     const shoppingResponse = await fetch(shoppingUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -808,7 +808,7 @@ O que você pode mudar:
 
     // 2. PROCESSAMENTO FINANCEIRO COM GEMINI
     console.log("Tipo detectado: financeiro");
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${geminiKey}`;
     
     const response = await fetch(url, {
       method: "POST",
