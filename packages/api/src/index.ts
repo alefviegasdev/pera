@@ -371,6 +371,22 @@ app.get('/fixed-expenses', async (req, res) => {
   }
 });
 
+app.post('/fixed-expenses', async (req, res) => {
+  try {
+    const { user_id, name, value, due_day, category } = req.body;
+    if (!user_id) return res.status(400).json({ error: "user_id is required" });
+
+    const { data, error } = await supabase.from('fixed_expenses').insert({
+      user_id, name, value, due_day, category, active: true
+    }).select();
+
+    if (error) throw error;
+    res.json(data[0]);
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.get('/goals', async (req, res) => {
   try {
     const { user_id } = req.query;

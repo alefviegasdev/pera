@@ -31,10 +31,7 @@ const NewBillModal: React.FC<NewBillModalProps> = ({ userId, onClose, onSuccess 
 
     setLoading(true);
     try {
-      const now = new Date();
-      const shortCode = Math.random().toString(36).substring(2, 6).toUpperCase();
-      
-      const res = await fetch('/api/monthly-bills', {
+      const res = await fetch('/api/fixed-expenses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -42,13 +39,14 @@ const NewBillModal: React.FC<NewBillModalProps> = ({ userId, onClose, onSuccess 
           name,
           value: parseFloat(value),
           due_day: parseInt(dueDay),
-          month: now.getMonth() + 1,
-          year: now.getFullYear(),
-          paid: false,
-          short_code: shortCode,
           category
         })
       });
+
+      // Also trigger a background sync for the current month so it appears immediately
+      if (res.ok) {
+        fetch(`/api/monthly-bills-all?user_id=${userId}`).catch(() => {});
+      }
 
       if (res.ok) {
         onSuccess();
