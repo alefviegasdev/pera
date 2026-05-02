@@ -5,7 +5,7 @@ import FixedDetailsModal from '../components/FixedDetailsModal';
 import CategoryDetailsModal from '../components/CategoryDetailsModal';
 import IncomeDetailsModal from '../components/IncomeDetailsModal';
 import TitheDetailsModal from '../components/TitheDetailsModal';
-import { ArrowRight, ArrowUpRight, ArrowDownRight, AlertTriangle, CreditCard, ChevronRight, Zap, Wifi, Home as HomeIcon, Dumbbell, Pin, AlertCircle, CheckCircle2, Heart, Eye, EyeOff } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, ArrowDownRight, AlertTriangle, CreditCard, ChevronRight, Zap, Wifi, Home as HomeIcon, Dumbbell, Pin, AlertCircle, CheckCircle2, Heart, Eye, EyeOff, Calendar } from 'lucide-react';
 
 const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
@@ -469,65 +469,54 @@ const Home = ({
           </div>
         </section>
 
-        {/* ── REAL AVAILABLE BALANCE ── */}
-        <section className="bg-white p-8 rounded-[3rem] space-y-8 shadow-sm border border-surface-container/30">
-          <div className="space-y-1">
-            <div className="flex justify-between items-start">
-              <h2 className="text-on-surface font-headline font-black text-2xl tracking-tight">Saldo Disponível Real</h2>
-              <span className="bg-tertiary/10 text-tertiary px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.15em] border border-tertiary/5">Projeção</span>
+        {/* ── RECEITA MENSAL ── */}
+        <section className="bg-white p-6 rounded-[2.5rem] border border-surface-container/30 shadow-sm">
+          <div className="flex justify-between items-center mb-6">
+            <div className="space-y-1">
+              <h2 className="text-on-surface font-headline font-black text-lg">Receita Mensal</h2>
             </div>
-            <p className="text-on-surface-variant text-sm font-medium opacity-70">O que você ainda pode gastar este mês</p>
+            <span className="bg-tertiary-container text-on-tertiary-container px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider">PROJEÇÃO</span>
           </div>
 
-          <div className="py-4">
-            <p className="text-on-surface-variant text-xs font-black uppercase tracking-[0.2em] opacity-60 mb-2">
-              Disponível para o mês
-            </p>
-            <div className="flex items-baseline gap-1">
-              <span className={`font-headline font-black text-5xl tracking-tight ${isNegative ? 'text-error' : 'text-tertiary'}`}>
-                {hideMaster ? '•••••' : splitFmt(realAvailable).int}
-              </span>
-              <span className={`font-headline font-black text-2xl ${isNegative ? 'text-error/60' : 'text-tertiary/60'}`}>
-                {hideMaster ? '' : splitFmt(realAvailable).dec}
-              </span>
+          {/* Visual Equation Layout */}
+          <div className="flex items-center justify-between gap-2 mb-6">
+            <div className="flex flex-col items-center gap-1 flex-1">
+              <div className="w-8 h-8 rounded-full bg-tertiary/10 flex items-center justify-center">
+                <ArrowDownRight size={14} className="text-tertiary" />
+              </div>
+              <p className="text-[9px] font-bold text-on-surface-variant uppercase text-center leading-tight">Entradas</p>
+              <p className="text-xs font-black text-on-surface">{maskValue(fmt(income).split(',')[0], hideMaster)}</p>
+            </div>
+            <span className="text-on-surface-variant/30 font-bold mb-4">-</span>
+            <div className="flex flex-col items-center gap-1 flex-1">
+              <div className="w-8 h-8 rounded-full bg-error/10 flex items-center justify-center">
+                <Calendar size={14} className="text-error" />
+              </div>
+              <p className="text-[9px] font-bold text-on-surface-variant uppercase text-center leading-tight">Contas fixas</p>
+              <p className="text-xs font-black text-on-surface">{maskValue(fmt(totalBills + paidBillsVal).split(',')[0], hideMaster)}</p>
+            </div>
+            <span className="text-on-surface-variant/30 font-bold mb-4">-</span>
+            <div className="flex flex-col items-center gap-1 flex-1">
+              <div className="w-8 h-8 rounded-full bg-secondary/10 flex items-center justify-center">
+                <CreditCard size={14} className="text-secondary" />
+              </div>
+              <p className="text-[9px] font-bold text-on-surface-variant uppercase text-center leading-tight">parcelamentos</p>
+              <p className="text-xs font-black text-on-surface">{maskValue(fmt(installmentTotal).split(',')[0], hideMaster)}</p>
             </div>
           </div>
 
-          <div className="space-y-6">
-            <div className="flex w-full h-4 gap-1.5 overflow-hidden rounded-full bg-surface-container-low">
-              {/* Spent Part */}
-              <div 
-                className="h-full bg-primary-dim rounded-l-full transition-all duration-1000 ease-out" 
-                style={{ width: `${spentPct}%` }}
-              />
-              {/* Fixed Part */}
-              <div 
-                className="h-full bg-primary-container transition-all duration-1000 ease-out delay-100" 
-                style={{ width: `${fixedPct}%` }}
-              />
-              {/* Available Part */}
-              <div 
-                className={`h-full rounded-r-full transition-all duration-1000 ease-out delay-200 ${isNegative ? 'bg-error' : 'bg-tertiary-container'}`}
-                style={{ width: `${availPct}%` }}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 pt-2">
-              <div className="flex items-center justify-between text-xs font-bold text-on-surface-variant">
-                <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 rounded-full bg-primary-dim"></div>
-                  <span className="opacity-80 uppercase tracking-widest text-[10px]">Gastos realizados</span>
-                </div>
-                <span className="text-on-surface font-black">− {maskValue(fmt(expense), hideMaster)}</span>
+          {/* Prominent Final Result */}
+          <div className="p-5 rounded-[2rem] border-outline-variant/10" style={{ backgroundColor: '#c9e5f5' }}>
+            <p className="text-[10px] font-extrabold uppercase tracking-widest mb-2" style={{ color: '#4093e6' }}>Disponível para o mês</p>
+            <div className="flex items-end justify-between gap-4">
+              <div className="flex items-baseline gap-1">
+                <span className="font-headline font-black text-4xl tracking-tighter" style={{ color: '#082f5c' }}>
+                  {maskValue(splitFmt(realAvailable).int, hideMaster)}
+                </span>
+                <span className="font-headline font-black text-2xl" style={{ color: '#082f5c' }}>
+                  {maskValue(splitFmt(realAvailable).dec, hideMaster)}
+                </span>
               </div>
-              <div className="flex items-center justify-between text-xs font-bold text-on-surface-variant">
-                <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 rounded-full bg-primary-container"></div>
-                  <span className="opacity-80 uppercase tracking-widest text-[10px]">Contas fixas previstas</span>
-                </div>
-                <span className="text-on-surface font-black">− {maskValue(fmt(remainingFixedVal), hideMaster)}</span>
-              </div>
-
             </div>
           </div>
         </section>
