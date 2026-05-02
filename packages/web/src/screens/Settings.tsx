@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Reorder, useDragControls } from 'framer-motion';
 import { Target, Calendar, ChevronRight, User, Heart, LogOut, PlusCircle, Home, Wifi, Utensils, Zap, HelpCircle, Coffee, Car, HeartPulse, Gamepad2, BookOpen, ReceiptText, Shirt, Smartphone, Hand, CircleEllipsis, Pencil, GripVertical } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import NewBillModal from '../components/NewBillModal';
@@ -19,6 +20,84 @@ const SectionHeader = ({ title, onAdd }: { title: string; onAdd?: () => void }) 
     )}
   </div>
 );
+
+const CategoryCardItem = ({ 
+  cat, 
+  budget, 
+  spending, 
+  fmt, 
+  setEditBudget, 
+  setNewLimit 
+}: any) => {
+  const controls = useDragControls();
+  const spent = spending ? Number(spending.total) : (budget?.spent || 0);
+  const limit = budget?.monthly_limit;
+  const rawPct = limit ? (spent / limit) * 100 : 0;
+  const pct = Math.min(rawPct, 100);
+  const over = limit ? spent > limit : false;
+  const excess = over ? spent - limit : 0;
+
+  return (
+    <Reorder.Item
+      value={cat}
+      dragListener={false}
+      dragControls={controls}
+      className={`rounded-[2rem] p-7 shadow-sm border border-outline-variant/10 transition-all bg-white relative ${over ? '!bg-error-container/5 !border-error-container/20' : ''}`}
+    >
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-4">
+          <div 
+            onPointerDown={(e) => controls.start(e)}
+            style={{ touchAction: "none" }}
+            className="text-on-surface-variant/30 flex items-center justify-center cursor-grab active:cursor-grabbing active:scale-90 active:text-primary transition-all p-2 -ml-2 select-none"
+          >
+            <GripVertical size={20} />
+          </div>
+          <div className={`w-14 h-14 ${cat.name === 'Alimentação' && over ? 'bg-error-container/20' : cat.color} rounded-2xl flex items-center justify-center ${cat.textColor}`}>
+            {cat.icon}
+          </div>
+          <h4 className="font-headline font-bold text-xl text-on-surface tracking-tight">{cat.name}</h4>
+        </div>
+        <div className="text-right">
+          <p className={`text-[10px] font-black uppercase tracking-[0.2em] mb-1 ${over ? 'text-error' : 'text-on-surface-variant'}`}>Gasto Atual</p>
+          <p className={`font-headline font-black text-2xl leading-none ${over ? 'text-error' : 'text-on-surface'}`}>
+            {fmt(spent).split(',')[0]}
+          </p>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <div className="h-3 bg-surface-container-low rounded-full overflow-hidden">
+          <div 
+            className={`h-full transition-all duration-700 ease-out rounded-full ${over ? 'bg-error' : 'bg-primary'}`} 
+            style={{ width: `${limit ? pct : 0}%` }} 
+          />
+        </div>
+        <div className="flex justify-between items-center">
+          <p className={`text-xs font-bold leading-none ${over ? 'text-error' : 'text-on-surface-variant opacity-70'}`}>
+            {limit ? (
+              over ? `Limite excedido em ${fmt(excess)}` : `${Math.round(rawPct)}% do orçamento utilizado`
+            ) : (
+              'Sem limite definido'
+            )}
+          </p>
+          <button 
+            onClick={() => {
+              setEditBudget({ category: cat.name, budget });
+              setNewLimit(limit ? limit.toString() : '');
+            }}
+            className="flex items-center gap-2 hover:bg-surface-container-low px-4 py-2 rounded-xl transition-all group active:scale-95"
+          >
+            <span className="text-[11px] font-black uppercase tracking-wider text-on-surface">
+              Limite: <span className="text-primary">{limit ? fmt(limit) : '---'}</span>
+            </span>
+            <Pencil size={14} className="text-primary group-hover:scale-110 transition-transform" />
+          </button>
+        </div>
+      </div>
+    </Reorder.Item>
+  );
+};
 
 const Settings = ({ 
   userId, 
@@ -169,7 +248,6 @@ const Settings = ({
 
   const DEFAULT_CATEGORIES = [
     { name: "Alimentação", icon: <Utensils size={24} />, color: "bg-error-container/10", textColor: "text-error" },
-    { name: "Fast Food", icon: <Coffee size={24} />, color: "bg-secondary-container/20", textColor: "text-secondary-dim" },
     { name: "Transporte", icon: <Car size={24} />, color: "bg-primary/10", textColor: "text-primary" },
     { name: "Saúde", icon: <HeartPulse size={24} />, color: "bg-error-container/10", textColor: "text-error" },
     { name: "Lazer", icon: <Gamepad2 size={24} />, color: "bg-secondary-container/20", textColor: "text-secondary-dim" },
@@ -196,41 +274,9 @@ const Settings = ({
     return DEFAULT_CATEGORIES;
   });
 
-  const [draggedCategory, setDraggedCategory] = useState<string | null>(null);
-
-  const handleDragStart = (e: React.DragEvent, name: string) => {
-    setDraggedCategory(name);
-    // Needed for Firefox
-    if (e.dataTransfer) {
-      e.dataTransfer.effectAllowed = 'move';
-      e.dataTransfer.setData('text/plain', name);
-      const card = (e.target as HTMLElement).closest('.category-card');
-      if (card) {
-        e.dataTransfer.setDragImage(card as Element, 20, 20);
-      }
-    }
-  };
-
-  const handleDragOver = (e: React.DragEvent, targetName: string) => {
-    e.preventDefault();
-    if (!draggedCategory || draggedCategory === targetName) return;
-
-    setCategories(prev => {
-      const draggedIdx = prev.findIndex(c => c.name === draggedCategory);
-      const targetIdx = prev.findIndex(c => c.name === targetName);
-      
-      const newItems = [...prev];
-      const [removed] = newItems.splice(draggedIdx, 1);
-      newItems.splice(targetIdx, 0, removed);
-      
-      return newItems;
-    });
-  };
-
-  const handleDragEnd = () => {
-    setDraggedCategory(null);
+  useEffect(() => {
     localStorage.setItem(`budget_categories_order_${userId}`, JSON.stringify(categories.map(c => c.name)));
-  };
+  }, [categories, userId]);
 
   const handleUpdateLimit = async () => {
     if (!editBudget) return;
@@ -495,80 +541,24 @@ const Settings = ({
         {/* Budgets Section */}
         <section className="space-y-4">
           <SectionHeader title="Orçamentos Mensais" />
-          <div className="space-y-4">
+          <Reorder.Group axis="y" values={categories} onReorder={setCategories} className="space-y-4">
             {categories.map(cat => {
               const budget = budgets.find(b => b.category === cat.name);
               const spending = categorySpending.find(s => s.category === cat.name);
-              const spent = spending ? Number(spending.total) : (budget?.spent || 0);
-              const limit = budget?.monthly_limit;
               
-              const rawPct = limit ? (spent / limit) * 100 : 0;
-              const pct = Math.min(rawPct, 100);
-              const over = limit ? spent > limit : false;
-              const excess = over ? spent - limit : 0;
-
               return (
-                <div 
+                <CategoryCardItem 
                   key={cat.name} 
-                  onDragOver={(e) => handleDragOver(e, cat.name)}
-                  onDragEnd={handleDragEnd}
-                  className={`category-card rounded-[2rem] p-7 shadow-sm border border-outline-variant/10 transition-all ${over ? 'bg-error-container/5 border-error-container/20' : 'bg-white'} ${draggedCategory === cat.name ? 'opacity-50 scale-[0.98]' : ''}`}
-                >
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-4">
-                      <div 
-                        draggable
-                        onDragStart={(e) => handleDragStart(e, cat.name)}
-                        className="text-on-surface-variant/30 flex items-center justify-center cursor-grab active:cursor-grabbing p-2 -ml-2"
-                      >
-                        <GripVertical size={20} />
-                      </div>
-                      <div className={`w-14 h-14 ${cat.name === 'Alimentação' && over ? 'bg-error-container/20' : cat.color} rounded-2xl flex items-center justify-center ${cat.textColor}`}>
-                        {cat.icon}
-                      </div>
-                      <h4 className="font-headline font-bold text-xl text-on-surface tracking-tight">{cat.name}</h4>
-                    </div>
-                    <div className="text-right">
-                      <p className={`text-[10px] font-black uppercase tracking-[0.2em] mb-1 ${over ? 'text-error' : 'text-on-surface-variant'}`}>Gasto Atual</p>
-                      <p className={`font-headline font-black text-2xl leading-none ${over ? 'text-error' : 'text-on-surface'}`}>
-                        {fmt(spent).split(',')[0]}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="h-3 bg-surface-container-low rounded-full overflow-hidden">
-                      <div 
-                        className={`h-full transition-all duration-700 ease-out rounded-full ${over ? 'bg-error' : 'bg-primary'}`} 
-                        style={{ width: `${limit ? pct : 0}%` }} 
-                      />
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <p className={`text-xs font-bold leading-none ${over ? 'text-error' : 'text-on-surface-variant opacity-70'}`}>
-                        {limit ? (
-                          over ? `Limite excedido em ${fmt(excess)}` : `${Math.round(rawPct)}% do orçamento utilizado`
-                        ) : (
-                          'Sem limite definido'
-                        )}
-                      </p>
-                      <button 
-                        onClick={() => {
-                          setEditBudget({ category: cat.name, budget });
-                          setNewLimit(limit ? limit.toString() : '');
-                        }}
-                        className="flex items-center gap-2 hover:bg-surface-container-low px-4 py-2 rounded-xl transition-all group active:scale-95"
-                      >
-                        <span className="text-[11px] font-black uppercase tracking-wider text-on-surface">
-                          Limite: <span className="text-primary">{limit ? fmt(limit) : '---'}</span>
-                        </span>
-                        <Pencil size={14} className="text-primary group-hover:scale-110 transition-transform" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                  cat={cat} 
+                  budget={budget} 
+                  spending={spending} 
+                  fmt={fmt} 
+                  setEditBudget={setEditBudget} 
+                  setNewLimit={setNewLimit} 
+                />
               );
             })}
-          </div>
+          </Reorder.Group>
         </section>
 
       </main>
