@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { catBg, catColor, catEmoji, BANK_COLORS } from '../utils/categories';
 import TransactionModal from '../components/TransactionModal';
 import FixedDetailsModal from '../components/FixedDetailsModal';
@@ -45,7 +45,6 @@ const Home = ({
   const [activeCardIdx, setActiveCardIdx] = useState(0);
   const [cardDragX, setCardDragX] = useState(0);
   const [cardDragStart, setCardDragStart] = useState<number | null>(null);
-  const [cardDragStartY, setCardDragStartY] = useState<number | null>(null);
   const cardSwipeRef = useRef<HTMLDivElement>(null);
   const isHorizontalSwipe = useRef<boolean | null>(null);
 
