@@ -206,7 +206,7 @@ app.post('/transactions', async (req, res) => {
     if (payment_method === 'credit' && credit_card_id) {
       const { data: card } = await supabase
         .from('credit_cards')
-        .select('closing_day, due_day, credit_limit')
+        .select('closing_day, due_day, card_limit')
         .eq('id', credit_card_id)
         .single();
 
@@ -978,11 +978,11 @@ app.get('/credit-cards', async (req, res) => {
 
 app.post('/credit-cards', async (req, res) => {
   try {
-    const { user_id, name, bank, credit_limit, closing_day, due_day } = req.body;
+    const { user_id, name, bank, card_limit, closing_day, due_day } = req.body;
     if (!user_id) return res.status(400).json({ error: 'user_id is required' });
     const { data, error } = await supabase
       .from('credit_cards')
-      .insert({ user_id, name, bank, credit_limit, closing_day, due_day })
+      .insert({ user_id, name, bank, card_limit, closing_day, due_day })
       .select()
       .single();
     if (error) throw error;
@@ -1108,14 +1108,14 @@ app.get('/credit-cards/:id/summary', async (req, res) => {
       .eq('user_id', user_id);
 
     const current_bill = (txs || []).reduce((s: number, t: any) => s + Number(t.value), 0);
-    const available_limit = Number(card.credit_limit) - current_bill;
+    const available_limit = Number(card.card_limit) - current_bill;
 
     res.json({
       card: {
         id: card.id,
         name: card.name,
         bank: card.bank,
-        credit_limit: card.credit_limit,
+        credit_limit: card.card_limit,
         closing_day: card.closing_day,
         due_day: card.due_day
       },

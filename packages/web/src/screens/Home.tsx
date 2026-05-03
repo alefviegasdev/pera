@@ -408,7 +408,7 @@ const Home = ({
     .filter(b => b.excess > 0);
 
   // Credit Card computations
-  const totalCreditLimit = creditCards.reduce((s, c) => s + Number(c.credit_limit || 0), 0);
+  const totalCreditLimit = creditCards.reduce((s, c) => s + Number(c.card_limit || 0), 0);
   const getBillForCard = (cardId: string) => creditCardBills.find(b => b.credit_card_id === cardId && !b.paid);
   const totalCreditUsed = creditCards.reduce((s, c) => {
     const bill = getBillForCard(c.id);
@@ -799,7 +799,7 @@ const Home = ({
               {creditCards.map((card, idx) => {
                 const bill = getBillForCard(card.id);
                 const currentBill = Number(bill?.amount || 0);
-                const cardLimit = Number(card.credit_limit || 0);
+                const cardLimit = Number(card.card_limit || 0);
                 const cardAvailable = cardLimit - currentBill;
                 const usedPct = cardLimit > 0 ? Math.min(100, (currentBill / cardLimit) * 100) : 0;
                 const colors = BANK_COLORS[card.bank] || BANK_COLORS['Default'];

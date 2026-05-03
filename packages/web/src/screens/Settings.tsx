@@ -643,7 +643,7 @@ const Settings = ({
                         <div>
                           <p className="font-bold text-on-surface text-base leading-tight">{card.name || card.bank}</p>
                           <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest">
-                            {card.bank} · Limite {(Number(card.credit_limit) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            {card.bank} · Limite {(Number(card.card_limit) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                           </p>
                         </div>
                       </div>
@@ -768,7 +768,7 @@ const Settings = ({
                           user_id: userId,
                           name: cardName || cardBank,
                           bank: cardBank,
-                          credit_limit: parseFloat(cardLimit) || 0,
+                          card_limit: parseFloat(cardLimit) || 0,
                           closing_day: cardClosingDay,
                           due_day: cardDueDay
                         })
