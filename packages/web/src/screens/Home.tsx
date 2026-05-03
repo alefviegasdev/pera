@@ -540,14 +540,14 @@ const Home = ({
               <div className="mt-6 space-y-2">
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-2">
-                    <CreditCard size={14} className="text-primary-fixed" />
-                    <span className="text-[10px] font-bold text-primary-fixed uppercase tracking-wider">Limite total</span>
+                    <CreditCard size={14} className="text-[#a391ff]" />
+                    <span className="text-[10px] font-bold text-[#a391ff] uppercase tracking-wider">Limite total</span>
                   </div>
                   <p className="text-[10px] font-bold text-white/50 uppercase tracking-wider">{maskValue(fmt(totalCreditLimit), hideMaster)}</p>
                 </div>
                 <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-primary-fixed shadow-[0_0_8px_rgba(163,145,255,0.5)] transition-all duration-700"
+                    className="h-full bg-[#a391ff] shadow-[0_0_8px_rgba(163,145,255,0.5)] transition-all duration-700"
                     style={{ width: `${creditUsedPct}%` }}
                   />
                 </div>
@@ -560,9 +560,9 @@ const Home = ({
               <div className="bg-primary-container p-2.5 space-y-2 rounded shadow-sm flex flex-col justify-between">
                 <div className="flex items-center justify-between">
                   <ArrowUpRight size={16} className="text-on-primary-container" />
-                  <span className="text-[7px] font-bold uppercase tracking-tight text-on-primary-container">Saídas</span>
+                  <span className="text-[9px] font-bold uppercase tracking-tight text-on-primary-container">Saídas</span>
                 </div>
-                <p className="text-on-primary-container font-extrabold text-[13px] font-headline tracking-tighter">
+                <p className="text-on-primary-container font-extrabold text-sm font-headline tracking-tighter">
                   {maskValue(fmt(expense), hideMaster)}
                 </p>
               </div>
@@ -574,13 +574,13 @@ const Home = ({
               >
                 <div className="flex items-center justify-between">
                   <Pin size={16} className="text-[#463000]" />
-                  <span className="text-[7px] font-bold uppercase tracking-tight text-[#463000]/70">Custos Fixos</span>
+                  <span className="text-[9px] font-bold uppercase tracking-tight text-[#463000]/70">Custos Fixos</span>
                 </div>
                 <div className="flex flex-col -space-y-1">
-                  <p className="text-[#463000]/80 font-bold text-[8px] uppercase tracking-wider whitespace-nowrap flex items-baseline">
+                  <p className="text-[#463000]/80 font-bold text-[9px] uppercase tracking-wider whitespace-nowrap flex items-baseline">
                     <span className="opacity-60 font-black tracking-tighter mr-1">Falta:</span> {maskValue(fmt(remainingFixedVal), hideMaster)}
                   </p>
-                  <p className="text-[#463000] font-extrabold text-[13px] font-headline tracking-tighter">
+                  <p className="text-[#463000] font-extrabold text-sm font-headline tracking-tighter">
                     {maskValue(fmt(totalFixedVal), hideMaster)}
                   </p>
                 </div>
@@ -593,9 +593,9 @@ const Home = ({
               >
                 <div className="flex items-center justify-between">
                   <ArrowDownRight size={16} className="text-on-tertiary-container" />
-                  <span className="text-[7px] font-bold uppercase tracking-tight text-on-tertiary-container">Entradas</span>
+                  <span className="text-[9px] font-bold uppercase tracking-tight text-on-tertiary-container">Entradas</span>
                 </div>
-                <p className="text-on-tertiary-container font-extrabold text-[13px] font-headline tracking-tighter">
+                <p className="text-on-tertiary-container font-extrabold text-sm font-headline tracking-tighter">
                   {maskValue(fmt(income), hideMaster)}
                 </p>
               </div>
