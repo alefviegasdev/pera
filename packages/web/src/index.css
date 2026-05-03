@@ -423,7 +423,10 @@ body {
 /* ── Modal ── */
 .modal-overlay {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100vh;
   background: rgba(46, 47, 44, 0.5);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
@@ -432,6 +435,7 @@ body {
   align-items: flex-end;
   justify-content: center;
   animation: fadeIn 0.2s ease;
+  touch-action: none;
 }
 
 @keyframes fadeIn {
@@ -448,6 +452,7 @@ body {
   animation: slideUp 0.32s cubic-bezier(0.4, 0, 0.2, 1);
   max-height: 90dvh;
   overflow-y: auto;
+  touch-action: pan-y;
 }
 
 @keyframes slideUp {
