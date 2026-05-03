@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import type { Tab } from '../App';
 
 const TABS: { id: string; icon: string; label: string }[] = [
@@ -19,31 +20,35 @@ const BottomNav = ({
   hidden?: boolean;
 }) => (
   <div className={`fixed left-6 right-6 z-40 bottom-8 flex justify-center items-center gap-3 ${hidden ? 'hidden' : ''}`}>
-    <nav className="flex items-center gap-1 bg-white/80 backdrop-blur-3xl rounded-full py-2 shadow-[0_15px_40px_rgba(0,0,0,0.08)] border border-white/40 px-2.5">
+    <nav className="relative flex items-center gap-1 bg-white/80 backdrop-blur-3xl rounded-full py-2 shadow-[0_15px_40px_rgba(0,0,0,0.08)] border border-white/40 px-2.5">
       {TABS.map(({ id, icon, label }) => {
         const isActive = activeTab === id;
         
-        if (isActive) {
-          return (
-            <button
-              key={id}
-              onClick={() => onTabChange(id as Tab)}
-              className="flex items-center justify-center bg-primary text-white rounded-full w-10 h-10 transition-all duration-300 shadow-md shadow-primary/20"
-              aria-label={label}
-            >
-              <span className="material-symbols-outlined text-[22px]" style={{ fontVariationSettings: '"FILL" 1' }}>{icon}</span>
-            </button>
-          );
-        }
-
         return (
           <button
             key={id}
             onClick={() => onTabChange(id as Tab)}
-            className="flex items-center justify-center text-on-surface-variant/40 w-10 h-10 hover:text-primary transition-colors"
+            className={`relative flex items-center justify-center w-10 h-10 rounded-full transition-colors duration-300 z-10 ${isActive ? 'text-white' : 'text-on-surface-variant/40 hover:text-primary'}`}
             aria-label={label}
           >
-            <span className="material-symbols-outlined text-[22px]">{icon}</span>
+            {isActive && (
+              <motion.div
+                layoutId="nav-indicator"
+                className="absolute inset-0 bg-primary rounded-full shadow-md shadow-primary/20"
+                transition={{
+                  type: "spring",
+                  stiffness: 400,
+                  damping: 30,
+                  mass: 0.8
+                }}
+              />
+            )}
+            <span 
+              className="material-symbols-outlined text-[22px] relative z-20" 
+              style={{ fontVariationSettings: isActive ? '"FILL" 1' : '"FILL" 0' }}
+            >
+              {icon}
+            </span>
           </button>
         );
       })}
