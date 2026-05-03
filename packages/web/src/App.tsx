@@ -7,6 +7,7 @@ import BottomNav from './components/BottomNav';
 import { supabase } from './lib/supabase';
 import Login from './screens/Login';
 import TelegramLink from './screens/TelegramLink';
+import NewTransactionModal from './components/NewTransactionModal';
 
 export type Tab = 'home' | 'analysis' | 'history' | 'settings';
 
@@ -19,6 +20,7 @@ const App = () => {
   const [needsTelegramLink, setNeedsTelegramLink] = useState(false);
 
   const [modalOpen, setModalOpen] = useState(false);
+  const [newTransactionOpen, setNewTransactionOpen] = useState(false);
 
   useEffect(() => {
     const authTimeout = setTimeout(() => {
@@ -145,7 +147,23 @@ const App = () => {
   return (
     <div className="app-shell" ref={screenRef}>
       {renderScreen()}
-      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} hidden={modalOpen} />
+      <BottomNav 
+        activeTab={activeTab} 
+        onTabChange={setActiveTab} 
+        hidden={modalOpen || newTransactionOpen} 
+        onAddClick={() => setNewTransactionOpen(true)}
+      />
+      {newTransactionOpen && (
+        <NewTransactionModal
+          userId={userId}
+          onClose={() => setNewTransactionOpen(false)}
+          onSuccess={() => {
+            setNewTransactionOpen(false);
+            // Optionally dispatch an event or reload if needed, 
+            // for now just closing is fine.
+          }}
+        />
+      )}
     </div>
   );
 };

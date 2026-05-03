@@ -14,10 +14,12 @@ const BottomNav = ({
   activeTab,
   onTabChange,
   hidden = false,
+  onAddClick,
 }: {
   activeTab: Tab;
   onTabChange: (t: Tab) => void;
   hidden?: boolean;
+  onAddClick?: () => void;
 }) => (
   <div className={`fixed left-6 right-6 z-40 bottom-8 flex justify-center items-center gap-3 ${hidden ? 'hidden' : ''}`}>
     <nav className="relative flex items-center gap-1 bg-white/20 backdrop-blur-md rounded-full py-2 shadow-[0_8px_32px_rgba(0,0,0,0.08)] border border-white/30 px-2.5">
@@ -53,7 +55,10 @@ const BottomNav = ({
         );
       })}
     </nav>
-    <button className="w-14 h-14 bg-[#161618] rounded-full flex items-center justify-center shadow-lg shadow-black/20 hover:scale-105 active:scale-95 transition-transform">
+    <button 
+      onClick={onAddClick}
+      className="w-14 h-14 bg-[#161618] rounded-full flex items-center justify-center shadow-lg shadow-black/20 hover:scale-105 active:scale-95 transition-transform"
+    >
       <span className="material-symbols-outlined text-primary text-3xl font-bold">add</span>
     </button>
   </div>
