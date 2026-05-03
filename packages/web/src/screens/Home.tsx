@@ -557,7 +557,7 @@ const Home = ({
             {/* Summary Row (3 Columns) */}
             <div className="grid grid-cols-3 gap-3">
               {/* Saídas */}
-              <div className="bg-primary-container p-2.5 space-y-2 rounded shadow-sm flex flex-col justify-between">
+              <div className="bg-primary-container p-4 min-h-[100px] rounded-xl shadow-sm flex flex-col justify-between">
                 <div className="flex items-center justify-between">
                   <ArrowUpRight size={16} className="text-on-primary-container" />
                   <span className="text-[9px] font-bold uppercase tracking-tight text-on-primary-container">Saídas</span>
@@ -570,7 +570,7 @@ const Home = ({
               {/* Custos Fixos */}
               <div 
                 onClick={() => setShowFixedModal(true)}
-                className="bg-[#feb700] p-2.5 space-y-2 rounded shadow-sm flex flex-col justify-between cursor-pointer active:scale-95 transition-transform"
+                className="bg-[#feb700] p-4 min-h-[100px] rounded-xl shadow-sm flex flex-col justify-between cursor-pointer active:scale-95 transition-transform"
               >
                 <div className="flex items-center justify-between">
                   <Pin size={16} className="text-[#463000]" />
@@ -589,7 +589,7 @@ const Home = ({
               {/* Entradas */}
               <div 
                 onClick={() => setShowIncomeModal(true)}
-                className="bg-tertiary-container p-2.5 space-y-2 rounded shadow-sm flex flex-col justify-between cursor-pointer active:scale-95 transition-transform"
+                className="bg-tertiary-container p-4 min-h-[100px] rounded-xl shadow-sm flex flex-col justify-between cursor-pointer active:scale-95 transition-transform"
               >
                 <div className="flex items-center justify-between">
                   <ArrowDownRight size={16} className="text-on-tertiary-container" />
