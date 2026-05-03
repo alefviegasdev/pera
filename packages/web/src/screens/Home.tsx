@@ -47,6 +47,9 @@ const Home = ({
   const [cardDragStart, setCardDragStart] = useState<number | null>(null);
   const cardSwipeRef = useRef<HTMLDivElement>(null);
   const isHorizontalSwipe = useRef<boolean | null>(null);
+  const cardDragStartRef = useRef<number | null>(null);
+  const cardDragStartYRef = useRef<number | null>(null);
+  const cardDragXRef = useRef(0);
 
   const toggleHideMaster = () => {
     setHideMaster(prev => {
@@ -76,6 +79,62 @@ const Home = ({
     }, 15000);
     return () => clearInterval(interval);
   }, [userId]);
+
+  // Card swipe — native listeners so we can preventDefault on horizontal swipe
+  useEffect(() => {
+    const el = cardSwipeRef.current;
+    if (!el) return;
+
+    const onTouchStart = (e: TouchEvent) => {
+      cardDragStartRef.current = e.touches[0].clientX;
+      cardDragStartYRef.current = e.touches[0].clientY;
+      isHorizontalSwipe.current = null;
+      cardDragXRef.current = 0;
+      setCardDragX(0);
+      setCardDragStart(e.touches[0].clientX);
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (cardDragStartRef.current === null || cardDragStartYRef.current === null) return;
+      const dx = e.touches[0].clientX - cardDragStartRef.current;
+      const dy = e.touches[0].clientY - cardDragStartYRef.current;
+
+      if (isHorizontalSwipe.current === null) {
+        if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+          isHorizontalSwipe.current = Math.abs(dx) > Math.abs(dy);
+        }
+      }
+
+      if (isHorizontalSwipe.current) {
+        e.preventDefault();
+        cardDragXRef.current = dx;
+        setCardDragX(dx);
+      }
+    };
+
+    const onTouchEnd = () => {
+      if (isHorizontalSwipe.current && Math.abs(cardDragXRef.current) > 50 && creditCards.length > 1) {
+        if (cardDragXRef.current < 0) setActiveCardIdx(i => (i + 1) % creditCards.length);
+        else setActiveCardIdx(i => (i - 1 + creditCards.length) % creditCards.length);
+      }
+      setCardDragX(0);
+      setCardDragStart(null);
+      cardDragStartRef.current = null;
+      cardDragStartYRef.current = null;
+      isHorizontalSwipe.current = null;
+      cardDragXRef.current = 0;
+    };
+
+    el.addEventListener('touchstart', onTouchStart, { passive: true });
+    el.addEventListener('touchmove', onTouchMove, { passive: false });
+    el.addEventListener('touchend', onTouchEnd, { passive: true });
+
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchmove', onTouchMove);
+      el.removeEventListener('touchend', onTouchEnd);
+    };
+  }, [creditCards.length]);
 
   const fetchData = async (silent = false) => {
     if (!silent) setLoading(true);
@@ -419,69 +478,6 @@ const Home = ({
   const totalCreditAvailable = totalCreditLimit - totalCreditUsed;
   const creditUsedPct = totalCreditLimit > 0 ? Math.min(100, (totalCreditUsed / totalCreditLimit) * 100) : 0;
 
-  // Card swipe handlers — use refs + native listeners so we can preventDefault
-  const cardDragStartRef = useRef<number | null>(null);
-  const cardDragStartYRef = useRef<number | null>(null);
-  const cardDragXRef = useRef(0);
-
-  useEffect(() => {
-    const el = cardSwipeRef.current;
-    if (!el) return;
-
-    const onTouchStart = (e: TouchEvent) => {
-      cardDragStartRef.current = e.touches[0].clientX;
-      cardDragStartYRef.current = e.touches[0].clientY;
-      isHorizontalSwipe.current = null; // reset direction detection
-      cardDragXRef.current = 0;
-      setCardDragX(0);
-      setCardDragStart(e.touches[0].clientX);
-    };
-
-    const onTouchMove = (e: TouchEvent) => {
-      if (cardDragStartRef.current === null || cardDragStartYRef.current === null) return;
-
-      const dx = e.touches[0].clientX - cardDragStartRef.current;
-      const dy = e.touches[0].clientY - cardDragStartYRef.current;
-
-      // Determine swipe direction on first significant movement (10px threshold)
-      if (isHorizontalSwipe.current === null) {
-        if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
-          isHorizontalSwipe.current = Math.abs(dx) > Math.abs(dy);
-        }
-      }
-
-      if (isHorizontalSwipe.current) {
-        // Horizontal swipe: block vertical scroll
-        e.preventDefault();
-        cardDragXRef.current = dx;
-        setCardDragX(dx);
-      }
-      // If vertical, do nothing — let native scroll happen
-    };
-
-    const onTouchEnd = () => {
-      if (isHorizontalSwipe.current && Math.abs(cardDragXRef.current) > 50 && creditCards.length > 1) {
-        if (cardDragXRef.current < 0) setActiveCardIdx(i => (i + 1) % creditCards.length);
-        else setActiveCardIdx(i => (i - 1 + creditCards.length) % creditCards.length);
-      }
-      setCardDragX(0);
-      setCardDragStart(null);
-      cardDragStartRef.current = null;
-      cardDragStartYRef.current = null;
-      isHorizontalSwipe.current = null;
-      cardDragXRef.current = 0;
-    };
-
-    el.addEventListener('touchstart', onTouchStart, { passive: true });
-    el.addEventListener('touchmove', onTouchMove, { passive: false });
-    el.addEventListener('touchend', onTouchEnd, { passive: true });
-
-    return () => {
-      el.removeEventListener('touchstart', onTouchStart);
-      el.removeEventListener('touchmove', onTouchMove);
-      el.removeEventListener('touchend', onTouchEnd);
-    };
-  }, [creditCards.length]);
 
   return (
     <div className="screen bg-surface pb-32">
