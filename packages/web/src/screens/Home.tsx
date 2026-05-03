@@ -520,88 +520,137 @@ const Home = ({
           </div>
         </section>
 
-        {/* ── SUMMARY BENTO ── */}
-        <section className="grid grid-cols-2 gap-4">
-          <div 
-            onClick={() => setShowIncomeModal(true)}
-            className="col-span-2 bg-tertiary-container p-6 rounded-[2.5rem] flex flex-row items-center justify-between shadow-sm relative overflow-hidden group transition-all hover:scale-[1.01] cursor-pointer active:scale-[0.99]"
-          >
-            <div className="absolute -right-4 -top-4 w-24 h-24 bg-tertiary/10 rounded-full blur-2xl group-hover:scale-125 transition-transform" />
-            <div className="flex items-center gap-4 relative z-10">
-              <div className="w-10 h-10 rounded-full bg-tertiary-fixed-dim flex items-center justify-center">
-                <ArrowDownRight size={22} className="text-on-tertiary-fixed" />
+        {/* ── SUMMARY SECTION (CONDITIONAL) ── */}
+        {creditCards.length > 0 ? (
+          <section className="space-y-4">
+            {/* Crédito Disponível (Full width above the grid) */}
+            <div className="relative px-6 py-6 border border-white/10 flex flex-col justify-between rounded-2xl shadow-xl transition-all hover:scale-[1.01] bg-gradient-to-br from-[#0a0a0b] via-[#161618] to-[#0a0a0b]">
+              <div className="flex justify-between items-center mb-1">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/50">Crédito Disponível</p>
+                <span className="bg-white/10 backdrop-blur-md text-white/70 text-[9px] font-bold uppercase tracking-wider px-3 py-1 rounded-full border border-white/5">
+                  {creditCards.length === 1 ? creditCards[0].bank : 'todos os cartões'}
+                </span>
               </div>
-              <p className="text-on-tertiary-container font-headline font-black text-2xl tracking-tight">
-                {maskValue(fmt(income), hideMaster)}
-              </p>
-            </div>
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-on-tertiary-fixed opacity-70 relative z-10">Entradas</span>
-          </div>
-          
-          <div className="bg-primary-container p-6 rounded-[2.5rem] space-y-4 shadow-sm relative overflow-hidden group transition-all hover:scale-[1.01]">
-            <div className="flex items-center justify-between">
-              <div className="w-8 h-8 rounded-full bg-primary-fixed-dim flex items-center justify-center">
-                <ArrowUpRight size={18} className="text-on-primary-container" />
+              <div className="flex flex-col">
+                <p className="text-white font-black text-3xl tracking-tight font-headline">
+                  {maskValue(splitFmt(totalCreditAvailable).int, hideMaster)}
+                  <span className="text-sm font-bold opacity-30">{hideMaster ? '' : splitFmt(totalCreditAvailable).dec}</span>
+                </p>
               </div>
-              <span className="text-[9px] font-black uppercase tracking-[0.1em] text-on-primary-container opacity-60">Saídas</span>
-            </div>
-            <p className="text-on-primary-container font-headline font-black text-xl tracking-tight">
-              {maskValue(fmt(expense), hideMaster)}
-            </p>
-          </div>
-
-          <div 
-            onClick={() => setShowFixedModal(true)}
-            className="bg-secondary-container p-6 rounded-[2.5rem] space-y-3 shadow-sm relative overflow-hidden group transition-all hover:scale-[1.01] cursor-pointer active:scale-95"
-          >
-            <div className="flex items-center justify-between">
-              <div className="w-8 h-8 rounded-full bg-white/30 flex items-center justify-center">
-                <Pin size={18} className="text-on-secondary-container" />
-              </div>
-              <span className="text-[9px] font-black uppercase tracking-[0.1em] text-on-secondary-container opacity-60">Custos Fixos</span>
-            </div>
-            <div>
-              <p className="text-on-secondary-container font-headline font-black text-xl tracking-tight leading-tight">
-                {maskValue(fmt(totalFixedVal), hideMaster)}
-              </p>
-              <p className="text-on-secondary-container/70 text-[10px] font-bold mt-1">
-                Falta pagar: {maskValue(fmt(remainingFixedVal), hideMaster)}
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* ── CRÉDITO DISPONÍVEL ── */}
-        {creditCards.length > 0 && (
-          <div className="relative px-6 py-6 border border-white/10 flex flex-col justify-between rounded-2xl shadow-xl transition-all hover:scale-[1.01] bg-gradient-to-br from-[#0a0a0b] via-[#161618] to-[#0a0a0b]">
-            <div className="flex justify-between items-center mb-1">
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/50">Crédito Disponível</p>
-              <span className="bg-white/10 backdrop-blur-md text-white/70 text-[9px] font-bold uppercase tracking-wider px-3 py-1 rounded-full border border-white/5">
-                {creditCards.length === 1 ? creditCards[0].bank : 'todos os cartões'}
-              </span>
-            </div>
-            <div className="flex flex-col">
-              <p className="text-white font-black text-3xl tracking-tight font-headline">
-                {maskValue(splitFmt(totalCreditAvailable).int, hideMaster)}
-                <span className="text-sm font-bold opacity-30">{hideMaster ? '' : splitFmt(totalCreditAvailable).dec}</span>
-              </p>
-            </div>
-            <div className="mt-6 space-y-2">
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-[14px] text-primary-fixed" style={{ fontVariationSettings: '"FILL" 1' }}>credit_card</span>
-                  <span className="text-[10px] font-bold text-primary-fixed uppercase tracking-wider">Limite total</span>
+              <div className="mt-6 space-y-2">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[14px] text-primary-fixed" style={{ fontVariationSettings: '"FILL" 1' }}>credit_card</span>
+                    <span className="text-[10px] font-bold text-primary-fixed uppercase tracking-wider">Limite total</span>
+                  </div>
+                  <p className="text-[10px] font-bold text-white/50 uppercase tracking-wider">{maskValue(fmt(totalCreditLimit), hideMaster)}</p>
                 </div>
-                <p className="text-[10px] font-bold text-white/50 uppercase tracking-wider">{maskValue(fmt(totalCreditLimit), hideMaster)}</p>
-              </div>
-              <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-primary-fixed shadow-[0_0_8px_rgba(163,145,255,0.5)] transition-all duration-700"
-                  style={{ width: `${creditUsedPct}%` }}
-                />
+                <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-primary-fixed shadow-[0_0_8px_rgba(163,145,255,0.5)] transition-all duration-700"
+                    style={{ width: `${creditUsedPct}%` }}
+                  />
+                </div>
               </div>
             </div>
-          </div>
+
+            {/* Summary Row (3 Columns) */}
+            <div className="grid grid-cols-3 gap-3">
+              {/* Saídas */}
+              <div className="bg-primary-container p-2.5 space-y-2 rounded shadow-sm flex flex-col justify-between">
+                <div className="flex items-center justify-between">
+                  <span className="material-symbols-outlined text-on-primary-container text-base" style={{ fontVariationSettings: '"FILL" 1' }}>arrow_upward</span>
+                  <span className="text-[7px] font-bold uppercase tracking-tight text-on-primary-container">Saídas</span>
+                </div>
+                <p className="text-on-primary-container font-extrabold text-[13px] font-headline tracking-tighter">
+                  {maskValue(fmt(expense), hideMaster)}
+                </p>
+              </div>
+
+              {/* Custos Fixos */}
+              <div 
+                onClick={() => setShowFixedModal(true)}
+                className="bg-[#feb700] p-2.5 space-y-2 rounded shadow-sm flex flex-col justify-between cursor-pointer active:scale-95 transition-transform"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="material-symbols-outlined text-[#463000] text-base" style={{ fontVariationSettings: '"FILL" 1' }}>push_pin</span>
+                  <span className="text-[7px] font-bold uppercase tracking-tight text-[#463000]/70">Custos Fixos</span>
+                </div>
+                <div className="flex flex-col -space-y-1">
+                  <p className="text-[#463000]/80 font-bold text-[8px] uppercase tracking-wider whitespace-nowrap flex items-baseline">
+                    <span className="opacity-60 font-black tracking-tighter mr-1">Falta:</span> {maskValue(fmt(remainingFixedVal), hideMaster)}
+                  </p>
+                  <p className="text-[#463000] font-extrabold text-[13px] font-headline tracking-tighter">
+                    {maskValue(fmt(totalFixedVal), hideMaster)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Entradas */}
+              <div 
+                onClick={() => setShowIncomeModal(true)}
+                className="bg-tertiary-container p-2.5 space-y-2 rounded shadow-sm flex flex-col justify-between cursor-pointer active:scale-95 transition-transform"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="material-symbols-outlined text-on-tertiary-container text-base" style={{ fontVariationSettings: '"FILL" 1' }}>arrow_downward</span>
+                  <span className="text-[7px] font-bold uppercase tracking-tight text-on-tertiary-container">Entradas</span>
+                </div>
+                <p className="text-on-tertiary-container font-extrabold text-[13px] font-headline tracking-tighter">
+                  {maskValue(fmt(income), hideMaster)}
+                </p>
+              </div>
+            </div>
+          </section>
+        ) : (
+          <section className="grid grid-cols-2 gap-4">
+            <div 
+              onClick={() => setShowIncomeModal(true)}
+              className="col-span-2 bg-tertiary-container p-6 rounded-[2.5rem] flex flex-row items-center justify-between shadow-sm relative overflow-hidden group transition-all hover:scale-[1.01] cursor-pointer active:scale-[0.99]"
+            >
+              <div className="absolute -right-4 -top-4 w-24 h-24 bg-tertiary/10 rounded-full blur-2xl group-hover:scale-125 transition-transform" />
+              <div className="flex items-center gap-4 relative z-10">
+                <div className="w-10 h-10 rounded-full bg-tertiary-fixed-dim flex items-center justify-center">
+                  <ArrowDownRight size={22} className="text-on-tertiary-fixed" />
+                </div>
+                <p className="text-on-tertiary-container font-headline font-black text-2xl tracking-tight">
+                  {maskValue(fmt(income), hideMaster)}
+                </p>
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-on-tertiary-fixed opacity-70 relative z-10">Entradas</span>
+            </div>
+            
+            <div className="bg-primary-container p-6 rounded-[2.5rem] space-y-4 shadow-sm relative overflow-hidden group transition-all hover:scale-[1.01]">
+              <div className="flex items-center justify-between">
+                <div className="w-8 h-8 rounded-full bg-primary-fixed-dim flex items-center justify-center">
+                  <ArrowUpRight size={18} className="text-on-primary-container" />
+                </div>
+                <span className="text-[9px] font-black uppercase tracking-[0.1em] text-on-primary-container opacity-60">Saídas</span>
+              </div>
+              <p className="text-on-primary-container font-headline font-black text-xl tracking-tight">
+                {maskValue(fmt(expense), hideMaster)}
+              </p>
+            </div>
+
+            <div 
+              onClick={() => setShowFixedModal(true)}
+              className="bg-secondary-container p-6 rounded-[2.5rem] space-y-3 shadow-sm relative overflow-hidden group transition-all hover:scale-[1.01] cursor-pointer active:scale-95"
+            >
+              <div className="flex items-center justify-between">
+                <div className="w-8 h-8 rounded-full bg-white/30 flex items-center justify-center">
+                  <Pin size={18} className="text-on-secondary-container" />
+                </div>
+                <span className="text-[9px] font-black uppercase tracking-[0.1em] text-on-secondary-container opacity-60">Custos Fixos</span>
+              </div>
+              <div>
+                <p className="text-on-secondary-container font-headline font-black text-xl tracking-tight leading-tight">
+                  {maskValue(fmt(totalFixedVal), hideMaster)}
+                </p>
+                <p className="text-on-secondary-container/70 text-[10px] font-bold mt-1">
+                  Falta pagar: {maskValue(fmt(remainingFixedVal), hideMaster)}
+                </p>
+              </div>
+            </div>
+          </section>
         )}
 
         {/* ── RECEITA MENSAL ── */}
