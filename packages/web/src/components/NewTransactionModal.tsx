@@ -185,7 +185,7 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ userId, onClo
   return (
     <div className="modal-overlay" onClick={onClose} style={{ zIndex: 9999 }}>
       <div 
-        className={`modal-card bg-surface-container-lowest max-h-[85vh] scrollbar-hide overscroll-contain transform-gpu ${type === 'expense' ? 'overflow-y-auto touch-pan-y' : 'overflow-hidden touch-none'}`}
+        className="modal-card bg-surface-container-lowest max-h-[85vh] overflow-y-auto scrollbar-hide overscroll-contain transform-gpu touch-pan-y" 
         onClick={(e) => e.stopPropagation()}
         style={{ borderRadius: '2.5rem 2.5rem 0 0', padding: '12px 32px 0px', width: '100%', maxWidth: '480px' }}
       >
