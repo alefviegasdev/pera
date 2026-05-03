@@ -43,14 +43,34 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ userId, onClo
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Lock both body and .app-shell if it exists
-    document.body.style.overflow = 'hidden';
+    // Ultimate iOS scroll lock
     const appShell = document.querySelector('.app-shell') as HTMLElement;
-    if (appShell) appShell.style.overflow = 'hidden';
+    const body = document.body;
+    let scrollY = 0;
+    
+    if (appShell) {
+      scrollY = window.scrollY;
+      appShell.style.position = 'fixed';
+      appShell.style.width = '100%';
+      appShell.style.top = `-${scrollY}px`;
+    }
+    
+    // Always lock body as fallback
+    const bodyScrollY = window.scrollY;
+    body.style.position = 'fixed';
+    body.style.width = '100%';
+    body.style.top = `-${bodyScrollY}px`;
     
     return () => { 
-      document.body.style.overflow = '';
-      if (appShell) appShell.style.overflow = '';
+      if (appShell) {
+        appShell.style.position = '';
+        appShell.style.width = '';
+        appShell.style.top = '';
+      }
+      body.style.position = '';
+      body.style.width = '';
+      body.style.top = '';
+      window.scrollTo(0, appShell ? scrollY : bodyScrollY);
     };
   }, []);
 
