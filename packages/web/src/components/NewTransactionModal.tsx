@@ -39,7 +39,14 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ userId, onClo
   const [creditCards, setCreditCards] = useState<any[]>([]);
   
   const [dueDay, setDueDay] = useState('05');
+  const [dueDay, setDueDay] = useState('05');
+  const [countsForTithe, setCountsForTithe] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, []);
 
   useEffect(() => {
     // Reset subcategory when category changes
@@ -131,8 +138,9 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ userId, onClo
             description,
             source: 'app',
             short_code: Math.random().toString(36).substring(2, 6).toUpperCase(),
-            payment_method: paymentMethod,
-            credit_card_id: paymentMethod === 'credit' ? creditCardId : null
+            payment_method: type === 'expense' ? paymentMethod : null,
+            credit_card_id: (type === 'expense' && paymentMethod === 'credit') ? creditCardId : null,
+            counts_for_tithe: type === 'income' ? countsForTithe : false
           })
         });
         if (res.ok) {
@@ -178,14 +186,14 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ userId, onClo
                 <button
                   type="button"
                   onClick={() => setType('expense')}
-                  className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${type === 'expense' ? 'bg-white shadow-sm text-error' : 'text-on-surface-variant'}`}
+                  className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${type === 'expense' ? 'bg-error text-white shadow-md' : 'text-on-surface-variant hover:bg-surface-container'}`}
                 >
                   Saída
                 </button>
                 <button
                   type="button"
                   onClick={() => setType('income')}
-                  className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${type === 'income' ? 'bg-white shadow-sm text-primary' : 'text-on-surface-variant'}`}
+                  className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${type === 'income' ? 'bg-primary text-white shadow-md' : 'text-on-surface-variant hover:bg-surface-container'}`}
                 >
                   Entrada
                 </button>
@@ -218,6 +226,25 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ userId, onClo
             />
           </div>
 
+        {type === 'income' && (
+          <div className="bg-surface-container-low p-4 rounded-2xl flex items-center justify-between border-2 border-transparent">
+            <div>
+              <p className="font-bold text-sm text-on-surface">Contabilizar Dízimo</p>
+              <p className="text-xs text-on-surface-variant mt-0.5">Separar 10% desta entrada para dízimo</p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input 
+                type="checkbox" 
+                className="sr-only peer" 
+                checked={countsForTithe}
+                onChange={(e) => setCountsForTithe(e.target.checked)}
+              />
+              <div className="w-11 h-6 bg-surface-container-high peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+            </label>
+          </div>
+        )}
+
+        {type === 'expense' && (
           <div className="space-y-4">
             <label className="block font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">FREQUÊNCIA</label>
             <div className="grid grid-cols-3 gap-2">
@@ -244,9 +271,10 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ userId, onClo
               </button>
             </div>
           </div>
+        )}
 
           {/* Conditional Fields based on Frequência */}
-          {subtype === 'fixed' && (
+          {type === 'expense' && subtype === 'fixed' && (
             <div className="relative">
               <label className="block font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60 mb-2">DIA DE VENCIMENTO</label>
               <div className="flex items-center bg-surface-container-low rounded-2xl px-4 py-1">
@@ -264,7 +292,7 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ userId, onClo
             </div>
           )}
 
-          {subtype === 'semifixed' && (
+          {type === 'expense' && subtype === 'semifixed' && (
             <div className="grid grid-cols-2 gap-4">
               <div className="relative">
                 <label className="block font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60 mb-2">QTD. PARCELAS</label>
@@ -326,27 +354,29 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ userId, onClo
             </div>
           )}
 
-          <div className="space-y-4">
-            <label className="block font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">CATEGORIA</label>
-            <div className="flex flex-wrap gap-2">
-              {CATEGORIES.map((cat) => (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => setCategory(cat)}
-                  className={`px-4 py-2 rounded-full font-bold text-xs transition-all ${
-                    category === cat 
-                      ? 'bg-primary text-white shadow-md' 
-                      : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container'
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
+          {type === 'expense' && (
+            <div className="space-y-4">
+              <label className="block font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">CATEGORIA</label>
+              <div className="flex flex-wrap gap-2">
+                {CATEGORIES.map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setCategory(cat)}
+                    className={`px-4 py-2 rounded-full font-bold text-xs transition-all ${
+                      category === cat 
+                        ? 'bg-primary text-white shadow-md' 
+                        : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
-          {hasSubcategories(category) && (
+          {type === 'expense' && hasSubcategories(category) && (
             <div className="relative animate-in fade-in slide-in-from-top-2">
               <label className="block font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60 mb-2">SUBCATEGORIA</label>
               <select 
@@ -383,7 +413,7 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ userId, onClo
             </div>
           )}
 
-          <div className="pt-4 sticky bottom-0 bg-surface-container-lowest pb-4 border-t border-surface-container pt-4">
+          <div className="pt-8">
             <button 
               type="submit"
               disabled={loading}
