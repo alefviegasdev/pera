@@ -202,6 +202,19 @@ Exemplos:
 - "foi 90" → { "value": 90, ... }
 - "deletar" → { "delete": true, ... }
 
+MÉTODO DE PAGAMENTO:
+Se a mensagem mencionar "crédito", "no crédito", "cartão",
+"no cartão" → adicionar "payment_method": "credit" ao JSON.
+Se mencionar "débito", "no débito" → adicionar
+"payment_method": "debit" ao JSON.
+Se não mencionar → não incluir o campo (será definido pela
+preferência padrão do usuário).
+
+EXEMPLOS:
+- "50 hamburguer crédito" → { ..., "payment_method": "credit" }
+- "50 hamburguer débito" → { ..., "payment_method": "debit" }
+- "50 hamburguer" → { ... } (sem payment_method)
+
 MENSAGEM:
 `;
 
@@ -355,6 +368,77 @@ function levenshteinDistance(a: string, b: string): number {
         ? dp[i-1][j-1]
         : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
   return dp[a.length][b.length];
+}
+
+const pendingCardSelection = new Map<string, any>();
+
+function getBillingMonth(closingDay: number): string {
+  const today = new Date();
+  const day = today.getDate();
+  const year = today.getFullYear();
+  const month = today.getMonth();
+  if (day >= closingDay) {
+    const next = new Date(year, month + 1, 1);
+    return next.toISOString().split('T')[0];
+  }
+  return new Date(year, month, 1).toISOString().split('T')[0];
+}
+
+async function registerCreditTransaction(
+  supabaseUserId: string,
+  item: any,
+  shortCode: string,
+  creditCardId: string,
+  closingDay: number,
+  dueDay: number
+) {
+  const billingMonth = getBillingMonth(closingDay);
+  
+  // Calcular due_date
+  const bm = new Date(billingMonth);
+  const dueDate = new Date(bm.getFullYear(), bm.getMonth(), dueDay)
+    .toISOString().split('T')[0];
+
+  // 1. Inserir transação
+  await supabase.from('transactions').insert({
+    user_id: supabaseUserId,
+    value: item.value,
+    type: item.type,
+    category: item.category || 'Outros',
+    subtype: item.subtype || 'variable',
+    urgency: item.urgency || 'planned',
+    description: item.description || 'Sem descrição',
+    source: 'text',
+    short_code: shortCode,
+    subcategory: item.subcategory || null,
+    payment_method: 'credit',
+    credit_card_id: creditCardId,
+    billing_month: billingMonth
+  });
+
+  // 2. Upsert fatura
+  const { data: existingBill } = await supabase
+    .from('credit_card_bills')
+    .select('id, amount')
+    .eq('credit_card_id', creditCardId)
+    .eq('billing_month', billingMonth)
+    .maybeSingle();
+
+  if (existingBill) {
+    await supabase
+      .from('credit_card_bills')
+      .update({ amount: Number(existingBill.amount) + Number(item.value) })
+      .eq('id', existingBill.id);
+  } else {
+    await supabase.from('credit_card_bills').insert({
+      user_id: supabaseUserId,
+      credit_card_id: creditCardId,
+      amount: item.value,
+      billing_month: billingMonth,
+      due_date: dueDate,
+      paid: false
+    });
+  }
 }
 
 bot.on("message:text", async (ctx) => {
@@ -1123,6 +1207,73 @@ Exemplos que funcionam:
           continue;
         }
 
+        // Determinar método de pagamento
+        const { data: userProfile } = await supabase
+          .from('user_profiles')
+          .select('default_payment')
+          .eq('user_id', supabaseUserId)
+          .maybeSingle();
+
+        const defaultPayment = userProfile?.default_payment || 'debit';
+        const paymentMethod = item.payment_method || defaultPayment;
+
+        if (paymentMethod === 'credit' && item.type === 'expense') {
+          // Buscar cartões do usuário
+          const { data: cards } = await supabase
+            .from('credit_cards')
+            .select('*')
+            .eq('user_id', supabaseUserId);
+
+          if (!cards || cards.length === 0) {
+            // Sem cartão cadastrado — registrar como débito normal
+            // e avisar o usuário
+            await supabase.from('transactions').insert({
+              user_id: supabaseUserId,
+              value: item.value,
+              type: item.type,
+              category: item.category || 'Outros',
+              subtype: item.subtype || 'variable',
+              urgency: item.urgency || 'planned',
+              description: item.description || 'Sem descrição',
+              source: 'text',
+              short_code: shortCode,
+              subcategory: item.subcategory || null,
+              payment_method: 'debit'
+            });
+            const subcatLine = item.subcategory ? ` | ${item.subcategory}` : '';
+            await ctx.reply(`✅ Registrado! #${shortCode}\n💰 R$ ${Number(item.value).toFixed(2)}\n📂 ${item.category}${subcatLine}\n📝 ${item.description}\n⚠️ Nenhum cartão cadastrado — registrado como débito.\nCadastre um cartão no app em Ajustes > Cartões.`);
+            continue;
+          }
+
+          if (cards.length === 1) {
+            // Apenas um cartão — usar automaticamente
+            const card = cards[0];
+            await registerCreditTransaction(
+              supabaseUserId, item, shortCode,
+              card.id, card.closing_day, card.due_day
+            );
+            const subcatLine = item.subcategory ? ` | ${item.subcategory}` : '';
+            await ctx.reply(`✅ Registrado! #${shortCode}\n💰 R$ ${Number(item.value).toFixed(2)}\n📂 ${item.category}${subcatLine}\n📝 ${item.description}\n💳 ${card.bank} (crédito)`);
+            continue;
+          }
+
+          // Múltiplos cartões — perguntar qual
+          pendingCardSelection.set(supabaseUserId, {
+            item, shortCode, supabaseUserId
+          });
+
+          const keyboard = new InlineKeyboard();
+          cards.forEach(card => {
+            keyboard.text(`💳 ${card.bank} — ${card.name}`, `card_select_${card.id}_${shortCode}`).row();
+          });
+
+          await ctx.reply(
+            `💳 Em qual cartão foi essa compra?\n\n📝 ${item.description}\n💰 R$ ${Number(item.value).toFixed(2)}`,
+            { reply_markup: keyboard }
+          );
+          continue;
+        }
+
         const { error } = await supabase.from("transactions").insert({
           user_id: supabaseUserId,
           value: item.value,
@@ -1186,6 +1337,53 @@ O que você pode fazer:
 bot.on('callback_query:data', async (ctx) => {
   const data = ctx.callbackQuery.data;
   
+  if (data.startsWith('card_select_')) {
+    const parts = data.replace('card_select_', '').split('_');
+    const cardId = parts[0];
+    const shortCode = parts.slice(1).join('_');
+    
+    const userId = ctx.from.id.toString();
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('user_id')
+      .eq('telegram_id', userId)
+      .maybeSingle();
+    const supabaseUserId = profile?.user_id;
+
+    if (!supabaseUserId) {
+        await ctx.answerCallbackQuery();
+        return ctx.editMessageText('❌ Usuário não encontrado.');
+    }
+
+    const pending = pendingCardSelection.get(supabaseUserId);
+    if (!pending) {
+      await ctx.answerCallbackQuery();
+      return ctx.editMessageText('⚠️ Seleção expirada. Tente registrar novamente.');
+    }
+
+    const { data: card } = await supabase
+      .from('credit_cards')
+      .select('*')
+      .eq('id', cardId)
+      .maybeSingle();
+
+    if (!card) {
+      await ctx.answerCallbackQuery();
+      return ctx.editMessageText('❌ Cartão não encontrado.');
+    }
+
+    await registerCreditTransaction(
+      supabaseUserId, pending.item, pending.shortCode,
+      card.id, card.closing_day, card.due_day
+    );
+
+    pendingCardSelection.delete(supabaseUserId);
+
+    const subcatLine = pending.item.subcategory ? ` | ${pending.item.subcategory}` : '';
+    await ctx.answerCallbackQuery();
+    await ctx.editMessageText(`✅ Registrado! #${pending.shortCode}\n💰 R$ ${Number(pending.item.value).toFixed(2)}\n📂 ${pending.item.category}${subcatLine}\n📝 ${pending.item.description}\n💳 ${card.bank} (crédito)`);
+  }
+
   if (data.startsWith('tithe_yes_') || data.startsWith('tithe_no_')) {
     const shortCode = data.replace('tithe_yes_', '').replace('tithe_no_', '');
     const countsForTithe = data.startsWith('tithe_yes_');

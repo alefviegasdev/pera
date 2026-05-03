@@ -20,7 +20,7 @@ const History = ({
   const [loading, setLoading] = useState(true);
   const [selectedTx, setSelectedTx] = useState<any>(null);
   const [showInstallments, setShowInstallments] = useState(false);
-  const [period, setPeriod] = useState('today');
+  const [period, setPeriod] = useState(() => sessionStorage.getItem('pera_shared_period') || '7days');
   const [periodDropdownOpen, setPeriodDropdownOpen] = useState(false);
   const periodDropdownRef = React.useRef<HTMLDivElement>(null);
   
@@ -35,8 +35,17 @@ const History = ({
   const [confirmDeleteText, setConfirmDeleteText] = useState<string>('');
   const [hideHistory, setHideHistory] = useState(false);
   const [showDateModal, setShowDateModal] = useState(false);
-  const [customStartDate, setCustomStartDate] = useState<string | null>(null);
-  const [customEndDate, setCustomEndDate] = useState<string | null>(null);
+  const [customStartDate, setCustomStartDate] = useState<string | null>(() => sessionStorage.getItem('pera_shared_start_date'));
+  const [customEndDate, setCustomEndDate] = useState<string | null>(() => sessionStorage.getItem('pera_shared_end_date'));
+
+  // Persistence
+  useEffect(() => {
+    sessionStorage.setItem('pera_shared_period', period);
+    if (customStartDate) sessionStorage.setItem('pera_shared_start_date', customStartDate);
+    else sessionStorage.removeItem('pera_shared_start_date');
+    if (customEndDate) sessionStorage.setItem('pera_shared_end_date', customEndDate);
+    else sessionStorage.removeItem('pera_shared_end_date');
+  }, [period, customStartDate, customEndDate]);
 
   // On mount (tab switch), read master and reset local state
   useEffect(() => {
