@@ -146,6 +146,7 @@ const Settings = ({
   const [creditCards, setCreditCards] = useState<any[]>([]);
   const [showCardModal, setShowCardModal] = useState(false);
   const [deletingCardId, setDeletingCardId] = useState<string | null>(null);
+  const [editingCard, setEditingCard] = useState<any>(null);
   const [defaultPayment, setDefaultPayment] = useState<'debit' | 'credit'>('debit');
   const [cardName, setCardName] = useState('');
   const [cardBank, setCardBank] = useState('Nubank');
@@ -614,6 +615,7 @@ const Settings = ({
               <h3 className="font-headline text-xl font-extrabold tracking-tight text-on-background">Cartões de Crédito</h3>
               <button
                 onClick={() => {
+                  setEditingCard(null);
                   setCardName(''); setCardBank('Nubank'); setCardLimit('');
                   setCardClosingDay(1); setCardDueDay(10);
                   setShowCardModal(true);
@@ -632,7 +634,17 @@ const Settings = ({
                 {creditCards.map(card => {
                   const colors = BANK_COLORS[card.bank] || BANK_COLORS['Default'];
                   return (
-                    <div key={card.id} className="bg-white rounded-[2rem] p-5 flex items-center justify-between shadow-sm border border-surface-container/50">
+                    <div key={card.id} className="bg-white rounded-[2rem] p-5 flex items-center justify-between shadow-sm border border-surface-container/50 cursor-pointer active:scale-[0.98] transition-all"
+                      onClick={() => {
+                        setEditingCard(card);
+                        setCardName(card.name || '');
+                        setCardBank(card.bank || 'Nubank');
+                        setCardLimit(String(card.card_limit || ''));
+                        setCardClosingDay(card.closing_day || 1);
+                        setCardDueDay(card.due_day || 10);
+                        setShowCardModal(true);
+                      }}
+                    >
                       <div className="flex items-center gap-4">
                         <div
                           className="w-10 h-10 rounded-2xl flex items-center justify-center shadow-sm"
@@ -648,7 +660,7 @@ const Settings = ({
                         </div>
                       </div>
                       <button
-                        onClick={() => setDeletingCardId(card.id)}
+                        onClick={(e) => { e.stopPropagation(); setDeletingCardId(card.id); }}
                         className="p-2 rounded-full text-on-surface-variant/30 hover:text-error hover:bg-error/5 transition-all active:scale-90"
                       >
                         <Trash2 size={18} />
@@ -689,8 +701,8 @@ const Settings = ({
             <div className="w-12 h-1.5 bg-outline-variant/30 rounded-full mx-auto mt-4 mb-2 flex-shrink-0" />
             <div ref={cardModalContentRef} className="flex-1 overflow-y-auto px-6 pb-8 space-y-6">
               <div className="pt-2">
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary mb-1">Novo Cartão</p>
-                <h2 className="font-headline text-2xl font-black text-on-surface tracking-tight">Adicionar Cartão</h2>
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary mb-1">{editingCard ? 'Editar Cartão' : 'Novo Cartão'}</p>
+                <h2 className="font-headline text-2xl font-black text-on-surface tracking-tight">{editingCard ? 'Editar Cartão' : 'Adicionar Cartão'}</h2>
               </div>
 
               <div className="space-y-4">
@@ -761,26 +773,41 @@ const Settings = ({
                   onClick={async () => {
                     setSavingCard(true);
                     try {
-                      await fetch('/api/credit-cards', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                          user_id: userId,
-                          name: cardName || cardBank,
-                          bank: cardBank,
-                          card_limit: parseFloat(cardLimit) || 0,
-                          closing_day: cardClosingDay,
-                          due_day: cardDueDay
-                        })
-                      });
+                      if (editingCard) {
+                        await fetch(`/api/credit-cards/${editingCard.id}`, {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            name: cardName || cardBank,
+                            bank: cardBank,
+                            card_limit: parseFloat(cardLimit) || 0,
+                            closing_day: cardClosingDay,
+                            due_day: cardDueDay
+                          })
+                        });
+                      } else {
+                        await fetch('/api/credit-cards', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            user_id: userId,
+                            name: cardName || cardBank,
+                            bank: cardBank,
+                            card_limit: parseFloat(cardLimit) || 0,
+                            closing_day: cardClosingDay,
+                            due_day: cardDueDay
+                          })
+                        });
+                      }
                       setShowCardModal(false);
+                      setEditingCard(null);
                       fetchData(true);
                     } catch (e) { console.error(e); }
                     finally { setSavingCard(false); }
                   }}
                   className="w-full h-14 bg-primary text-on-primary rounded-full font-headline font-black text-base shadow-lg shadow-primary/20 active:scale-95 transition-all disabled:opacity-50"
                 >
-                  {savingCard ? 'Salvando...' : 'Adicionar Cartão'}
+                  {savingCard ? 'Salvando...' : (editingCard ? 'Salvar Alterações' : 'Adicionar Cartão')}
                 </button>
                 <button
                   onClick={() => setShowCardModal(false)}

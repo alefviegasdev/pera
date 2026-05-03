@@ -990,6 +990,28 @@ app.post('/credit-cards', async (req, res) => {
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
+app.patch('/credit-cards/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, bank, card_limit, closing_day, due_day } = req.body;
+    const updates: any = {};
+    if (name !== undefined) updates.name = name;
+    if (bank !== undefined) updates.bank = bank;
+    if (card_limit !== undefined) updates.card_limit = card_limit;
+    if (closing_day !== undefined) updates.closing_day = closing_day;
+    if (due_day !== undefined) updates.due_day = due_day;
+
+    const { data, error } = await supabase
+      .from('credit_cards')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    res.json(data);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
 app.delete('/credit-cards/:id', async (req, res) => {
   try {
     const { id } = req.params;
