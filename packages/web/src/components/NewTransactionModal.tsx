@@ -43,8 +43,17 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ userId, onClo
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = ''; };
+    const scrollY = window.scrollY;
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = '100%';
+    
+    return () => { 
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      window.scrollTo(0, scrollY);
+    };
   }, []);
 
   useEffect(() => {
@@ -175,7 +184,7 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ userId, onClo
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6 pb-20">
+        <form onSubmit={handleSubmit} className="space-y-6 pb-4">
           
           {/* Tipo e Valor */}
           <div className="grid grid-cols-2 gap-4">
@@ -192,7 +201,7 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ userId, onClo
                 <button
                   type="button"
                   onClick={() => setType('income')}
-                  className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${type === 'income' ? 'bg-primary text-white shadow-md' : 'text-on-surface-variant hover:bg-surface-container'}`}
+                  className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${type === 'income' ? 'bg-[#465d0c] text-white shadow-md' : 'text-on-surface-variant hover:bg-surface-container'}`}
                 >
                   Entrada
                 </button>
@@ -205,6 +214,7 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ userId, onClo
                 className="w-full bg-surface-container-low rounded-2xl border-none p-3 font-headline font-bold text-lg focus:ring-2 focus:ring-primary/20 placeholder:text-outline-variant/40" 
                 placeholder="0.00" 
                 type="number"
+                inputMode="decimal"
                 step="0.01"
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
@@ -412,7 +422,7 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ userId, onClo
             </div>
           )}
 
-          <div className="pt-8">
+          <div className="mt-[100px]">
             <button 
               type="submit"
               disabled={loading}
