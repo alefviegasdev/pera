@@ -43,16 +43,14 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ userId, onClo
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const scrollY = window.scrollY;
-    document.body.style.position = 'fixed';
-    document.body.style.top = `-${scrollY}px`;
-    document.body.style.width = '100%';
+    // Lock both body and .app-shell if it exists
+    document.body.style.overflow = 'hidden';
+    const appShell = document.querySelector('.app-shell') as HTMLElement;
+    if (appShell) appShell.style.overflow = 'hidden';
     
     return () => { 
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.width = '';
-      window.scrollTo(0, scrollY);
+      document.body.style.overflow = '';
+      if (appShell) appShell.style.overflow = '';
     };
   }, []);
 
@@ -166,9 +164,9 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ userId, onClo
   return (
     <div className="modal-overlay" onClick={onClose} style={{ zIndex: 9999 }}>
       <div 
-        className="modal-card bg-surface-container-lowest max-h-[90vh] overflow-y-auto scrollbar-hide" 
+        className="modal-card bg-surface-container-lowest max-h-[85vh] overflow-y-auto scrollbar-hide overscroll-contain transform-gpu" 
         onClick={(e) => e.stopPropagation()}
-        style={{ borderRadius: '2.5rem 2.5rem 0 0', padding: '12px 32px 48px', width: '100%', maxWidth: '480px' }}
+        style={{ borderRadius: '2.5rem 2.5rem 0 0', padding: '12px 32px 0px', width: '100%', maxWidth: '480px' }}
       >
         <div className="modal-handle bg-surface-container-high w-16 h-1.5 mx-auto mb-6" />
         
@@ -422,7 +420,7 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ userId, onClo
             </div>
           )}
 
-          <div className="mt-[100px]">
+          <div className="pt-[100px] pb-10">
             <button 
               type="submit"
               disabled={loading}
