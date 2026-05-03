@@ -39,7 +39,6 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ userId, onClo
   const [creditCards, setCreditCards] = useState<any[]>([]);
   
   const [dueDay, setDueDay] = useState('05');
-  const [dueDay, setDueDay] = useState('05');
   const [countsForTithe, setCountsForTithe] = useState(false);
   const [loading, setLoading] = useState(false);
 
