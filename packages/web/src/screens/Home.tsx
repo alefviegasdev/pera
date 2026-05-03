@@ -525,7 +525,7 @@ const Home = ({
 
         {/* ── CRÉDITO DISPONÍVEL ── */}
         {creditCards.length > 0 && (
-          <div className="relative px-6 py-6 border border-white/10 flex flex-col justify-between rounded-[2.5rem] shadow-xl bg-gradient-to-br from-[#0a0a0b] via-[#161618] to-[#0a0a0b]">
+          <div className="relative px-6 py-6 border border-white/10 flex flex-col justify-between rounded-2xl shadow-xl transition-all hover:scale-[1.01] bg-gradient-to-br from-[#0a0a0b] via-[#161618] to-[#0a0a0b]">
             <div className="flex justify-between items-center mb-1">
               <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/50">Crédito Disponível</p>
               <span className="bg-white/10 backdrop-blur-md text-white/70 text-[9px] font-bold uppercase tracking-wider px-3 py-1 rounded-full border border-white/5">
@@ -533,7 +533,7 @@ const Home = ({
               </span>
             </div>
             <div className="flex flex-col">
-              <p className="text-white font-headline font-black text-3xl tracking-tight">
+              <p className="text-white font-black text-3xl tracking-tight font-headline">
                 {maskValue(splitFmt(totalCreditAvailable).int, hideMaster)}
                 <span className="text-sm font-bold opacity-30">{hideMaster ? '' : splitFmt(totalCreditAvailable).dec}</span>
               </p>
@@ -541,14 +541,14 @@ const Home = ({
             <div className="mt-6 space-y-2">
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2">
-                  <CreditCard size={14} className="text-primary-fixed" />
+                  <span className="material-symbols-outlined text-[14px] text-primary-fixed" style={{ fontVariationSettings: '"FILL" 1' }}>credit_card</span>
                   <span className="text-[10px] font-bold text-primary-fixed uppercase tracking-wider">Limite total</span>
                 </div>
                 <p className="text-[10px] font-bold text-white/50 uppercase tracking-wider">{maskValue(fmt(totalCreditLimit), hideMaster)}</p>
               </div>
               <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-primary-fixed rounded-full shadow-[0_0_8px_rgba(163,145,255,0.5)] transition-all duration-700"
+                  className="h-full bg-primary-fixed shadow-[0_0_8px_rgba(163,145,255,0.5)] transition-all duration-700"
                   style={{ width: `${creditUsedPct}%` }}
                 />
               </div>
@@ -791,7 +791,7 @@ const Home = ({
             </div>
             <div
               className="relative w-full select-none"
-              style={{ height: creditCards.length > 1 ? 240 : 200 }}
+              style={{ height: creditCards.length > 1 ? 210 : 190, touchAction: 'pan-y' }}
               onTouchStart={handleCardTouchStart}
               onTouchMove={handleCardTouchMove}
               onTouchEnd={handleCardTouchEnd}
@@ -866,7 +866,7 @@ const Home = ({
               })}
             </div>
             {creditCards.length > 1 && (
-              <div className="flex justify-center gap-1.5 pt-2">
+              <div className="flex justify-center gap-1.5 -mt-2">
                 {creditCards.map((_, i) => (
                   <button
                     key={i}
