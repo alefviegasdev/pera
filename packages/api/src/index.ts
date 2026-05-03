@@ -133,6 +133,21 @@ const syncMonthlyBills = async (user_id: string, month: number, year: number) =>
   }
 };
 
+// Helper: Calculate billing month for a credit card
+function getBillingMonth(closingDay: number): Date {
+  const today = new Date();
+  const day = today.getDate();
+  const result = new Date(today.getFullYear(), today.getMonth(), 1);
+  if (day >= closingDay) {
+    result.setMonth(result.getMonth() + 1);
+  }
+  return result;
+}
+
+function getDueDate(billingMonth: Date, dueDay: number): Date {
+  return new Date(billingMonth.getFullYear(), billingMonth.getMonth(), dueDay);
+}
+
 // Routes
 app.get('/', (req, res) => {
   res.json({ status: 'ok' });
@@ -180,15 +195,59 @@ app.get('/transactions', async (req, res) => {
 
 app.post('/transactions', async (req, res) => {
   try {
-    const { user_id, value, type, category, subtype, urgency, 
-            description, source, short_code, subcategory } = req.body;
+    const { user_id, value, type, category, subtype, urgency,
+            description, source, short_code, subcategory,
+            payment_method, credit_card_id } = req.body;
     if (!user_id) return res.status(400).json({ error: "user_id is required" });
+
+    let billing_month: string | null = null;
+
+    // If credit card payment, resolve billing_month and upsert bill
+    if (payment_method === 'credit' && credit_card_id) {
+      const { data: card } = await supabase
+        .from('credit_cards')
+        .select('closing_day, due_day, credit_limit')
+        .eq('id', credit_card_id)
+        .single();
+
+      if (card) {
+        const bMonth = getBillingMonth(card.closing_day);
+        billing_month = bMonth.toISOString().split('T')[0];
+        const dueDate = getDueDate(bMonth, card.due_day);
+
+        // Upsert credit_card_bills
+        const { data: existingBill } = await supabase
+          .from('credit_card_bills')
+          .select('id, amount')
+          .eq('credit_card_id', credit_card_id)
+          .eq('billing_month', billing_month)
+          .maybeSingle();
+
+        if (existingBill) {
+          await supabase.from('credit_card_bills').update({
+            amount: Number(existingBill.amount) + Number(value)
+          }).eq('id', existingBill.id);
+        } else {
+          await supabase.from('credit_card_bills').insert({
+            user_id, credit_card_id,
+            amount: Number(value),
+            billing_month,
+            due_date: dueDate.toISOString().split('T')[0],
+            paid: false
+          });
+        }
+      }
+    }
 
     const { data, error } = await supabase
       .from('transactions')
       .insert({
         user_id, value, type, category, subtype, urgency,
-        description, source, short_code, subcategory: subcategory || null
+        description, source, short_code,
+        subcategory: subcategory || null,
+        payment_method: payment_method || null,
+        credit_card_id: credit_card_id || null,
+        billing_month: billing_month || null
       })
       .select();
 
@@ -896,6 +955,175 @@ app.delete('/shopping-list/:id', async (req, res) => {
       .eq('id', id);
     if (error) throw error;
     res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ══════════════════════════════════════════════
+// CREDIT CARDS — CRUD
+// ══════════════════════════════════════════════
+
+app.get('/credit-cards', async (req, res) => {
+  try {
+    const { user_id } = req.query;
+    if (!user_id) return res.status(400).json({ error: 'user_id is required' });
+    const { data, error } = await supabase
+      .from('credit_cards')
+      .select('*')
+      .eq('user_id', user_id)
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    res.json(data || []);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/credit-cards', async (req, res) => {
+  try {
+    const { user_id, name, bank, credit_limit, closing_day, due_day } = req.body;
+    if (!user_id) return res.status(400).json({ error: 'user_id is required' });
+    const { data, error } = await supabase
+      .from('credit_cards')
+      .insert({ user_id, name, bank, credit_limit, closing_day, due_day })
+      .select()
+      .single();
+    if (error) throw error;
+    res.json(data);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/credit-cards/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { error } = await supabase.from('credit_cards').delete().eq('id', id);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ══════════════════════════════════════════════
+// CREDIT CARD BILLS — ROTAS
+// ══════════════════════════════════════════════
+
+app.get('/credit-card-bills', async (req, res) => {
+  try {
+    const { user_id } = req.query;
+    if (!user_id) return res.status(400).json({ error: 'user_id is required' });
+
+    const threeDaysAgo = new Date();
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+
+    const { data, error } = await supabase
+      .from('credit_card_bills')
+      .select('*, credit_cards(name, bank)')
+      .eq('user_id', user_id)
+      .or(`paid.eq.false,and(paid.eq.true,paid_at.gte.${threeDaysAgo.toISOString()})`);
+
+    if (error) throw error;
+
+    const result = (data || []).map((b: any) => ({
+      ...b,
+      card_name: b.credit_cards?.name,
+      bank: b.credit_cards?.bank
+    }));
+
+    res.json(result);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/credit-card-bills/upsert', async (req, res) => {
+  try {
+    const { user_id, credit_card_id, amount, billing_month, due_date } = req.body;
+    if (!user_id || !credit_card_id) return res.status(400).json({ error: 'user_id and credit_card_id are required' });
+
+    const { data: existing } = await supabase
+      .from('credit_card_bills')
+      .select('id, amount')
+      .eq('credit_card_id', credit_card_id)
+      .eq('billing_month', billing_month)
+      .maybeSingle();
+
+    let result;
+    if (existing) {
+      const { data, error } = await supabase
+        .from('credit_card_bills')
+        .update({ amount: Number(existing.amount) + Number(amount) })
+        .eq('id', existing.id)
+        .select()
+        .single();
+      if (error) throw error;
+      result = data;
+    } else {
+      const { data, error } = await supabase
+        .from('credit_card_bills')
+        .insert({ user_id, credit_card_id, amount, billing_month, due_date, paid: false })
+        .select()
+        .single();
+      if (error) throw error;
+      result = data;
+    }
+
+    res.json(result);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/credit-card-bills/:id/pay', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { data, error } = await supabase
+      .from('credit_card_bills')
+      .update({ paid: true, paid_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    res.json(data);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ══════════════════════════════════════════════
+// CREDIT CARDS — SUMMARY
+// ══════════════════════════════════════════════
+
+app.get('/credit-cards/:id/summary', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { user_id } = req.query;
+    if (!user_id) return res.status(400).json({ error: 'user_id is required' });
+
+    const { data: card, error: cardError } = await supabase
+      .from('credit_cards')
+      .select('*')
+      .eq('id', id)
+      .single();
+    if (cardError) throw cardError;
+
+    const billingMonth = getBillingMonth(card.closing_day);
+    const billingMonthStr = billingMonth.toISOString().split('T')[0];
+    const dueDate = getDueDate(billingMonth, card.due_day);
+
+    const { data: txs } = await supabase
+      .from('transactions')
+      .select('value')
+      .eq('credit_card_id', id)
+      .eq('billing_month', billingMonthStr)
+      .eq('user_id', user_id);
+
+    const current_bill = (txs || []).reduce((s: number, t: any) => s + Number(t.value), 0);
+    const available_limit = Number(card.credit_limit) - current_bill;
+
+    res.json({
+      card: {
+        id: card.id,
+        name: card.name,
+        bank: card.bank,
+        credit_limit: card.credit_limit,
+        closing_day: card.closing_day,
+        due_day: card.due_day
+      },
+      current_bill,
+      available_limit,
+      billing_month: billingMonthStr,
+      due_date: dueDate.toISOString().split('T')[0]
+    });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 

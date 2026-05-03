@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { catBg, catColor, catEmoji } from '../utils/categories';
+import { catBg, catColor, catEmoji, BANK_COLORS } from '../utils/categories';
 import TransactionModal from '../components/TransactionModal';
 import FixedDetailsModal from '../components/FixedDetailsModal';
 import CategoryDetailsModal from '../components/CategoryDetailsModal';
@@ -40,6 +40,11 @@ const Home = ({
   const [showTitheModal, setShowTitheModal] = useState(false);
   const [titheActive, setTitheActive] = useState(true);
   const [hideMaster, setHideMaster] = useState(() => localStorage.getItem('pera_hide_master') === 'true');
+  const [creditCards, setCreditCards] = useState<any[]>([]);
+  const [creditCardBills, setCreditCardBills] = useState<any[]>([]);
+  const [activeCardIdx, setActiveCardIdx] = useState(0);
+  const [cardDragX, setCardDragX] = useState(0);
+  const [cardDragStart, setCardDragStart] = useState<number | null>(null);
 
   const toggleHideMaster = () => {
     setHideMaster(prev => {
@@ -73,7 +78,7 @@ const Home = ({
   const fetchData = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const [sRes, bRes, tRes, iRes, budgetsRes, titheSummaryRes, profileRes, totalRes] = await Promise.all([
+      const [sRes, bRes, tRes, iRes, budgetsRes, titheSummaryRes, profileRes, totalRes, ccRes, ccBillsRes] = await Promise.all([
         fetch(`/api/transactions/summary?user_id=${userId}&period=month`),
         fetch(`/api/monthly-bills-all?user_id=${userId}`),
         fetch(`/api/transactions?user_id=${userId}&period=month`),
@@ -81,7 +86,9 @@ const Home = ({
         fetch(`/api/budgets?user_id=${userId}`),
         fetch(`/api/tithe-summary?user_id=${userId}`),
         fetch(`/api/user-profile?user_id=${userId}`),
-        fetch(`/api/transactions/summary?user_id=${userId}&period=all`)
+        fetch(`/api/transactions/summary?user_id=${userId}&period=all`),
+        fetch(`/api/credit-cards?user_id=${userId}`),
+        fetch(`/api/credit-card-bills?user_id=${userId}`)
       ]);
       setSummary(await sRes.json());
       const allBillsData = await bRes.json();
@@ -105,6 +112,8 @@ const Home = ({
       const profileData = await profileRes.json();
       setTitheActive(profileData?.tithe_active !== false);
       setTotalSummary(await totalRes.json());
+      try { const ccData = await ccRes.json(); setCreditCards(Array.isArray(ccData) ? ccData : []); } catch { setCreditCards([]); }
+      try { const ccBillsData = await ccBillsRes.json(); setCreditCardBills(Array.isArray(ccBillsData) ? ccBillsData : []); } catch { setCreditCardBills([]); }
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
@@ -300,7 +309,18 @@ const Home = ({
           tithePct: titheSummary?.tithe_pct_current || 10
         }))
       : []
-    )
+    ),
+    ...(creditCardBills.filter(b => !b.paid).map(b => {
+      const card = creditCards.find(c => c.id === b.credit_card_id);
+      return {
+        id: b.id,
+        name: `Fatura ${card?.name || card?.bank || 'Cartão'}`,
+        value: b.amount,
+        itemType: 'credit_card_bill',
+        bank: card?.bank,
+        due_date: b.due_date
+      };
+    }))
   ];
 
   // Agrupar pagamentos de dízimo por mês
@@ -350,7 +370,17 @@ const Home = ({
         itemType: 'installment',
         paid_at: new Date().toISOString() // Approximate
       })),
-    ...tithesPaidThisMonth
+    ...tithesPaidThisMonth,
+    ...(creditCardBills.filter(b => b.paid).map(b => {
+      const card = creditCards.find(c => c.id === b.credit_card_id);
+      return {
+        id: `ccbill-paid-${b.id}`,
+        name: `Fatura ${card?.name || card?.bank || 'Cartão'}`,
+        value: b.amount,
+        itemType: 'credit_card_bill',
+        paid_at: b.paid_at || b.due_date
+      };
+    }))
   ].sort((a,b) => {
     const dateA = a.paid_at ? new Date(a.paid_at).getTime() : 0;
     const dateB = b.paid_at ? new Date(b.paid_at).getTime() : 0;
@@ -376,6 +406,30 @@ const Home = ({
       };
     })
     .filter(b => b.excess > 0);
+
+  // Credit Card computations
+  const totalCreditLimit = creditCards.reduce((s, c) => s + Number(c.credit_limit || 0), 0);
+  const getBillForCard = (cardId: string) => creditCardBills.find(b => b.credit_card_id === cardId && !b.paid);
+  const totalCreditUsed = creditCards.reduce((s, c) => {
+    const bill = getBillForCard(c.id);
+    return s + Number(bill?.amount || 0);
+  }, 0);
+  const totalCreditAvailable = totalCreditLimit - totalCreditUsed;
+  const creditUsedPct = totalCreditLimit > 0 ? Math.min(100, (totalCreditUsed / totalCreditLimit) * 100) : 0;
+
+  // Card swipe handlers
+  const handleCardTouchStart = (e: React.TouchEvent) => setCardDragStart(e.touches[0].clientX);
+  const handleCardTouchMove = (e: React.TouchEvent) => {
+    if (cardDragStart !== null) setCardDragX(e.touches[0].clientX - cardDragStart);
+  };
+  const handleCardTouchEnd = () => {
+    if (Math.abs(cardDragX) > 50 && creditCards.length > 1) {
+      if (cardDragX < 0) setActiveCardIdx(i => (i + 1) % creditCards.length);
+      else setActiveCardIdx(i => (i - 1 + creditCards.length) % creditCards.length);
+    }
+    setCardDragX(0);
+    setCardDragStart(null);
+  };
 
   return (
     <div className="screen bg-surface pb-32">
@@ -468,6 +522,39 @@ const Home = ({
             </div>
           </div>
         </section>
+
+        {/* ── CRÉDITO DISPONÍVEL ── */}
+        {creditCards.length > 0 && (
+          <div className="relative px-6 py-6 border border-white/10 flex flex-col justify-between rounded-[2.5rem] shadow-xl bg-gradient-to-br from-[#0a0a0b] via-[#161618] to-[#0a0a0b]">
+            <div className="flex justify-between items-center mb-1">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/50">Crédito Disponível</p>
+              <span className="bg-white/10 backdrop-blur-md text-white/70 text-[9px] font-bold uppercase tracking-wider px-3 py-1 rounded-full border border-white/5">
+                {creditCards.length === 1 ? creditCards[0].bank : 'todos os cartões'}
+              </span>
+            </div>
+            <div className="flex flex-col">
+              <p className="text-white font-headline font-black text-3xl tracking-tight">
+                {maskValue(splitFmt(totalCreditAvailable).int, hideMaster)}
+                <span className="text-sm font-bold opacity-30">{hideMaster ? '' : splitFmt(totalCreditAvailable).dec}</span>
+              </p>
+            </div>
+            <div className="mt-6 space-y-2">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <CreditCard size={14} className="text-primary-fixed" />
+                  <span className="text-[10px] font-bold text-primary-fixed uppercase tracking-wider">Limite total</span>
+                </div>
+                <p className="text-[10px] font-bold text-white/50 uppercase tracking-wider">{maskValue(fmt(totalCreditLimit), hideMaster)}</p>
+              </div>
+              <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary-fixed rounded-full shadow-[0_0_8px_rgba(163,145,255,0.5)] transition-all duration-700"
+                  style={{ width: `${creditUsedPct}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ── RECEITA MENSAL ── */}
         <section className="bg-white p-6 rounded-[2.5rem] border border-surface-container/30 shadow-sm">
@@ -583,7 +670,8 @@ const Home = ({
                     <div className="flex items-center gap-5">
                       <div className="w-14 h-14 bg-surface-container-low rounded-2xl flex items-center justify-center">
                         {b.itemType === 'installment' ? <CreditCard size={24} className="text-secondary" /> : 
-                         b.itemType === 'tithing' ? <Heart size={24} className="text-tertiary" fill="currentColor" /> : 
+                         b.itemType === 'tithing' ? <Heart size={24} className="text-tertiary" fill="currentColor" /> :
+                         b.itemType === 'credit_card_bill' ? <CreditCard size={24} className="text-primary" /> :
                          getBillIcon(b.name)}
                       </div>
                       <div>
@@ -598,6 +686,8 @@ const Home = ({
                           <p className={`text-sm mt-0.5 font-bold ${daysLeft !== null && daysLeft <= 2 ? 'text-error' : 'text-on-surface-variant'}`}>
                             {daysLeft === 0 ? 'Vence hoje' : (daysLeft !== null && daysLeft < 0) ? `Atrasado ${Math.abs(daysLeft)}d` : `Vence em ${daysLeft} dias`}
                           </p>
+                        ) : b.itemType === 'credit_card_bill' ? (
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest mt-1 inline-block bg-primary/10 text-primary">Fatura</span>
                         ) : (
                           <div className="flex flex-col gap-1">
                             <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest mt-1 inline-block ${b.itemType === 'installment' ? 'bg-secondary/10 text-secondary' : 'bg-tertiary/10 text-tertiary'}`}>
@@ -691,6 +781,108 @@ const Home = ({
             )}
           </div>
         </section>
+
+        {/* ── MEUS CARTÕES ── */}
+        {creditCards.length > 0 && (
+          <section className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-on-surface font-extrabold text-xl font-headline">Meus Cartões</h2>
+              <span className="text-on-surface-variant text-xs font-bold opacity-40">{creditCards.length > 1 ? 'Deslize para ver' : ''}</span>
+            </div>
+            <div
+              className="relative w-full select-none"
+              style={{ height: creditCards.length > 1 ? 240 : 200 }}
+              onTouchStart={handleCardTouchStart}
+              onTouchMove={handleCardTouchMove}
+              onTouchEnd={handleCardTouchEnd}
+            >
+              {creditCards.map((card, idx) => {
+                const bill = getBillForCard(card.id);
+                const currentBill = Number(bill?.amount || 0);
+                const cardLimit = Number(card.credit_limit || 0);
+                const cardAvailable = cardLimit - currentBill;
+                const usedPct = cardLimit > 0 ? Math.min(100, (currentBill / cardLimit) * 100) : 0;
+                const colors = BANK_COLORS[card.bank] || BANK_COLORS['Default'];
+
+                const relIdx = (idx - activeCardIdx + creditCards.length) % creditCards.length;
+                const isFront = relIdx === 0;
+                const isSecond = relIdx === 1;
+                const isThird = relIdx === 2;
+
+                if (!isFront && !isSecond && !isThird) return null;
+
+                const zIndex = isFront ? 20 : isSecond ? 10 : 0;
+                const scale = isFront ? 1 : isSecond ? 0.94 : 0.88;
+                const translateY = isFront ? 0 : isSecond ? 10 : 18;
+                const opacity = isFront ? 1 : isSecond ? 0.7 : 0.4;
+                const dragOffset = isFront ? cardDragX : 0;
+
+                return (
+                  <div
+                    key={card.id}
+                    className="absolute left-0 right-0 rounded-[2rem] overflow-hidden shadow-2xl border border-white/20"
+                    style={{
+                      zIndex,
+                      transform: `translateY(${translateY}px) scale(${scale}) translateX(${dragOffset}px)`,
+                      opacity,
+                      transition: cardDragStart !== null && isFront ? 'none' : 'all 0.35s cubic-bezier(0.34,1.56,0.64,1)',
+                      background: `linear-gradient(135deg, ${colors.from}, ${colors.to})`,
+                      color: colors.text
+                    }}
+                  >
+                    <div className="px-6 py-6">
+                      <div className="flex justify-between items-start mb-6">
+                        <p className="text-lg font-headline font-black" style={{ color: colors.text }}>{card.bank}</p>
+                        <div className="text-right">
+                          <p className="text-[9px] font-bold uppercase opacity-60 tracking-wider">Vencimento Dia {card.due_day}</p>
+                          <p className="text-[9px] font-bold uppercase opacity-60 tracking-wider">Fechamento Dia {card.closing_day}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-end">
+                          <div className="space-y-0.5">
+                            <p className="text-[10px] font-bold uppercase opacity-70">Fatura atual</p>
+                            <p className="text-xl font-headline font-black">{maskValue(fmt(currentBill), hideMaster)}</p>
+                          </div>
+                          <div className="text-right space-y-0.5">
+                            <p className="text-[10px] font-bold uppercase opacity-70">Limite Disponível</p>
+                            <p className="text-sm font-bold">{maskValue(fmt(cardAvailable), hideMaster)}</p>
+                          </div>
+                        </div>
+                        <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
+                          <div
+                            className="h-full rounded-full"
+                            style={{
+                              width: `${usedPct}%`,
+                              backgroundColor: 'rgba(255,255,255,0.8)',
+                              boxShadow: '0 0 8px rgba(255,255,255,0.4)'
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {creditCards.length > 1 && (
+              <div className="flex justify-center gap-1.5 pt-2">
+                {creditCards.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setActiveCardIdx(i)}
+                    className="rounded-full transition-all duration-300"
+                    style={{
+                      width: i === activeCardIdx ? 20 : 6,
+                      height: 6,
+                      backgroundColor: i === activeCardIdx ? '#5d3fd3' : '#adada9'
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+        )}
 
         {/* ── CATEGORY HIGHLIGHTS ── */}
         <section className="space-y-4">

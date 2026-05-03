@@ -1,10 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Reorder, useDragControls } from 'framer-motion';
-import { Target, Calendar, ChevronRight, User, Heart, LogOut, PlusCircle, Home, Wifi, Utensils, Zap, HelpCircle, Coffee, Car, HeartPulse, Gamepad2, BookOpen, ReceiptText, Shirt, Smartphone, Hand, CircleEllipsis, Pencil, GripVertical } from 'lucide-react';
+import { Target, Calendar, ChevronRight, User, Heart, LogOut, PlusCircle, Home, Wifi, Utensils, Zap, HelpCircle, Coffee, Car, HeartPulse, Gamepad2, BookOpen, ReceiptText, Shirt, Smartphone, Hand, CircleEllipsis, Pencil, GripVertical, CreditCard, Trash2, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { BANK_COLORS } from '../utils/categories';
 import NewBillModal from '../components/NewBillModal';
 import NewBudgetModal from '../components/NewBudgetModal';
 import NewGoalModal from '../components/NewGoalModal';
+
+const BANKS = ['Nubank', 'Itaú', 'Bradesco', 'Inter', 'C6 Bank', 'Santander', 'Caixa', 'Banco do Brasil', 'XP', 'BTG'];
 
 const SectionHeader = ({ title, onAdd }: { title: string; onAdd?: () => void }) => (
   <div className="flex items-center justify-between mb-4">
@@ -139,6 +142,21 @@ const Settings = ({
   const [showNewGoal, setShowNewGoal] = useState(false);
   const [showNewBudget, setShowNewBudget] = useState(false);
 
+  // Credit card states
+  const [creditCards, setCreditCards] = useState<any[]>([]);
+  const [showCardModal, setShowCardModal] = useState(false);
+  const [deletingCardId, setDeletingCardId] = useState<string | null>(null);
+  const [defaultPayment, setDefaultPayment] = useState<'debit' | 'credit'>('debit');
+  const [cardName, setCardName] = useState('');
+  const [cardBank, setCardBank] = useState('Nubank');
+  const [cardLimit, setCardLimit] = useState('');
+  const [cardClosingDay, setCardClosingDay] = useState(1);
+  const [cardDueDay, setCardDueDay] = useState(10);
+  const [savingCard, setSavingCard] = useState(false);
+  const cardModalContentRef = useRef<HTMLDivElement>(null);
+  const [cardDragOffset, setCardDragOffset] = useState(0);
+  const [cardDragStartY, setCardDragStartY] = useState<number | null>(null);
+
   // Tithe persistence handlers
   const handleTitheActiveChange = async (active: boolean) => {
     setTitheActive(active);
@@ -160,12 +178,12 @@ const Settings = ({
   };
 
   useEffect(() => {
-    if (showNewBill || showNewGoal || showNewBudget || showLogoutConfirm || editBudget) {
+    if (showNewBill || showNewGoal || showNewBudget || showLogoutConfirm || editBudget || showCardModal) {
       onModalOpen?.();
     } else {
       onModalClose?.();
     }
-  }, [showNewBill, showNewGoal, showNewBudget, showLogoutConfirm, editBudget]);
+  }, [showNewBill, showNewGoal, showNewBudget, showLogoutConfirm, editBudget, showCardModal]);
 
   useEffect(() => { fetchData(); }, [userId]);
 
@@ -179,13 +197,14 @@ const Settings = ({
   const fetchData = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const [fRes, gRes, bRes, sRes, profileRes, titheSummaryRes] = await Promise.all([
+      const [fRes, gRes, bRes, sRes, profileRes, titheSummaryRes, ccRes] = await Promise.all([
         fetch(`/api/monthly-bills?user_id=${userId}`),
         fetch(`/api/goals?user_id=${userId}`),
         fetch(`/api/budgets?user_id=${userId}`),
         fetch(`/api/transactions/summary?user_id=${userId}&period=month`),
         fetch(`/api/user-profile?user_id=${userId}`),
-        fetch(`/api/tithe-summary?user_id=${userId}`)
+        fetch(`/api/tithe-summary?user_id=${userId}`),
+        fetch(`/api/credit-cards?user_id=${userId}`)
       ]);
       const [fData, gData, bData, sData, profileData, titheSummaryData] = await Promise.all([
         fRes.json(), 
@@ -195,12 +214,14 @@ const Settings = ({
         profileRes.json(),
         titheSummaryRes.json()
       ]);
+      try { const ccData = await ccRes.json(); setCreditCards(Array.isArray(ccData) ? ccData : []); } catch { setCreditCards([]); }
       setFixed(Array.isArray(fData) ? fData : []);
       setGoals(Array.isArray(gData) ? gData : []);
       setBudgets(Array.isArray(bData) ? bData : []);
       if (sData?.total_income) setTotalIncome(Number(sData.total_income));
       if (titheSummaryData?.total_titheable) setTitheableIncome(Number(titheSummaryData.total_titheable));
       if (sData?.by_category) setCategorySpending(sData.by_category);
+      if (profileData?.default_payment) setDefaultPayment(profileData.default_payment);
       
       if (profileData?.tithe_percentage) {
         setTithePercentage(profileData.tithe_percentage);
@@ -560,8 +581,251 @@ const Settings = ({
             })}
           </Reorder.Group>
         </section>
+        {/* Payment Preference + Credit Cards */}
+        <section className="space-y-4">
+          <div className="flex items-center justify-between px-1">
+            <h3 className="font-headline text-xl font-extrabold tracking-tight text-on-background">Pagamento Padrão</h3>
+            <div className="flex bg-surface-container rounded-2xl p-1 gap-1">
+              {(['debit', 'credit'] as const).map(opt => (
+                <button
+                  key={opt}
+                  onClick={async () => {
+                    setDefaultPayment(opt);
+                    await fetch('/api/user-profile', {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ user_id: userId, default_payment: opt })
+                    });
+                  }}
+                  className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-200 ${
+                    defaultPayment === opt
+                      ? 'bg-white text-primary shadow-sm'
+                      : 'text-on-surface-variant opacity-50'
+                  }`}
+                >
+                  {opt === 'debit' ? 'Débito' : 'Crédito'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between px-1">
+              <h3 className="font-headline text-xl font-extrabold tracking-tight text-on-background">Cartões de Crédito</h3>
+              <button
+                onClick={() => {
+                  setCardName(''); setCardBank('Nubank'); setCardLimit('');
+                  setCardClosingDay(1); setCardDueDay(10);
+                  setShowCardModal(true);
+                }}
+                className="text-primary text-sm font-bold flex items-center gap-1 active:scale-95 transition-transform"
+              >
+                <PlusCircle size={18} />
+                Adicionar
+              </button>
+            </div>
+
+            {creditCards.length === 0 ? (
+              <p className="text-xs font-bold text-center py-4 uppercase tracking-widest text-on-surface-variant opacity-40">Nenhum cartão cadastrado</p>
+            ) : (
+              <div className="grid gap-3">
+                {creditCards.map(card => {
+                  const colors = BANK_COLORS[card.bank] || BANK_COLORS['Default'];
+                  return (
+                    <div key={card.id} className="bg-white rounded-[2rem] p-5 flex items-center justify-between shadow-sm border border-surface-container/50">
+                      <div className="flex items-center gap-4">
+                        <div
+                          className="w-10 h-10 rounded-2xl flex items-center justify-center shadow-sm"
+                          style={{ background: `linear-gradient(135deg, ${colors.from}, ${colors.to})` }}
+                        >
+                          <CreditCard size={18} style={{ color: colors.text }} />
+                        </div>
+                        <div>
+                          <p className="font-bold text-on-surface text-base leading-tight">{card.name || card.bank}</p>
+                          <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest">
+                            {card.bank} · Limite {(Number(card.credit_limit) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setDeletingCardId(card.id)}
+                        className="p-2 rounded-full text-on-surface-variant/30 hover:text-error hover:bg-error/5 transition-all active:scale-90"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </section>
 
       </main>
+
+      {/* Card Modal */}
+      {showCardModal && (
+        <div
+          className="fixed inset-0 bg-black/50 z-[200] flex items-end justify-center"
+          onClick={() => setShowCardModal(false)}
+        >
+          <div
+            className="w-full max-w-lg bg-surface rounded-t-[2.5rem] flex flex-col"
+            style={{ height: '85dvh', transform: cardDragOffset > 0 ? `translateY(${cardDragOffset}px)` : undefined, transition: cardDragOffset > 0 ? 'none' : 'transform 0.3s ease' }}
+            onClick={e => e.stopPropagation()}
+            onTouchStart={e => setCardDragStartY(e.touches[0].clientY)}
+            onTouchMove={e => {
+              if (cardModalContentRef.current && cardModalContentRef.current.scrollTop > 0) return;
+              if (cardDragStartY !== null) {
+                const delta = e.touches[0].clientY - cardDragStartY;
+                if (delta > 0) setCardDragOffset(delta);
+              }
+            }}
+            onTouchEnd={() => {
+              if (cardDragOffset > 120) setShowCardModal(false);
+              setCardDragOffset(0); setCardDragStartY(null);
+            }}
+          >
+            <div className="w-12 h-1.5 bg-outline-variant/30 rounded-full mx-auto mt-4 mb-2 flex-shrink-0" />
+            <div ref={cardModalContentRef} className="flex-1 overflow-y-auto px-6 pb-8 space-y-6">
+              <div className="pt-2">
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary mb-1">Novo Cartão</p>
+                <h2 className="font-headline text-2xl font-black text-on-surface tracking-tight">Adicionar Cartão</h2>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant opacity-60">Nome do Cartão</label>
+                  <input
+                    type="text"
+                    value={cardName}
+                    onChange={e => setCardName(e.target.value)}
+                    placeholder="Ex: Meu Nubank"
+                    className="w-full h-14 bg-surface-container-low rounded-2xl px-4 font-bold text-on-surface border-none focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant opacity-60">Banco</label>
+                  <select
+                    value={cardBank}
+                    onChange={e => setCardBank(e.target.value)}
+                    className="w-full h-14 bg-surface-container-low rounded-2xl px-4 font-bold text-on-surface border-none focus:ring-2 focus:ring-primary/20"
+                  >
+                    {BANKS.map(b => <option key={b} value={b}>{b}</option>)}
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant opacity-60">Limite (R$)</label>
+                  <input
+                    type="number"
+                    value={cardLimit}
+                    onChange={e => setCardLimit(e.target.value)}
+                    placeholder="0,00"
+                    className="w-full h-14 bg-surface-container-low rounded-2xl px-4 font-bold text-on-surface border-none focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant opacity-60">Fechamento</label>
+                    <select
+                      value={cardClosingDay}
+                      onChange={e => setCardClosingDay(Number(e.target.value))}
+                      className="w-full h-14 bg-surface-container-low rounded-2xl px-4 font-bold text-on-surface border-none focus:ring-2 focus:ring-primary/20"
+                    >
+                      {Array.from({ length: 28 }, (_, i) => i + 1).map(d => (
+                        <option key={d} value={d}>Dia {d}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant opacity-60">Vencimento</label>
+                    <select
+                      value={cardDueDay}
+                      onChange={e => setCardDueDay(Number(e.target.value))}
+                      className="w-full h-14 bg-surface-container-low rounded-2xl px-4 font-bold text-on-surface border-none focus:ring-2 focus:ring-primary/20"
+                    >
+                      {Array.from({ length: 28 }, (_, i) => i + 1).map(d => (
+                        <option key={d} value={d}>Dia {d}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3 pt-2">
+                <button
+                  disabled={savingCard || !cardBank}
+                  onClick={async () => {
+                    setSavingCard(true);
+                    try {
+                      await fetch('/api/credit-cards', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          user_id: userId,
+                          name: cardName || cardBank,
+                          bank: cardBank,
+                          credit_limit: parseFloat(cardLimit) || 0,
+                          closing_day: cardClosingDay,
+                          due_day: cardDueDay
+                        })
+                      });
+                      setShowCardModal(false);
+                      fetchData(true);
+                    } catch (e) { console.error(e); }
+                    finally { setSavingCard(false); }
+                  }}
+                  className="w-full h-14 bg-primary text-on-primary rounded-full font-headline font-black text-base shadow-lg shadow-primary/20 active:scale-95 transition-all disabled:opacity-50"
+                >
+                  {savingCard ? 'Salvando...' : 'Adicionar Cartão'}
+                </button>
+                <button
+                  onClick={() => setShowCardModal(false)}
+                  className="w-full py-3 text-on-surface-variant font-bold text-sm active:scale-95 transition-all"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Card Confirmation */}
+      {deletingCardId && (
+        <div className="fixed inset-0 bg-black/60 z-[300] flex items-center justify-center p-6" onClick={() => setDeletingCardId(null)}>
+          <div className="bg-white rounded-[2.5rem] w-full max-w-xs p-8 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="text-center space-y-2 mb-8">
+              <div className="w-14 h-14 bg-error/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Trash2 size={24} className="text-error" />
+              </div>
+              <h2 className="font-headline text-2xl font-black text-on-surface tracking-tight">Remover cartão?</h2>
+              <p className="text-sm text-on-surface-variant/70">O histórico de faturas não será apagado.</p>
+            </div>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={async () => {
+                  await fetch(`/api/credit-cards/${deletingCardId}`, { method: 'DELETE' });
+                  setDeletingCardId(null);
+                  fetchData(true);
+                }}
+                className="w-full bg-error text-white py-4 rounded-full font-headline font-bold text-base shadow-lg shadow-error/20 active:scale-95 transition-all"
+              >
+                Remover
+              </button>
+              <button
+                onClick={() => setDeletingCardId(null)}
+                className="w-full py-3 text-on-surface-variant font-bold text-sm active:scale-95 transition-all"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modals */}
       {showNewBill && (
