@@ -692,7 +692,7 @@ const Home = ({
             <div
               ref={cardSwipeRef}
               className="relative w-full select-none"
-              style={{ height: creditCards.length > 1 ? 210 : 190, touchAction: 'pan-y pinch-zoom' }}
+              style={{ height: 190, touchAction: 'pan-y pinch-zoom' }}
             >
               {creditCards.map((card, idx) => {
                 const bill = getBillForCard(card.id);
@@ -715,7 +715,8 @@ const Home = ({
 
                 const zIndex = isFront ? 20 : isSecond ? 10 : 0;
                 const scale = isFront ? 1 : isSecond ? 0.94 : 0.88;
-                const translateY = isFront ? 0 : isSecond ? 10 : 18;
+                // Stack them to the right instead of down
+                const baseTranslateX = isFront ? 0 : isSecond ? 25 : 45;
                 const opacity = isFront ? 1 : isSecond ? 0.7 : 0.4;
                 const dragOffset = isFront ? cardDragX : 0;
 
@@ -725,7 +726,8 @@ const Home = ({
                     className="absolute left-0 right-0 rounded-[2rem] overflow-hidden shadow-2xl border border-white/20"
                     style={{
                       zIndex,
-                      transform: `translateY(${translateY}px) scale(${scale}) translateX(${dragOffset}px)`,
+                      transform: `scale(${scale}) translateX(${dragOffset + baseTranslateX}px)`,
+                      transformOrigin: 'center right',
                       opacity,
                       transition: cardDragStart !== null && isFront ? 'none' : 'all 0.35s cubic-bezier(0.34,1.56,0.64,1)',
                       background: `linear-gradient(135deg, ${colors.from}, ${colors.to})`,
@@ -768,7 +770,7 @@ const Home = ({
               })}
             </div>
             {creditCards.length > 1 && (
-              <div className="flex justify-center gap-1.5 -mt-2">
+              <div className="flex justify-center gap-1.5 -mt-4">
                 {creditCards.map((_, i) => (
                   <button
                     key={i}
