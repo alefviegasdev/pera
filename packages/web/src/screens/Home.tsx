@@ -540,7 +540,7 @@ const Home = ({
               <div className="mt-6 space-y-2">
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-[14px] text-primary-fixed" style={{ fontVariationSettings: '"FILL" 1' }}>credit_card</span>
+                    <CreditCard size={14} className="text-primary-fixed" />
                     <span className="text-[10px] font-bold text-primary-fixed uppercase tracking-wider">Limite total</span>
                   </div>
                   <p className="text-[10px] font-bold text-white/50 uppercase tracking-wider">{maskValue(fmt(totalCreditLimit), hideMaster)}</p>
@@ -559,7 +559,7 @@ const Home = ({
               {/* Saídas */}
               <div className="bg-primary-container p-2.5 space-y-2 rounded shadow-sm flex flex-col justify-between">
                 <div className="flex items-center justify-between">
-                  <span className="material-symbols-outlined text-on-primary-container text-base" style={{ fontVariationSettings: '"FILL" 1' }}>arrow_upward</span>
+                  <ArrowUpRight size={16} className="text-on-primary-container" />
                   <span className="text-[7px] font-bold uppercase tracking-tight text-on-primary-container">Saídas</span>
                 </div>
                 <p className="text-on-primary-container font-extrabold text-[13px] font-headline tracking-tighter">
@@ -573,7 +573,7 @@ const Home = ({
                 className="bg-[#feb700] p-2.5 space-y-2 rounded shadow-sm flex flex-col justify-between cursor-pointer active:scale-95 transition-transform"
               >
                 <div className="flex items-center justify-between">
-                  <span className="material-symbols-outlined text-[#463000] text-base" style={{ fontVariationSettings: '"FILL" 1' }}>push_pin</span>
+                  <Pin size={16} className="text-[#463000]" />
                   <span className="text-[7px] font-bold uppercase tracking-tight text-[#463000]/70">Custos Fixos</span>
                 </div>
                 <div className="flex flex-col -space-y-1">
@@ -592,7 +592,7 @@ const Home = ({
                 className="bg-tertiary-container p-2.5 space-y-2 rounded shadow-sm flex flex-col justify-between cursor-pointer active:scale-95 transition-transform"
               >
                 <div className="flex items-center justify-between">
-                  <span className="material-symbols-outlined text-on-tertiary-container text-base" style={{ fontVariationSettings: '"FILL" 1' }}>arrow_downward</span>
+                  <ArrowDownRight size={16} className="text-on-tertiary-container" />
                   <span className="text-[7px] font-bold uppercase tracking-tight text-on-tertiary-container">Entradas</span>
                 </div>
                 <p className="text-on-tertiary-container font-extrabold text-[13px] font-headline tracking-tighter">
