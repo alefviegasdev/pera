@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { catBg, catColor, catEmoji, BANK_COLORS } from '../utils/categories';
 import TransactionModal from '../components/TransactionModal';
 import FixedDetailsModal from '../components/FixedDetailsModal';
@@ -45,6 +45,9 @@ const Home = ({
   const [activeCardIdx, setActiveCardIdx] = useState(0);
   const [cardDragX, setCardDragX] = useState(0);
   const [cardDragStart, setCardDragStart] = useState<number | null>(null);
+  const [cardDragStartY, setCardDragStartY] = useState<number | null>(null);
+  const cardSwipeRef = useRef<HTMLDivElement>(null);
+  const isHorizontalSwipe = useRef<boolean | null>(null);
 
   const toggleHideMaster = () => {
     setHideMaster(prev => {
@@ -417,19 +420,69 @@ const Home = ({
   const totalCreditAvailable = totalCreditLimit - totalCreditUsed;
   const creditUsedPct = totalCreditLimit > 0 ? Math.min(100, (totalCreditUsed / totalCreditLimit) * 100) : 0;
 
-  // Card swipe handlers
-  const handleCardTouchStart = (e: React.TouchEvent) => setCardDragStart(e.touches[0].clientX);
-  const handleCardTouchMove = (e: React.TouchEvent) => {
-    if (cardDragStart !== null) setCardDragX(e.touches[0].clientX - cardDragStart);
-  };
-  const handleCardTouchEnd = () => {
-    if (Math.abs(cardDragX) > 50 && creditCards.length > 1) {
-      if (cardDragX < 0) setActiveCardIdx(i => (i + 1) % creditCards.length);
-      else setActiveCardIdx(i => (i - 1 + creditCards.length) % creditCards.length);
-    }
-    setCardDragX(0);
-    setCardDragStart(null);
-  };
+  // Card swipe handlers — use refs + native listeners so we can preventDefault
+  const cardDragStartRef = useRef<number | null>(null);
+  const cardDragStartYRef = useRef<number | null>(null);
+  const cardDragXRef = useRef(0);
+
+  useEffect(() => {
+    const el = cardSwipeRef.current;
+    if (!el) return;
+
+    const onTouchStart = (e: TouchEvent) => {
+      cardDragStartRef.current = e.touches[0].clientX;
+      cardDragStartYRef.current = e.touches[0].clientY;
+      isHorizontalSwipe.current = null; // reset direction detection
+      cardDragXRef.current = 0;
+      setCardDragX(0);
+      setCardDragStart(e.touches[0].clientX);
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (cardDragStartRef.current === null || cardDragStartYRef.current === null) return;
+
+      const dx = e.touches[0].clientX - cardDragStartRef.current;
+      const dy = e.touches[0].clientY - cardDragStartYRef.current;
+
+      // Determine swipe direction on first significant movement (10px threshold)
+      if (isHorizontalSwipe.current === null) {
+        if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+          isHorizontalSwipe.current = Math.abs(dx) > Math.abs(dy);
+        }
+      }
+
+      if (isHorizontalSwipe.current) {
+        // Horizontal swipe: block vertical scroll
+        e.preventDefault();
+        cardDragXRef.current = dx;
+        setCardDragX(dx);
+      }
+      // If vertical, do nothing — let native scroll happen
+    };
+
+    const onTouchEnd = () => {
+      if (isHorizontalSwipe.current && Math.abs(cardDragXRef.current) > 50 && creditCards.length > 1) {
+        if (cardDragXRef.current < 0) setActiveCardIdx(i => (i + 1) % creditCards.length);
+        else setActiveCardIdx(i => (i - 1 + creditCards.length) % creditCards.length);
+      }
+      setCardDragX(0);
+      setCardDragStart(null);
+      cardDragStartRef.current = null;
+      cardDragStartYRef.current = null;
+      isHorizontalSwipe.current = null;
+      cardDragXRef.current = 0;
+    };
+
+    el.addEventListener('touchstart', onTouchStart, { passive: true });
+    el.addEventListener('touchmove', onTouchMove, { passive: false });
+    el.addEventListener('touchend', onTouchEnd, { passive: true });
+
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchmove', onTouchMove);
+      el.removeEventListener('touchend', onTouchEnd);
+    };
+  }, [creditCards.length]);
 
   return (
     <div className="screen bg-surface pb-32">
@@ -790,11 +843,9 @@ const Home = ({
               <span className="text-on-surface-variant text-xs font-bold opacity-40">{creditCards.length > 1 ? 'Deslize para ver' : ''}</span>
             </div>
             <div
+              ref={cardSwipeRef}
               className="relative w-full select-none"
-              style={{ height: creditCards.length > 1 ? 210 : 190, touchAction: 'pan-y' }}
-              onTouchStart={handleCardTouchStart}
-              onTouchMove={handleCardTouchMove}
-              onTouchEnd={handleCardTouchEnd}
+              style={{ height: creditCards.length > 1 ? 210 : 190, touchAction: 'pan-y pinch-zoom' }}
             >
               {creditCards.map((card, idx) => {
                 const bill = getBillForCard(card.id);
