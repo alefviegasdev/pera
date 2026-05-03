@@ -49,7 +49,7 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ userId, onClo
     let scrollY = 0;
     
     if (appShell) {
-      scrollY = window.scrollY;
+      scrollY = appShell.scrollTop;
       appShell.style.position = 'fixed';
       appShell.style.width = '100%';
       appShell.style.top = `-${scrollY}px`;
@@ -66,11 +66,12 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ userId, onClo
         appShell.style.position = '';
         appShell.style.width = '';
         appShell.style.top = '';
+        appShell.scrollTo(0, scrollY);
       }
       body.style.position = '';
       body.style.width = '';
       body.style.top = '';
-      window.scrollTo(0, appShell ? scrollY : bodyScrollY);
+      window.scrollTo(0, bodyScrollY);
     };
   }, []);
 
@@ -184,7 +185,7 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ userId, onClo
   return (
     <div className="modal-overlay" onClick={onClose} style={{ zIndex: 9999 }}>
       <div 
-        className="modal-card bg-surface-container-lowest max-h-[85vh] overflow-y-auto scrollbar-hide overscroll-contain transform-gpu" 
+        className={`modal-card bg-surface-container-lowest max-h-[85vh] scrollbar-hide overscroll-contain transform-gpu ${type === 'expense' ? 'overflow-y-auto touch-pan-y' : 'overflow-hidden touch-none'}`}
         onClick={(e) => e.stopPropagation()}
         style={{ borderRadius: '2.5rem 2.5rem 0 0', padding: '12px 32px 0px', width: '100%', maxWidth: '480px' }}
       >
