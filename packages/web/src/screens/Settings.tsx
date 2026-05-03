@@ -370,6 +370,101 @@ const Settings = ({
           </button>
         </section>
 
+        {/* Payment Preference + Credit Cards */}
+        <section className="space-y-4">
+          <div className="flex items-center justify-between px-1">
+            <h3 className="font-headline text-xl font-extrabold tracking-tight text-on-background">Pagamento Padrão</h3>
+            <div className="flex bg-surface-container rounded-2xl p-1 gap-1">
+              {(['debit', 'credit'] as const).map(opt => (
+                <button
+                  key={opt}
+                  onClick={async () => {
+                    setDefaultPayment(opt);
+                    await fetch('/api/user-profile', {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ user_id: userId, default_payment: opt })
+                    });
+                  }}
+                  className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-200 ${
+                    defaultPayment === opt
+                      ? 'bg-white text-primary shadow-sm'
+                      : 'text-on-surface-variant opacity-50'
+                  }`}
+                >
+                  {opt === 'debit' ? 'Débito' : 'Crédito'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between px-1">
+              <h3 className="font-headline text-xl font-extrabold tracking-tight text-on-background">Cartões de Crédito</h3>
+              <button
+                onClick={() => {
+                  setEditingCard(null);
+                  setCardName(''); setCardBank('Nubank'); setCardLimit('');
+                  setCardClosingDay(1); setCardDueDay(10);
+                  setShowCardModal(true);
+                }}
+                className="text-primary text-sm font-bold flex items-center gap-1 active:scale-95 transition-transform"
+              >
+                <PlusCircle size={18} />
+                Adicionar
+              </button>
+            </div>
+
+            {creditCards.length === 0 ? (
+              <p className="text-xs font-bold text-center py-4 uppercase tracking-widest text-on-surface-variant opacity-40">Nenhum cartão cadastrado</p>
+            ) : (
+              <div className="grid gap-3">
+                {creditCards.map(card => {
+                  const colors = BANK_COLORS[card.bank] || {
+                    from: '#1a1a2e',
+                    to: '#16213e',
+                    text: '#ffffff'
+                  };
+                  return (
+                    <div key={card.id} className="bg-white rounded-[2rem] p-5 flex items-center justify-between shadow-sm border border-surface-container/50 cursor-pointer active:scale-[0.98] transition-all"
+                      onClick={() => {
+                        setEditingCard(card);
+                        setCardName(card.name || '');
+                        setCardBank(card.bank || 'Nubank');
+                        setCardLimit(String(card.card_limit || ''));
+                        setCardClosingDay(card.closing_day || 1);
+                        setCardDueDay(card.due_day || 10);
+                        setShowCardModal(true);
+                      }}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div
+                          className="w-10 h-10 rounded-2xl flex items-center justify-center shadow-sm"
+                          style={{ background: `linear-gradient(135deg, ${colors.from}, ${colors.to})` }}
+                        >
+                          <CreditCard size={18} style={{ color: colors.text }} />
+                        </div>
+                        <div>
+                          <p className="font-bold text-on-surface text-base leading-tight">{card.name || card.bank}</p>
+                          <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest">
+                            {card.bank} · Limite {(Number(card.card_limit) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setDeletingCardId(card.id); }}
+                        className="p-2 rounded-full text-on-surface-variant/30 hover:text-error hover:bg-error/5 transition-all active:scale-90"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </section>
+
         {/* Tithe Section */}
         <section className="space-y-4">
           <div className="flex items-center justify-between px-1">
@@ -581,100 +676,6 @@ const Settings = ({
               );
             })}
           </Reorder.Group>
-        </section>
-        {/* Payment Preference + Credit Cards */}
-        <section className="space-y-4">
-          <div className="flex items-center justify-between px-1">
-            <h3 className="font-headline text-xl font-extrabold tracking-tight text-on-background">Pagamento Padrão</h3>
-            <div className="flex bg-surface-container rounded-2xl p-1 gap-1">
-              {(['debit', 'credit'] as const).map(opt => (
-                <button
-                  key={opt}
-                  onClick={async () => {
-                    setDefaultPayment(opt);
-                    await fetch('/api/user-profile', {
-                      method: 'PATCH',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ user_id: userId, default_payment: opt })
-                    });
-                  }}
-                  className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-200 ${
-                    defaultPayment === opt
-                      ? 'bg-white text-primary shadow-sm'
-                      : 'text-on-surface-variant opacity-50'
-                  }`}
-                >
-                  {opt === 'debit' ? 'Débito' : 'Crédito'}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex items-center justify-between px-1">
-              <h3 className="font-headline text-xl font-extrabold tracking-tight text-on-background">Cartões de Crédito</h3>
-              <button
-                onClick={() => {
-                  setEditingCard(null);
-                  setCardName(''); setCardBank('Nubank'); setCardLimit('');
-                  setCardClosingDay(1); setCardDueDay(10);
-                  setShowCardModal(true);
-                }}
-                className="text-primary text-sm font-bold flex items-center gap-1 active:scale-95 transition-transform"
-              >
-                <PlusCircle size={18} />
-                Adicionar
-              </button>
-            </div>
-
-            {creditCards.length === 0 ? (
-              <p className="text-xs font-bold text-center py-4 uppercase tracking-widest text-on-surface-variant opacity-40">Nenhum cartão cadastrado</p>
-            ) : (
-              <div className="grid gap-3">
-                {creditCards.map(card => {
-                  const colors = BANK_COLORS[card.bank] || {
-                    from: '#1a1a2e',
-                    to: '#16213e',
-                    text: '#ffffff'
-                  };
-                  return (
-                    <div key={card.id} className="bg-white rounded-[2rem] p-5 flex items-center justify-between shadow-sm border border-surface-container/50 cursor-pointer active:scale-[0.98] transition-all"
-                      onClick={() => {
-                        setEditingCard(card);
-                        setCardName(card.name || '');
-                        setCardBank(card.bank || 'Nubank');
-                        setCardLimit(String(card.card_limit || ''));
-                        setCardClosingDay(card.closing_day || 1);
-                        setCardDueDay(card.due_day || 10);
-                        setShowCardModal(true);
-                      }}
-                    >
-                      <div className="flex items-center gap-4">
-                        <div
-                          className="w-10 h-10 rounded-2xl flex items-center justify-center shadow-sm"
-                          style={{ background: `linear-gradient(135deg, ${colors.from}, ${colors.to})` }}
-                        >
-                          <CreditCard size={18} style={{ color: colors.text }} />
-                        </div>
-                        <div>
-                          <p className="font-bold text-on-surface text-base leading-tight">{card.name || card.bank}</p>
-                          <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest">
-                            {card.bank} · Limite {(Number(card.card_limit) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                          </p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setDeletingCardId(card.id); }}
-                        className="p-2 rounded-full text-on-surface-variant/30 hover:text-error hover:bg-error/5 transition-all active:scale-90"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
         </section>
 
       </main>
