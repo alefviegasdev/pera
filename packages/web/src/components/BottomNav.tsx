@@ -20,7 +20,7 @@ const BottomNav = ({
   hidden?: boolean;
 }) => (
   <div className={`fixed left-6 right-6 z-40 bottom-8 flex justify-center items-center gap-3 ${hidden ? 'hidden' : ''}`}>
-    <nav className="relative flex items-center gap-1 bg-white/80 backdrop-blur-3xl rounded-full py-2 shadow-[0_15px_40px_rgba(0,0,0,0.08)] border border-white/40 px-2.5">
+    <nav className="relative flex items-center gap-1 bg-white/20 backdrop-blur-lg rounded-full py-2 shadow-[0_8px_32px_rgba(0,0,0,0.08)] border border-white/30 px-2.5">
       {TABS.map(({ id, icon, label }) => {
         const isActive = activeTab === id;
         
