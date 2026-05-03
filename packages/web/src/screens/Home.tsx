@@ -682,6 +682,111 @@ const Home = ({
           </section>
         )}
 
+        {/* ── MEUS CARTÕES ── */}
+        {creditCards.length > 0 && (
+          <section className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-on-surface font-extrabold text-xl font-headline">Meus Cartões</h2>
+              <span className="text-on-surface-variant text-xs font-bold opacity-40">{creditCards.length > 1 ? 'Deslize para ver' : ''}</span>
+            </div>
+            <div
+              ref={cardSwipeRef}
+              className="relative w-full select-none"
+              style={{ height: creditCards.length > 1 ? 210 : 190, touchAction: 'pan-y pinch-zoom' }}
+            >
+              {creditCards.map((card, idx) => {
+                const bill = getBillForCard(card.id);
+                const currentBill = Number(bill?.amount || 0);
+                const cardLimit = Number(card.card_limit || 0);
+                const cardAvailable = cardLimit - currentBill;
+                const usedPct = cardLimit > 0 ? Math.min(100, (currentBill / cardLimit) * 100) : 0;
+                const colors = BANK_COLORS[card.bank] || {
+                  from: '#1a1a2e',
+                  to: '#16213e',
+                  text: '#ffffff'
+                };
+
+                const relIdx = (idx - activeCardIdx + creditCards.length) % creditCards.length;
+                const isFront = relIdx === 0;
+                const isSecond = relIdx === 1;
+                const isThird = relIdx === 2;
+
+                if (!isFront && !isSecond && !isThird) return null;
+
+                const zIndex = isFront ? 20 : isSecond ? 10 : 0;
+                const scale = isFront ? 1 : isSecond ? 0.94 : 0.88;
+                const translateY = isFront ? 0 : isSecond ? 10 : 18;
+                const opacity = isFront ? 1 : isSecond ? 0.7 : 0.4;
+                const dragOffset = isFront ? cardDragX : 0;
+
+                return (
+                  <div
+                    key={card.id}
+                    className="absolute left-0 right-0 rounded-[2rem] overflow-hidden shadow-2xl border border-white/20"
+                    style={{
+                      zIndex,
+                      transform: `translateY(${translateY}px) scale(${scale}) translateX(${dragOffset}px)`,
+                      opacity,
+                      transition: cardDragStart !== null && isFront ? 'none' : 'all 0.35s cubic-bezier(0.34,1.56,0.64,1)',
+                      background: `linear-gradient(135deg, ${colors.from}, ${colors.to})`,
+                      color: colors.text
+                    }}
+                  >
+                    <div className="px-6 py-6">
+                      <div className="flex justify-between items-start mb-6">
+                        <p className="text-lg font-headline font-black" style={{ color: colors.text }}>{card.bank}</p>
+                        <div className="text-right">
+                          <p className="text-[9px] font-bold uppercase opacity-60 tracking-wider">Vencimento Dia {card.due_day}</p>
+                          <p className="text-[9px] font-bold uppercase opacity-60 tracking-wider">Fechamento Dia {card.closing_day}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-end">
+                          <div className="space-y-0.5">
+                            <p className="text-[10px] font-bold uppercase opacity-70">Fatura atual</p>
+                            <p className="text-xl font-headline font-black">{maskValue(fmt(currentBill), hideMaster)}</p>
+                          </div>
+                          <div className="text-right space-y-0.5">
+                            <p className="text-[10px] font-bold uppercase opacity-70">Limite Disponível</p>
+                            <p className="text-sm font-bold">{maskValue(fmt(cardAvailable), hideMaster)}</p>
+                          </div>
+                        </div>
+                        <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
+                          <div
+                            className="h-full rounded-full"
+                            style={{
+                              width: `${usedPct}%`,
+                              backgroundColor: 'rgba(255,255,255,0.8)',
+                              boxShadow: '0 0 8px rgba(255,255,255,0.4)'
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {creditCards.length > 1 && (
+              <div className="flex justify-center gap-1.5 -mt-2">
+                {creditCards.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setActiveCardIdx(i)}
+                    className="rounded-full transition-all duration-300"
+                    style={{
+                      width: i === activeCardIdx ? 20 : 6,
+                      height: 6,
+                      backgroundColor: i === activeCardIdx ? '#5d3fd3' : '#adada9'
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
+        
         {/* ── BILLS (VENCIMENTOS) ── */}
         <section className="space-y-6">
           <div className="flex justify-between items-center">
@@ -829,110 +934,6 @@ const Home = ({
             )}
           </div>
         </section>
-
-        {/* ── MEUS CARTÕES ── */}
-        {creditCards.length > 0 && (
-          <section className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-on-surface font-extrabold text-xl font-headline">Meus Cartões</h2>
-              <span className="text-on-surface-variant text-xs font-bold opacity-40">{creditCards.length > 1 ? 'Deslize para ver' : ''}</span>
-            </div>
-            <div
-              ref={cardSwipeRef}
-              className="relative w-full select-none"
-              style={{ height: creditCards.length > 1 ? 210 : 190, touchAction: 'pan-y pinch-zoom' }}
-            >
-              {creditCards.map((card, idx) => {
-                const bill = getBillForCard(card.id);
-                const currentBill = Number(bill?.amount || 0);
-                const cardLimit = Number(card.card_limit || 0);
-                const cardAvailable = cardLimit - currentBill;
-                const usedPct = cardLimit > 0 ? Math.min(100, (currentBill / cardLimit) * 100) : 0;
-                const colors = BANK_COLORS[card.bank] || {
-                  from: '#1a1a2e',
-                  to: '#16213e',
-                  text: '#ffffff'
-                };
-
-                const relIdx = (idx - activeCardIdx + creditCards.length) % creditCards.length;
-                const isFront = relIdx === 0;
-                const isSecond = relIdx === 1;
-                const isThird = relIdx === 2;
-
-                if (!isFront && !isSecond && !isThird) return null;
-
-                const zIndex = isFront ? 20 : isSecond ? 10 : 0;
-                const scale = isFront ? 1 : isSecond ? 0.94 : 0.88;
-                const translateY = isFront ? 0 : isSecond ? 10 : 18;
-                const opacity = isFront ? 1 : isSecond ? 0.7 : 0.4;
-                const dragOffset = isFront ? cardDragX : 0;
-
-                return (
-                  <div
-                    key={card.id}
-                    className="absolute left-0 right-0 rounded-[2rem] overflow-hidden shadow-2xl border border-white/20"
-                    style={{
-                      zIndex,
-                      transform: `translateY(${translateY}px) scale(${scale}) translateX(${dragOffset}px)`,
-                      opacity,
-                      transition: cardDragStart !== null && isFront ? 'none' : 'all 0.35s cubic-bezier(0.34,1.56,0.64,1)',
-                      background: `linear-gradient(135deg, ${colors.from}, ${colors.to})`,
-                      color: colors.text
-                    }}
-                  >
-                    <div className="px-6 py-6">
-                      <div className="flex justify-between items-start mb-6">
-                        <p className="text-lg font-headline font-black" style={{ color: colors.text }}>{card.bank}</p>
-                        <div className="text-right">
-                          <p className="text-[9px] font-bold uppercase opacity-60 tracking-wider">Vencimento Dia {card.due_day}</p>
-                          <p className="text-[9px] font-bold uppercase opacity-60 tracking-wider">Fechamento Dia {card.closing_day}</p>
-                        </div>
-                      </div>
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-end">
-                          <div className="space-y-0.5">
-                            <p className="text-[10px] font-bold uppercase opacity-70">Fatura atual</p>
-                            <p className="text-xl font-headline font-black">{maskValue(fmt(currentBill), hideMaster)}</p>
-                          </div>
-                          <div className="text-right space-y-0.5">
-                            <p className="text-[10px] font-bold uppercase opacity-70">Limite Disponível</p>
-                            <p className="text-sm font-bold">{maskValue(fmt(cardAvailable), hideMaster)}</p>
-                          </div>
-                        </div>
-                        <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
-                          <div
-                            className="h-full rounded-full"
-                            style={{
-                              width: `${usedPct}%`,
-                              backgroundColor: 'rgba(255,255,255,0.8)',
-                              boxShadow: '0 0 8px rgba(255,255,255,0.4)'
-                            }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            {creditCards.length > 1 && (
-              <div className="flex justify-center gap-1.5 -mt-2">
-                {creditCards.map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setActiveCardIdx(i)}
-                    className="rounded-full transition-all duration-300"
-                    style={{
-                      width: i === activeCardIdx ? 20 : 6,
-                      height: 6,
-                      backgroundColor: i === activeCardIdx ? '#5d3fd3' : '#adada9'
-                    }}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
-        )}
 
         {/* ── CATEGORY HIGHLIGHTS ── */}
         <section className="space-y-4">
