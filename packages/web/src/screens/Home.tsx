@@ -852,7 +852,11 @@ const Home = ({
                 const cardLimit = Number(card.card_limit || 0);
                 const cardAvailable = cardLimit - currentBill;
                 const usedPct = cardLimit > 0 ? Math.min(100, (currentBill / cardLimit) * 100) : 0;
-                const colors = BANK_COLORS[card.bank] || BANK_COLORS['Default'];
+                const colors = BANK_COLORS[card.bank] || {
+                  from: '#1a1a2e',
+                  to: '#16213e',
+                  text: '#ffffff'
+                };
 
                 const relIdx = (idx - activeCardIdx + creditCards.length) % creditCards.length;
                 const isFront = relIdx === 0;

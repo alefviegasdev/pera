@@ -632,7 +632,11 @@ const Settings = ({
             ) : (
               <div className="grid gap-3">
                 {creditCards.map(card => {
-                  const colors = BANK_COLORS[card.bank] || BANK_COLORS['Default'];
+                  const colors = BANK_COLORS[card.bank] || {
+                    from: '#1a1a2e',
+                    to: '#16213e',
+                    text: '#ffffff'
+                  };
                   return (
                     <div key={card.id} className="bg-white rounded-[2rem] p-5 flex items-center justify-between shadow-sm border border-surface-container/50 cursor-pointer active:scale-[0.98] transition-all"
                       onClick={() => {
