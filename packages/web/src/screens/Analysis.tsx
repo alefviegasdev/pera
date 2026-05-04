@@ -338,10 +338,10 @@ const Analysis = ({
         {/* Composition & Categories Section */}
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-8 px-0">
           {/* Composition Chart */}
-          <div className="lg:col-span-1 flex flex-col items-center bg-surface-container-lowest rounded-2xl shadow-sm p-8">
+          <div className="lg:col-span-1 flex flex-col items-center px-2 bg-surface-container-lowest p-6 rounded-2xl shadow-sm">
             <div className="flex items-center justify-between w-full gap-2 mb-4">
               <div className="flex flex-col w-full">
-                <h3 className="font-headline font-bold text-xl text-left mb-6">Composição</h3>
+                <h3 className="font-headline font-bold text-xl mb-4 text-left">Composição</h3>
                 <div className="flex items-center justify-between w-full">
                   <div className="relative" ref={dropdownRef}>
                     <button 
@@ -373,15 +373,8 @@ const Analysis = ({
               </div>
             </div>
             
-            <div className="relative w-[220px] h-[220px] my-4">
-              <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-                <circle
-                  cx="50" cy="50" r="40"
-                  fill="none"
-                  stroke="var(--surface-container-highest)"
-                  strokeWidth="14"
-                  className="opacity-10"
-                />
+            <div className="relative w-[220px] h-[220px] mx-auto">
+              <svg width="220" height="220" viewBox="0 0 100 100" className="-rotate-90">
                 {composition.reduce((acc, item, i) => {
                   const circumference = 2 * Math.PI * 40;
                   const offset = acc.offset;
@@ -396,7 +389,7 @@ const Analysis = ({
                       strokeDasharray={`${dash} ${circumference}`}
                       strokeDashoffset={-offset}
                       strokeLinecap="round"
-                      className="transition-all duration-1000 ease-out"
+                      className="transition-all duration-700 ease-in-out"
                     />
                   );
                   acc.offset += dash;
@@ -411,7 +404,7 @@ const Analysis = ({
             </div>
 
             {/* Two-Column Legend */}
-            <div className="w-full grid grid-cols-2 gap-y-5 mt-12 gap-x-8">
+            <div className="mt-10 w-full grid grid-cols-2 gap-y-5 gap-x-12">
               {composition.length > 0 ? (
                 composition.map((item, i) => (
                   <div key={item.label} className="flex items-center justify-between">
