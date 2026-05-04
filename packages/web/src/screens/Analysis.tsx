@@ -394,9 +394,14 @@ const Analysis = ({
                   
                   const dash = (item.percentage / 100) * availableCircumference;
                   const offset = acc.offset;
+                  const currentDelay = acc.delay;
                   
                   // Ensure dash is at least 0.1 so round caps show even for 0% or very small values
                   const visibleDash = Math.max(0.1, dash);
+                  
+                  const TOTAL_TIME = 2.0;
+                  const duration = (visibleDash / circumference) * TOTAL_TIME;
+                  const gapDuration = (GAP / circumference) * TOTAL_TIME;
 
                   acc.elements.push(
                     <motion.circle
@@ -404,11 +409,11 @@ const Analysis = ({
                       initial={{ strokeDasharray: `0 ${circumference}`, strokeDashoffset: -offset, opacity: 0 }}
                       animate={{ strokeDasharray: `${visibleDash} ${circumference}`, strokeDashoffset: -offset, opacity: 1 }}
                       transition={{ 
-                        duration: 0.5, 
+                        duration: duration, 
                         type: "tween", 
                         ease: "linear", 
-                        delay: i * 0.5,
-                        opacity: { duration: 0.01, delay: i * 0.5 }
+                        delay: currentDelay,
+                        opacity: { duration: 0.01, delay: currentDelay }
                       }}
                       cx="50" cy="50" r="40"
                       fill="none"
@@ -418,8 +423,9 @@ const Analysis = ({
                     />
                   );
                   acc.offset += visibleDash + GAP;
+                  acc.delay += duration + gapDuration;
                   return acc;
-                }, { elements: [] as React.ReactNode[], offset: 0 }).elements}
+                }, { elements: [] as React.ReactNode[], offset: 0, delay: 0 }).elements}
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                 <span className="text-3xl font-headline font-extrabold text-on-surface">
