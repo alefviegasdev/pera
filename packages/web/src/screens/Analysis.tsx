@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import CategoryDetailsModal from '../components/CategoryDetailsModal';
 import DateRangeModal from '../components/DateRangeModal';
+import { motion } from 'framer-motion';
 
 type ViewMode = 'subtype' | 'urgency' | 'category';
 
@@ -366,16 +367,16 @@ const Analysis = ({
                       </div>
                     )}
                   </div>
-                  <div className="flex bg-surface-container-low p-0.5 rounded-full">
+                  <div className="flex bg-surface-container-highest/30 p-1 rounded-full border border-outline-variant/20">
                     <button 
                       onClick={() => setLegendMode('value')}
-                      className={`px-3 py-1 rounded-full text-[10px] font-bold shadow-sm transition-all ${legendMode === 'value' ? 'bg-primary text-on-primary' : 'text-on-surface-variant hover:bg-surface-container-high'}`}
+                      className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm transition-all ${legendMode === 'value' ? 'bg-primary text-white scale-105 shadow-md' : 'text-on-surface-variant hover:bg-surface-container-high'}`}
                     >
                       Valor
                     </button>
                     <button 
                       onClick={() => setLegendMode('percentage')}
-                      className={`px-3 py-1 rounded-full text-[10px] font-bold shadow-sm transition-all ${legendMode === 'percentage' ? 'bg-primary text-on-primary' : 'text-on-surface-variant hover:bg-surface-container-high'}`}
+                      className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm transition-all ${legendMode === 'percentage' ? 'bg-primary text-white scale-105 shadow-md' : 'text-on-surface-variant hover:bg-surface-container-high'}`}
                     >
                       %
                     </button>
@@ -398,16 +399,16 @@ const Analysis = ({
                   const visibleDash = Math.max(0.1, dash);
 
                   acc.elements.push(
-                    <circle
+                    <motion.circle
                       key={item.label}
+                      initial={{ strokeDasharray: `0 ${circumference}`, strokeDashoffset: -offset }}
+                      animate={{ strokeDasharray: `${visibleDash} ${circumference}`, strokeDashoffset: -offset }}
+                      transition={{ duration: 1.2, type: "spring", bounce: 0.15 }}
                       cx="50" cy="50" r="40"
                       fill="none"
                       stroke={item.color}
                       strokeWidth="14"
-                      strokeDasharray={`${visibleDash} ${circumference}`}
-                      strokeDashoffset={-offset}
                       strokeLinecap="round"
-                      className="transition-all duration-700 ease-in-out"
                     />
                   );
                   acc.offset += visibleDash + GAP;
