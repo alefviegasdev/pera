@@ -10,6 +10,7 @@ import {
   EyeOff,
   Plus,
   ChevronUp,
+  ChevronDown,
   X
 } from 'lucide-react';
 import CategoryDetailsModal from '../components/CategoryDetailsModal';
@@ -577,6 +578,8 @@ const Analysis = ({
 
             </div>
           )}
+
+        </section>
 
       </div>
 

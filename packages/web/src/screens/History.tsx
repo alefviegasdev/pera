@@ -294,9 +294,6 @@ const History = ({
           </div>
         </section>
 
-
-        </section>
-
         {/* Transaction List Grouped */}
         <section className="space-y-8 pb-12">
           {loading ? (
