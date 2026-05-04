@@ -176,12 +176,12 @@ const Transactions = ({ userId }: { userId: string }) => {
               <div className="detail-cell">
                 <p className="detail-label">Tipo</p>
                 <p className="detail-value">
-                  {selected.subtype === 'fixed' ? 'Fixo' : selected.subtype === 'semifixed' ? 'Semi-fixo' : 'Variável'}
+                  {selected.subtype === 'fixed' ? 'Fixo' : selected.subtype === 'semifixed' ? 'Semi-fixo' : 'Único'}
                 </p>
               </div>
               <div className="detail-cell">
                 <p className="detail-label">Urgência</p>
-                <p className="detail-value">{selected.urgency === 'urgent' ? 'Urgente' : 'Não urgente'}</p>
+                <p className="detail-value">{selected.urgency === 'urgent' ? 'Urgente' : selected.urgency === 'necessity' ? 'Necessidade' : 'Secundário'}</p>
               </div>
             </div>
 

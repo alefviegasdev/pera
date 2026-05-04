@@ -211,14 +211,14 @@ const Analysis = ({
 
     if (viewMode === 'subtype') {
       txs.forEach(t => {
-        const label = t.subtype === 'fixed' ? 'Fixos' : t.subtype === 'semifixed' ? 'Semi-fixos' : 'Variáveis';
+        const label = t.subtype === 'fixed' ? 'Fixos' : t.subtype === 'semifixed' ? 'Semi-fixos' : 'Únicos';
         const color = t.subtype === 'fixed' ? '#4A7FE5' : t.subtype === 'semifixed' ? '#A5A5A5' : '#7CB342';
         if (!groups[label]) groups[label] = { value: 0, color, label };
         groups[label].value += t.value;
       });
     } else if (viewMode === 'urgency') {
       txs.forEach(t => {
-        const label = t.urgency === 'urgent' ? 'Urgentes' : t.urgency === 'necessity' ? 'Necessidades' : 'Variáveis';
+        const label = t.urgency === 'urgent' ? 'Urgentes' : t.urgency === 'necessity' ? 'Necessidades' : 'Secundários';
         const color = t.urgency === 'urgent' ? '#FF5252' : t.urgency === 'necessity' ? '#FFC107' : '#8BC34A';
         if (!groups[label]) groups[label] = { value: 0, color, label };
         groups[label].value += t.value;
@@ -403,7 +403,7 @@ const Analysis = ({
                       key={item.label}
                       initial={{ strokeDasharray: `0 ${circumference}`, strokeDashoffset: -offset }}
                       animate={{ strokeDasharray: `${visibleDash} ${circumference}`, strokeDashoffset: -offset }}
-                      transition={{ duration: 1.2, type: "spring", bounce: 0.15 }}
+                      transition={{ duration: 1.2, type: "spring", bounce: 0.15, delay: i * 0.15 }}
                       cx="50" cy="50" r="40"
                       fill="none"
                       stroke={item.color}

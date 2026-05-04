@@ -200,7 +200,7 @@ const Home = ({
           type: 'expense',
           category: 'Contas',
           subtype: 'fixed',
-          urgency: 'planned',
+          urgency: 'secondary',
           description: bill.name,
           source: 'text',
           short_code: shortCode
@@ -250,7 +250,7 @@ const Home = ({
           type: 'expense',
           category: inst.category || 'Outros',
           subtype: 'semifixed',
-          urgency: 'planned',
+          urgency: 'secondary',
           description: isFinished ? `${inst.name} (Final)` : `${inst.name} (Parcela ${nextCount}/${inst.total})`,
           source: 'text',
           short_code: shortCode

@@ -115,14 +115,18 @@ Adicionar campo "subcategory" ao JSON para as seguintes categorias:
 
 Para outras categorias (Contas, Vestuário, etc.), não incluir subcategory.
 
+9. CLASSIFICAÇÃO DE TIPO DE CUSTO (subtype) E PRIORIDADE (urgency) - MUITO IMPORTANTE:
+   - "subtype": Deve ser "fixed" (contas fixas/assinaturas mensais constantes), "semifixed" (compras parceladas com fim previsível) ou "unique" (gastos diários, compras corriqueiras, compras avulsas únicas).
+   - "urgency": Deve ser "urgent" (toda transação de necessidade não cotidiana que foge do controle, ex: remédios, conserto de carro, 2ª via de doc), "necessity" (importante para subsistência diária, ex: alimentos pro dia a dia, itens de casa, gasolina) ou "secondary" (tudo que não se encaixa nas outras duas, ex: lazer, fastfood, doces, restaurantes).
+
 JSON Structure (dentro do array):
 {
   "value": número (decimal, se for expense/income),
   "limit_value": número (decimal, se for budget_limit),
   "type": "expense" | "income" | "payment" | "bill" | "budget_limit",
   "category": "Alimentação" | "Transporte" | "Saúde" | "Lazer" | "Educação" | "Contas" | "Vestuário" | "Eletrônicos" | "Dízimo/Oferta" | "Outros",
-  "subtype": "fixed" | "semifixed" | "variable",
-  "urgency": "urgent" | "necessity" | "variable",
+  "subtype": "fixed" | "semifixed" | "unique",
+  "urgency": "urgent" | "necessity" | "secondary",
   "description": string curta,
   "name": string (apenas se for type: bill),
   "due_day": número (apenas se for type: bill),

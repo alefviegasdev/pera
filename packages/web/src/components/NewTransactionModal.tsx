@@ -31,8 +31,8 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ userId, onClo
   const [category, setCategory] = useState('Outros');
   const [subcategory, setSubcategory] = useState('');
   
-  const [urgency, setUrgency] = useState<'urgent' | 'planned'>('planned');
-  const [subtype, setSubtype] = useState<'variable' | 'semifixed' | 'fixed'>('variable');
+  const [urgency, setUrgency] = useState<'urgent' | 'necessity' | 'secondary'>('secondary');
+  const [subtype, setSubtype] = useState<'unique' | 'semifixed' | 'fixed'>('unique');
   
   const [installments, setInstallments] = useState('1');
   const [creditCardId, setCreditCardId] = useState('');
@@ -160,7 +160,7 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ userId, onClo
             type,
             category,
             subcategory: subcategory || null,
-            subtype: 'variable',
+            subtype: 'unique',
             urgency,
             description,
             source: 'app',
@@ -278,10 +278,10 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ userId, onClo
             <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
-                onClick={() => setSubtype('variable')}
-                className={`py-3 px-2 rounded-2xl font-bold text-xs transition-all border-2 ${subtype === 'variable' ? 'border-primary bg-primary/5 text-primary' : 'border-transparent bg-surface-container-low text-on-surface-variant'}`}
+                onClick={() => setSubtype('unique')}
+                className={`py-3 px-2 rounded-2xl font-bold text-xs transition-all border-2 ${subtype === 'unique' ? 'border-primary bg-primary/5 text-primary' : 'border-transparent bg-surface-container-low text-on-surface-variant'}`}
               >
-                Variável
+                Único
               </button>
               <button
                 type="button"
@@ -347,7 +347,7 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ userId, onClo
             </div>
           )}
 
-          {(subtype === 'variable' || subtype === 'fixed') && type === 'expense' && (
+          {(subtype === 'unique' || subtype === 'fixed') && type === 'expense' && (
             <div className="space-y-4">
               <label className="block font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">PAGAMENTO (MÉTODO)</label>
               <div className="grid grid-cols-2 gap-2">
@@ -422,20 +422,27 @@ const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ userId, onClo
           {type === 'expense' && (
             <div className="space-y-4">
               <label className="block font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">PRIORIDADE (URGÊNCIA)</label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setUrgency('planned')}
-                  className={`py-3 px-4 rounded-2xl font-bold text-xs transition-all border-2 flex items-center justify-center gap-2 ${urgency === 'planned' ? 'border-[#354900] bg-[#354900]/10 text-[#354900]' : 'border-transparent bg-surface-container-low text-on-surface-variant'}`}
-                >
-                  Planejado
-                </button>
+              <div className="grid grid-cols-3 gap-2">
                 <button
                   type="button"
                   onClick={() => setUrgency('urgent')}
-                  className={`py-3 px-4 rounded-2xl font-bold text-xs transition-all border-2 flex items-center justify-center gap-2 ${urgency === 'urgent' ? 'border-error bg-error/10 text-error' : 'border-transparent bg-surface-container-low text-on-surface-variant'}`}
+                  className={`py-3 px-2 rounded-2xl font-bold text-xs transition-all border-2 flex items-center justify-center text-center ${urgency === 'urgent' ? 'border-error bg-error/10 text-error' : 'border-transparent bg-surface-container-low text-on-surface-variant'}`}
                 >
-                  Urgente / Imprevisto
+                  Urgente
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUrgency('necessity')}
+                  className={`py-3 px-2 rounded-2xl font-bold text-xs transition-all border-2 flex items-center justify-center text-center ${urgency === 'necessity' ? 'border-[#FFC107] bg-[#FFC107]/10 text-[#FFC107]' : 'border-transparent bg-surface-container-low text-on-surface-variant'}`}
+                >
+                  Necessidade
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUrgency('secondary')}
+                  className={`py-3 px-2 rounded-2xl font-bold text-xs transition-all border-2 flex items-center justify-center text-center ${urgency === 'secondary' ? 'border-[#354900] bg-[#354900]/10 text-[#354900]' : 'border-transparent bg-surface-container-low text-on-surface-variant'}`}
+                >
+                  Secundário
                 </button>
               </div>
             </div>
