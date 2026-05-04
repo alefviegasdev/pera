@@ -403,7 +403,7 @@ const Analysis = ({
                       key={item.label}
                       initial={{ strokeDasharray: `0 ${circumference}`, strokeDashoffset: -offset }}
                       animate={{ strokeDasharray: `${visibleDash} ${circumference}`, strokeDashoffset: -offset }}
-                      transition={{ duration: 1.2, type: "spring", bounce: 0.15, delay: i * 0.15 }}
+                      transition={{ duration: 0.5, type: "spring", bounce: 0.15, delay: i * 0.5 }}
                       cx="50" cy="50" r="40"
                       fill="none"
                       stroke={item.color}
