@@ -148,8 +148,8 @@ const Analysis = ({
       });
     } else if (viewMode === 'urgency') {
       txs.forEach(t => {
-        const label = t.urgency === 'urgent' ? 'Urgentes' : 'Não urgentes';
-        const color = t.urgency === 'urgent' ? '#FF5252' : '#8BC34A';
+        const label = t.urgency === 'urgent' ? 'Urgentes' : t.urgency === 'necessity' ? 'Necessidades' : 'Variáveis';
+        const color = t.urgency === 'urgent' ? '#FF5252' : t.urgency === 'necessity' ? '#FFC107' : '#8BC34A';
         if (!groups[label]) groups[label] = { value: 0, color, label };
         groups[label].value += t.value;
       });
@@ -197,7 +197,7 @@ const Analysis = ({
 
   const modes = [
     { id: 'subtype', label: 'Tipo de Custo' },
-    { id: 'urgency', label: 'Urgência' },
+    { id: 'urgency', label: 'Prioridade' },
     { id: 'category', label: 'Categorias' },
   ];
 
@@ -408,7 +408,7 @@ const Analysis = ({
           <div className="space-y-3 z-10">
             <h4 className="text-xl font-headline font-black text-on-secondary-container">Insight da Pera 🍐</h4>
             <p className="text-on-secondary-container opacity-90 leading-relaxed text-sm font-medium">
-              Sua análise mostra que o foco em **{viewMode === 'subtype' ? 'Custo Fixo' : viewMode === 'urgency' ? 'Urgência' : 'Categorias'}** pode revelar oportunidades de economia inteligente.
+              Sua análise mostra que o foco em **{viewMode === 'subtype' ? 'Custo Fixo' : viewMode === 'urgency' ? 'Prioridade' : 'Categorias'}** pode revelar oportunidades de economia inteligente.
             </p>
           </div>
           <button className="bg-on-secondary-container text-white px-8 py-3 rounded-full font-bold text-sm active:scale-95 transition-all w-fit shadow-lg shadow-black/10">

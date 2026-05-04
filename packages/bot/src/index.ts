@@ -30,8 +30,9 @@ REGRAS DE CLASSIFICAÇÃO:
    - "semifixed": Despesas recorrentes com prazo de fim ou temporárias (terapia, curso, parcelamentos, tratamentos, assinaturas temporárias).
    - "variable": Despesas pontuais sem recorrência (alimentação fora, lazer, compras avulsas).
 2. "urgency":
-   - "urgent": Emergências, imprevistos, saúde urgente.
-   - "planned": Tudo que não é emergência (mesmo que recorrente ou obrigatório).
+   - "urgent": Toda transação de uma compra que precisou ser feita por necessidade não cotidiana (remédios, conserto de carro, 2ª via de documentos, óculos de grau, uniforme). Imprevistos urgentes.
+   - "necessity": Importante para a subsistência básica (alimentos do dia a dia - arroz, feijão, pão, etc; produtos de casa; gasolina; transporte; contas básicas).
+   - "variable": Tudo o que não se encaixa nos anteriores (lazer, fastfood, restaurantes, doces, petiscos, compras não essenciais).
 3. CASOS ESPECÍFICOS:
    - "Dízimo" -> subtype: "fixed".
    - "Oferta" ou "Ofertas" -> subtype: "variable".
@@ -121,7 +122,7 @@ JSON Structure (dentro do array):
   "type": "expense" | "income" | "payment" | "bill" | "budget_limit",
   "category": "Alimentação" | "Transporte" | "Saúde" | "Lazer" | "Educação" | "Contas" | "Vestuário" | "Eletrônicos" | "Dízimo/Oferta" | "Outros",
   "subtype": "fixed" | "semifixed" | "variable",
-  "urgency": "urgent" | "planned",
+  "urgency": "urgent" | "necessity" | "variable",
   "description": string curta,
   "name": string (apenas se for type: bill),
   "due_day": número (apenas se for type: bill),
@@ -174,7 +175,7 @@ Retorne neste formato:
   "description": string ou null,
   "category": string ou null,
   "subtype": "fixed", "variable", "semifixed" ou null,
-  "urgency": "urgent", "planned" ou null,
+  "urgency": "urgent", "necessity", "variable" ou null,
   "installments": número ou null,
   "delete": true ou null
 }
@@ -191,8 +192,9 @@ Regras:
 - Se mencionar fixo/obrigatório/mensalidade → subtype: fixed
 - Se mencionar variável/avulso/esporádico → subtype: variable
 - Se mencionar semi-fixo/temporário/por enquanto → subtype: semifixed
-- Se mencionar urgente/emergência/imprevisto → urgency: urgent
-- Se mencionar não urgente/planejado/tranquilo → urgency: planned
+- Se mencionar urgente/emergência/imprevisto/necessidade não cotidiana → urgency: urgent
+- Se mencionar necessidade/subsistência/básico/dia a dia → urgency: necessity
+- Se mencionar variável/lazer/extra/não essencial → urgency: variable
 - Se mencionar parcelas/vezes/dividir/x → preenche installments
 - Se mencionar apagar/deletar/excluir/remover/cancelar → delete: true
 - Retorna null nos campos não mencionados
@@ -406,7 +408,7 @@ async function registerCreditTransaction(
     type: item.type,
     category: item.category || 'Outros',
     subtype: item.subtype || 'variable',
-    urgency: item.urgency || 'planned',
+    urgency: item.urgency || 'variable',
     description: item.description || 'Sem descrição',
     source: 'text',
     short_code: shortCode,

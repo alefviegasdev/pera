@@ -194,7 +194,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ tx, onRefresh, onCl
               <span className="text-[9px] font-black uppercase tracking-widest">Prioridade</span>
             </div>
             <p className="font-bold text-sm text-on-surface">
-              {tx.urgency === 'urgent' ? '🔴 Urgente' : '🟢 Normal'}
+              {tx.urgency === 'urgent' ? '🔴 Urgente' : tx.urgency === 'necessity' ? '🟡 Necessidade' : '🟢 Variável'}
             </p>
           </div>
           <div className="bg-white/50 border border-surface-container p-4 rounded-2xl">
