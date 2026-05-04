@@ -455,7 +455,7 @@ const Analysis = ({
                   const color = CATEGORY_COLORS[cat.category] || '#9E9E9E';
                   const emoji = catEmoji(cat.category);
                   return (
-                    <div key={cat.category} className="bg-surface-container-lowest p-6 rounded-xl flex items-center justify-between hover:scale-[1.01] transition-transform cursor-pointer shadow-sm">
+                    <div key={cat.category} className="bg-white p-6 rounded-xl flex items-center justify-between hover:scale-[1.01] transition-transform cursor-pointer shadow-sm">
                       <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-xl" style={{ backgroundColor: color + '22' }}>
                           {emoji}
@@ -483,17 +483,7 @@ const Analysis = ({
           </div>
         </section>
 
-        {/* Insights Banner */}
-        <section className="bg-secondary-fixed rounded-xl p-8 flex flex-col md:flex-row items-center gap-6 overflow-hidden relative">
-          <div className="absolute -right-4 -top-4 w-32 h-32 bg-secondary-fixed-dim rounded-full blur-3xl opacity-50"></div>
-          <div className="flex-1 space-y-2 z-10">
-            <h4 className="text-xl font-headline font-black text-on-secondary-fixed">Insight da Pera 🍐</h4>
-            <p className="text-on-secondary-fixed opacity-90 leading-relaxed text-sm">
-              Sua análise mostra que o foco em <strong>{viewMode === 'subtype' ? 'Custo Fixo' : viewMode === 'urgency' ? 'Prioridade' : 'Categorias'}</strong> pode revelar oportunidades de economia inteligente.
-            </p>
-          </div>
-          <button className="bg-on-secondary-fixed text-white px-8 py-3 rounded-full font-bold z-10 active:scale-95 transition-all">Ver Metas</button>
-        </section>
+
 
         {/* Shopping List */}
         <section className="space-y-4">
