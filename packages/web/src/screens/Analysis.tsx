@@ -297,86 +297,89 @@ const Analysis = ({
         
 
 
-        {/* Summary Cards */}
-        <section className="grid grid-cols-1 gap-4">
-          <div className="bg-tertiary-container rounded-[2rem] p-8 flex flex-col justify-between aspect-[16/9] shadow-sm">
-            <div>
-              <div className="flex justify-between items-start">
-                <span className="text-on-tertiary-fixed font-label font-bold uppercase tracking-widest text-[10px]">Total Entradas</span>
-                <div className="w-10 h-10 rounded-full bg-tertiary-fixed-dim flex items-center justify-center">
-                  <TrendingUp size={20} className="text-on-tertiary-fixed" />
+        {/* Summary Cards Grid (Updated to 1x2) */}
+        <section className="grid grid-cols-2 gap-3">
+          <div className="bg-tertiary-container rounded-2xl p-5 flex flex-col justify-between h-32">
+            <div className="space-y-1">
+              <div className="flex justify-between items-center">
+                <span className="text-on-tertiary-fixed font-label font-bold uppercase tracking-widest text-[10px]">Entradas</span>
+                <div className="w-7 h-7 rounded-full bg-tertiary-fixed-dim flex items-center justify-center">
+                  <TrendingUp size={14} className="text-on-tertiary-fixed" />
                 </div>
               </div>
-              <div className="mt-4">
-                <h2 className="text-3xl font-headline font-bold text-on-tertiary-container">
-                  {loading ? '...' : maskValue(fmt(summary?.total_income ?? 0), hideAnalysis)}
-                </h2>
-              </div>
+              <h2 className="text-lg font-headline font-bold text-on-tertiary-container truncate">
+                {loading ? '...' : maskValue(fmt(summary?.total_income ?? 0), hideAnalysis)}
+              </h2>
             </div>
-            <div className="flex items-center gap-2 text-on-tertiary-fixed text-xs font-bold">
-              <CheckCircle size={14} />
-              <span>Dados sincronizados</span>
+            <div className="flex items-center gap-1.5 text-on-tertiary-fixed text-[10px] font-bold">
+              <CheckCircle size={12} />
+              <span className="leading-tight">+12% vs mês ant.</span>
             </div>
           </div>
-
-          <div className="bg-primary-container rounded-[2rem] p-8 flex flex-col justify-between aspect-[16/9] shadow-sm">
-            <div>
-              <div className="flex justify-between items-start">
-                <span className="text-on-primary-container font-label font-bold uppercase tracking-widest text-[10px]">Total Saídas</span>
-                <div className="w-10 h-10 rounded-full bg-primary-fixed-dim flex items-center justify-center">
-                  <TrendingDown size={20} className="text-on-primary-container" />
+          <div className="bg-primary-container rounded-2xl p-5 flex flex-col justify-between h-32">
+            <div className="space-y-1">
+              <div className="flex justify-between items-center">
+                <span className="text-on-primary-container font-label font-bold uppercase tracking-widest text-[10px]">Saídas</span>
+                <div className="w-7 h-7 rounded-full bg-primary-fixed-dim flex items-center justify-center">
+                  <TrendingDown size={14} className="text-on-primary-container" />
                 </div>
               </div>
-              <div className="mt-4">
-                <h2 className="text-3xl font-headline font-bold text-on-primary-container">
-                  {loading ? '...' : maskValue(fmt(summary?.total_expense ?? 0), hideAnalysis)}
-                </h2>
-              </div>
+              <h2 className="text-lg font-headline font-bold text-on-primary-container truncate">
+                {loading ? '...' : maskValue(fmt(summary?.total_expense ?? 0), hideAnalysis)}
+              </h2>
             </div>
-            <div className="flex items-center gap-2 text-on-primary-container text-xs font-bold">
-              <AlertCircle size={14} />
-              <span>Variação monitorada</span>
+            <div className="flex items-center gap-1.5 text-on-primary-container text-[10px] font-bold">
+              <AlertCircle size={12} />
+              <span className="leading-tight">+5% vs esperado</span>
             </div>
           </div>
         </section>
 
-        {/* Composition Section */}
-        <section className="bg-surface-container-low rounded-[2rem] p-8 space-y-8">
-          <div className="flex justify-between items-center relative z-20">
-            <h3 className="font-headline font-bold text-xl text-on-surface">Gastos</h3>
-            <div className="relative" ref={dropdownRef}>
-              <button 
-                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="flex items-center gap-1.5 bg-white px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest text-on-surface-variant shadow-sm border border-surface-container active:scale-95 transition-transform"
-              >
-                {modes.find(m => m.id === viewMode)?.label} <ChevronDown size={14} className={`transition-transform duration-300 ${isDropdownOpen ? 'rotate-180' : ''}`} />
-              </button>
-              
-              {isDropdownOpen && (
-                <div className="absolute top-full right-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-surface-container overflow-hidden animate-in fade-in slide-in-from-top-2">
-                  {modes.map(mode => (
-                    <button
-                      key={mode.id}
-                      onClick={() => { setViewMode(mode.id as ViewMode); setIsDropdownOpen(false); }}
-                      className={`w-full text-left px-5 py-3 text-xs font-bold transition-colors ${viewMode === mode.id ? 'bg-primary/5 text-primary' : 'text-on-surface-variant hover:bg-surface-container-low'}`}
+        {/* Composition & Categories Section */}
+        <section className="grid grid-cols-1 lg:grid-cols-3 gap-8 px-0">
+          {/* Composition Chart */}
+          <div className="lg:col-span-1 flex flex-col items-center bg-surface-container-lowest rounded-2xl shadow-sm p-8">
+            <div className="flex items-center justify-between w-full gap-2 mb-4">
+              <div className="flex flex-col w-full">
+                <h3 className="font-headline font-bold text-xl text-left mb-6">Composição</h3>
+                <div className="flex items-center justify-between w-full">
+                  <div className="relative" ref={dropdownRef}>
+                    <button 
+                      onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                      className="flex items-center gap-1 bg-surface-container-lowest border border-outline-variant/30 px-2.5 py-1 rounded-lg text-[10px] font-bold text-on-surface-variant"
                     >
-                      {mode.label}
+                      <span>{modes.find(m => m.id === viewMode)?.label || 'Por Categoria'}</span>
+                      <ChevronDown size={16} className={`transition-transform duration-300 ${isDropdownOpen ? 'rotate-180' : ''}`} />
                     </button>
-                  ))}
+                    {isDropdownOpen && (
+                      <div className="absolute top-full left-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-surface-container overflow-hidden animate-in fade-in slide-in-from-top-2 z-50">
+                        {modes.map(mode => (
+                          <button
+                            key={mode.id}
+                            onClick={() => { setViewMode(mode.id as ViewMode); setIsDropdownOpen(false); }}
+                            className={`w-full text-left px-5 py-3 text-xs font-bold transition-colors ${viewMode === mode.id ? 'bg-primary/5 text-primary' : 'text-on-surface-variant hover:bg-surface-container-low'}`}
+                          >
+                            {mode.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex bg-surface-container-low p-0.5 rounded-full">
+                    <button className="px-3 py-1 rounded-full bg-primary text-on-primary text-[10px] font-bold shadow-sm transition-all">Valor</button>
+                    <button className="px-3 py-1 rounded-full text-on-surface-variant text-[10px] font-bold hover:bg-surface-container-high transition-all">%</button>
+                  </div>
                 </div>
-              )}
+              </div>
             </div>
-          </div>
-
-          <div className="relative flex justify-center py-6">
-            <div className="relative w-52 h-52">
-              {/* Donut usando SVG para garantir as cores */}
+            
+            <div className="relative w-[220px] h-[220px] my-4">
               <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
                 <circle
                   cx="50" cy="50" r="40"
                   fill="none"
                   stroke="var(--surface-container-highest)"
-                  strokeWidth="12"
+                  strokeWidth="14"
                   className="opacity-10"
                 />
                 {composition.reduce((acc, item, i) => {
@@ -389,9 +392,10 @@ const Analysis = ({
                       cx="50" cy="50" r="40"
                       fill="none"
                       stroke={item.color}
-                      strokeWidth="12"
-                      strokeDasharray={`${dash} ${circumference - dash}`}
+                      strokeWidth="14"
+                      strokeDasharray={`${dash} ${circumference}`}
                       strokeDashoffset={-offset}
+                      strokeLinecap="round"
                       className="transition-all duration-1000 ease-out"
                     />
                   );
@@ -399,49 +403,83 @@ const Analysis = ({
                   return acc;
                 }, { elements: [] as React.ReactNode[], offset: 0 }).elements}
               </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-2xl font-headline font-black text-on-surface">
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span className="text-3xl font-headline font-extrabold text-on-surface">
                   {loading ? '...' : fmt(summary?.total_expense ?? 0).split(',')[0]}
                 </span>
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant opacity-60">Despesas</span>
               </div>
+            </div>
+
+            {/* Two-Column Legend */}
+            <div className="w-full grid grid-cols-2 gap-y-5 mt-12 gap-x-8">
+              {composition.length > 0 ? (
+                composition.map((item, i) => (
+                  <div key={item.label} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }}></div>
+                      <span className="text-xs font-bold text-on-surface-variant truncate max-w-[60px]" title={item.label}>{item.label}</span>
+                    </div>
+                    <span className="text-xs font-bold">{fmt(item.value)}</span>
+                  </div>
+                ))
+              ) : (
+                <p className="col-span-2 text-center text-xs font-bold text-on-surface-variant opacity-40 py-4">Sem dados</p>
+              )}
             </div>
           </div>
 
-          <div className="space-y-3">
-            {composition.length > 0 ? (
-              composition.map((item, i) => (
-                <div key={item.label} className="flex items-center justify-between p-3 rounded-2xl hover:bg-white/40 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className="w-3.5 h-3.5 rounded-full shadow-sm" style={{ backgroundColor: item.color }}></div>
-                    <span className="text-xs font-black text-on-surface-variant truncate max-w-[140px] uppercase tracking-wider">{item.label}</span>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <span className="text-[11px] font-bold text-on-surface-variant opacity-50">{fmt(item.value)}</span>
-                    <span className="font-headline font-black text-sm text-on-surface min-w-[40px] text-right">{Math.round(item.percentage)}%</span>
-                  </div>
+          {/* Category Breakdown */}
+          <div className="lg:col-span-2 space-y-6">
+            <div className="flex justify-between items-center px-2">
+              <h3 className="font-headline font-bold text-xl">Maiores Categorias</h3>
+              <button className="text-primary font-bold text-sm">Ver todas</button>
+            </div>
+            <div className="space-y-3">
+              {loading ? (
+                Array(3).fill(0).map((_, i) => <div key={i} className="skeleton h-24 w-full rounded-xl" />)
+              ) : summary?.by_category?.length > 0 ? (
+                [...summary.by_category].sort((a, b) => b.count - a.count).slice(0, 3).map((cat: any) => {
+                  const color = CATEGORY_COLORS[cat.category] || '#9E9E9E';
+                  const emoji = catEmoji(cat.category);
+                  return (
+                    <div key={cat.category} className="bg-surface-container-lowest p-6 rounded-xl flex items-center justify-between hover:scale-[1.01] transition-transform cursor-pointer shadow-sm">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-xl" style={{ backgroundColor: color + '22' }}>
+                          {emoji}
+                        </div>
+                        <div>
+                          <h4 className="font-bold">{cat.category}</h4>
+                          <p className="text-xs text-on-surface-variant font-bold uppercase tracking-wider">{cat.count} transações</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-headline font-bold">{fmt(cat.total)}</p>
+                        <div className="flex items-center justify-end gap-1 text-xs font-bold" style={{ color }}>
+                          <span>{Math.round(cat.percentage)}%</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="card-low text-center p-8 bg-surface-container-lowest rounded-xl shadow-sm">
+                  <p className="text-on-surface-variant font-medium text-xs">Nenhum gasto registrado.</p>
                 </div>
-              ))
-            ) : (
-              <p className="text-center text-xs font-bold text-on-surface-variant opacity-40 py-4">Sem dados para o período</p>
-            )}
+              )}
+            </div>
           </div>
         </section>
 
-
-
-        {/* Insight Banner */}
-        <section className="bg-secondary-container rounded-[2rem] p-8 flex flex-col gap-6 relative overflow-hidden shadow-sm">
-          <div className="absolute -right-4 -top-4 w-32 h-32 bg-secondary-fixed-dim rounded-full blur-3xl opacity-30"></div>
-          <div className="space-y-3 z-10">
-            <h4 className="text-xl font-headline font-black text-on-secondary-container">Insight da Pera 🍐</h4>
-            <p className="text-on-secondary-container opacity-90 leading-relaxed text-sm font-medium">
-              Sua análise mostra que o foco em **{viewMode === 'subtype' ? 'Custo Fixo' : viewMode === 'urgency' ? 'Prioridade' : 'Categorias'}** pode revelar oportunidades de economia inteligente.
+        {/* Insights Banner */}
+        <section className="bg-secondary-fixed rounded-xl p-8 flex flex-col md:flex-row items-center gap-6 overflow-hidden relative">
+          <div className="absolute -right-4 -top-4 w-32 h-32 bg-secondary-fixed-dim rounded-full blur-3xl opacity-50"></div>
+          <div className="flex-1 space-y-2 z-10">
+            <h4 className="text-xl font-headline font-black text-on-secondary-fixed">Insight da Pera 🍐</h4>
+            <p className="text-on-secondary-fixed opacity-90 leading-relaxed text-sm">
+              Sua análise mostra que o foco em <strong>{viewMode === 'subtype' ? 'Custo Fixo' : viewMode === 'urgency' ? 'Prioridade' : 'Categorias'}</strong> pode revelar oportunidades de economia inteligente.
             </p>
           </div>
-          <button className="bg-on-secondary-container text-white px-8 py-3 rounded-full font-bold text-sm active:scale-95 transition-all w-fit shadow-lg shadow-black/10">
-            Ver Metas
-          </button>
+          <button className="bg-on-secondary-fixed text-white px-8 py-3 rounded-full font-bold z-10 active:scale-95 transition-all">Ver Metas</button>
         </section>
 
         {/* Shopping List */}
