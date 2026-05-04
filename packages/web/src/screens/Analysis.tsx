@@ -399,7 +399,7 @@ const Analysis = ({
                   // Ensure dash is at least 0.1 so round caps show even for 0% or very small values
                   const visibleDash = Math.max(0.1, dash);
                   
-                  const TOTAL_TIME = 2.0;
+                  const TOTAL_TIME = 0.7;
                   const duration = (visibleDash / circumference) * TOTAL_TIME;
                   const gapDuration = (GAP / circumference) * TOTAL_TIME;
 
