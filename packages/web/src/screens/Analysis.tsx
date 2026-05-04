@@ -401,9 +401,15 @@ const Analysis = ({
                   acc.elements.push(
                     <motion.circle
                       key={item.label}
-                      initial={{ strokeDasharray: `0 ${circumference}`, strokeDashoffset: -offset }}
-                      animate={{ strokeDasharray: `${visibleDash} ${circumference}`, strokeDashoffset: -offset }}
-                      transition={{ duration: 0.5, type: "spring", bounce: 0.15, delay: i * 0.5 }}
+                      initial={{ strokeDasharray: `0 ${circumference}`, strokeDashoffset: -offset, opacity: 0 }}
+                      animate={{ strokeDasharray: `${visibleDash} ${circumference}`, strokeDashoffset: -offset, opacity: 1 }}
+                      transition={{ 
+                        duration: 0.5, 
+                        type: "tween", 
+                        ease: "linear", 
+                        delay: i * 0.5,
+                        opacity: { duration: 0.01, delay: i * 0.5 }
+                      }}
                       cx="50" cy="50" r="40"
                       fill="none"
                       stroke={item.color}

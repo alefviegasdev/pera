@@ -117,7 +117,7 @@ Para outras categorias (Contas, Vestuário, etc.), não incluir subcategory.
 
 9. CLASSIFICAÇÃO DE TIPO DE CUSTO (subtype) E PRIORIDADE (urgency) - MUITO IMPORTANTE:
    - "subtype": Deve ser "fixed" (contas fixas/assinaturas mensais constantes), "semifixed" (compras parceladas com fim previsível) ou "unique" (gastos diários, compras corriqueiras, compras avulsas únicas).
-   - "urgency": Deve ser "urgent" (toda transação de necessidade não cotidiana que foge do controle, ex: remédios, conserto de carro, 2ª via de doc), "necessity" (importante para subsistência diária, ex: alimentos pro dia a dia, itens de casa, gasolina) ou "secondary" (tudo que não se encaixa nas outras duas, ex: lazer, fastfood, doces, restaurantes).
+   - "urgency": Deve ser "urgent" (toda transação de necessidade não cotidiana que foge do controle, ex: remédios, farmácia, conserto de carro, 2ª via de doc), "necessity" (importante para subsistência diária, ex: alimentos pro dia a dia, mercado, itens de casa, gasolina) ou "secondary" (tudo que não se encaixa nas outras duas, ex: lazer, fastfood, doces, restaurantes).
 
 JSON Structure (dentro do array):
 {
