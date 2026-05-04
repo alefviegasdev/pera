@@ -51,6 +51,7 @@ const Analysis = ({
   const [periodDropdownOpen, setPeriodDropdownOpen] = useState(false);
   const periodDropdownRef = useRef<HTMLDivElement>(null);
   const [hideAnalysis, setHideAnalysis] = useState(false);
+  const [legendMode, setLegendMode] = useState<'value' | 'percentage'>('value');
   const [showDateModal, setShowDateModal] = useState(false);
   const [customStartDate, setCustomStartDate] = useState<string | null>(() => sessionStorage.getItem('pera_shared_start_date'));
   const [customEndDate, setCustomEndDate] = useState<string | null>(() => sessionStorage.getItem('pera_shared_end_date'));
@@ -338,10 +339,10 @@ const Analysis = ({
         {/* Composition & Categories Section */}
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-8 px-0">
           {/* Composition Chart */}
-          <div className="lg:col-span-1 flex flex-col items-center px-2 bg-surface-container-lowest p-6 rounded-2xl shadow-sm">
+          <div className="lg:col-span-1 flex flex-col items-center bg-white p-6 md:p-8 rounded-2xl shadow-sm">
             <div className="flex items-center justify-between w-full gap-2 mb-4">
               <div className="flex flex-col w-full">
-                <h3 className="font-headline font-bold text-xl mb-4 text-left">Composição</h3>
+                <h3 className="font-headline font-bold text-xl mb-4 text-left">Gastos por categoria</h3>
                 <div className="flex items-center justify-between w-full">
                   <div className="relative" ref={dropdownRef}>
                     <button 
@@ -366,8 +367,18 @@ const Analysis = ({
                     )}
                   </div>
                   <div className="flex bg-surface-container-low p-0.5 rounded-full">
-                    <button className="px-3 py-1 rounded-full bg-primary text-on-primary text-[10px] font-bold shadow-sm transition-all">Valor</button>
-                    <button className="px-3 py-1 rounded-full text-on-surface-variant text-[10px] font-bold hover:bg-surface-container-high transition-all">%</button>
+                    <button 
+                      onClick={() => setLegendMode('value')}
+                      className={`px-3 py-1 rounded-full text-[10px] font-bold shadow-sm transition-all ${legendMode === 'value' ? 'bg-primary text-on-primary' : 'text-on-surface-variant hover:bg-surface-container-high'}`}
+                    >
+                      Valor
+                    </button>
+                    <button 
+                      onClick={() => setLegendMode('percentage')}
+                      className={`px-3 py-1 rounded-full text-[10px] font-bold shadow-sm transition-all ${legendMode === 'percentage' ? 'bg-primary text-on-primary' : 'text-on-surface-variant hover:bg-surface-container-high'}`}
+                    >
+                      %
+                    </button>
                   </div>
                 </div>
               </div>
@@ -419,7 +430,9 @@ const Analysis = ({
                       <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }}></div>
                       <span className="text-xs font-bold text-on-surface-variant truncate max-w-[60px]" title={item.label}>{item.label}</span>
                     </div>
-                    <span className="text-xs font-bold">{fmt(item.value)}</span>
+                    <span className="text-xs font-bold">
+                      {legendMode === 'value' ? fmt(item.value) : `${Math.round(item.percentage)}%`}
+                    </span>
                   </div>
                 ))
               ) : (
