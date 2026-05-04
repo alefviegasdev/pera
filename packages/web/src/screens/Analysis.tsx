@@ -377,8 +377,15 @@ const Analysis = ({
               <svg width="220" height="220" viewBox="0 0 100 100" className="-rotate-90">
                 {composition.reduce((acc, item, i) => {
                   const circumference = 2 * Math.PI * 40;
+                  const GAP = 15; // Fixed gap size
+                  const availableCircumference = Math.max(0, circumference - (composition.length * GAP));
+                  
+                  const dash = (item.percentage / 100) * availableCircumference;
                   const offset = acc.offset;
-                  const dash = (item.percentage / 100) * circumference;
+                  
+                  // Ensure dash is at least 0.1 so round caps show even for 0% or very small values
+                  const visibleDash = Math.max(0.1, dash);
+
                   acc.elements.push(
                     <circle
                       key={item.label}
@@ -386,13 +393,13 @@ const Analysis = ({
                       fill="none"
                       stroke={item.color}
                       strokeWidth="14"
-                      strokeDasharray={`${dash} ${circumference}`}
+                      strokeDasharray={`${visibleDash} ${circumference}`}
                       strokeDashoffset={-offset}
                       strokeLinecap="round"
                       className="transition-all duration-700 ease-in-out"
                     />
                   );
-                  acc.offset += dash;
+                  acc.offset += visibleDash + GAP;
                   return acc;
                 }, { elements: [] as React.ReactNode[], offset: 0 }).elements}
               </svg>
