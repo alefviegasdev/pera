@@ -332,6 +332,7 @@ const Home = ({
     )
   );
   const unpaidInstallmentTotal = unpaidInstallments.reduce((sum, i) => sum + Number(i.installment_value), 0);
+  const paidInstallmentTotal = installmentTotal - unpaidInstallmentTotal;
 
   const dizimoBudget = budgets.find(b => b.category === 'Dízimo/Oferta');
   const tithingFallback = dizimoBudget?.monthly_limit 
