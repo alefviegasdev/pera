@@ -732,20 +732,20 @@ Quanto mais detalhes você der, melhor eu classifico!
           if (aiData.delete === true) {
             await supabase.from(table).delete().eq("id", record.id);
             
-            if (table === 'transactions' && record.category === 'Dízimo/Oferta') {
-              await supabase
-                .from('tithe_payments')
-                .delete()
-                .eq('short_code', record.short_code)
-                .eq('user_id', supabaseUserId);
-            }
-
-            if (table === 'tithe_payments') {
-              await supabase
-                .from('transactions')
-                .delete()
-                .eq('short_code', record.short_code)
-                .eq('user_id', supabaseUserId);
+            // Cascading Deletions
+            if (table === 'transactions') {
+              // Unpay monthly bill if linked
+              await supabase.from('monthly_bills').update({ paid: false, paid_at: null }).eq('short_code', record.short_code).eq('user_id', supabaseUserId);
+              // Delete tithe payment if linked
+              if (record.category === 'Dízimo/Oferta') {
+                await supabase.from('tithe_payments').delete().eq('short_code', record.short_code).eq('user_id', supabaseUserId);
+              }
+            } else if (table === 'monthly_bills') {
+              // Delete linked transaction
+              await supabase.from('transactions').delete().eq('short_code', record.short_code).eq('user_id', supabaseUserId);
+            } else if (table === 'tithe_payments') {
+              // Delete linked transaction
+              await supabase.from('transactions').delete().eq('short_code', record.short_code).eq('user_id', supabaseUserId);
             }
             
             return ctx.reply(`🗑️ Transação #${replyCode} apagada.`);
@@ -776,14 +776,22 @@ Quanto mais detalhes você der, melhor eu classifico!
               .join('\n');
             await supabase.from(table).update(updates).eq("short_code", replyCode);
             
-            if (updates.value !== undefined && table === 'monthly_bills' && record.subtype === 'fixed') {
-              const { data: fixedExpenses } = await supabase.from('fixed_expenses').select('*').eq('user_id', supabaseUserId).eq('active', true);
-              const keywords = (record.name || '').toLowerCase().split(' ').filter((w: string) => w.length > 2);
-              const matchedFixed = fixedExpenses?.find(f => keywords.some((kw: string) => f.name.toLowerCase().includes(kw)));
-              if (matchedFixed) {
-                 await supabase.from('fixed_expenses').update({ value: updates.value }).eq('id', matchedFixed.id);
+            // Cascading Updates
+            if (table === 'monthly_bills' && updates.value !== undefined) {
+              await supabase.from('transactions').update({ value: updates.value }).eq('short_code', replyCode).eq('user_id', supabaseUserId);
+              
+              if (record.subtype === 'fixed') {
+                const { data: fixedExpenses } = await supabase.from('fixed_expenses').select('*').eq('user_id', supabaseUserId).eq('active', true);
+                const keywords = (record.name || '').toLowerCase().split(' ').filter((w: string) => w.length > 2);
+                const matchedFixed = fixedExpenses?.find(f => keywords.some((kw: string) => f.name.toLowerCase().includes(kw)));
+                if (matchedFixed) {
+                   await supabase.from('fixed_expenses').update({ value: updates.value }).eq('id', matchedFixed.id);
+                }
               }
+            } else if (table === 'transactions' && updates.value !== undefined) {
+               await supabase.from('monthly_bills').update({ value: updates.value }).eq('short_code', replyCode).eq('user_id', supabaseUserId);
             }
+
             return ctx.reply(`✏️ #${replyCode} atualizado!\n${changeSummary}`);
           } else {
             return ctx.reply(`🤔 Não entendi o que alterar. Tente: "foi 90", "deletar", "categoria Saúde"`);
@@ -839,20 +847,20 @@ Possíveis motivos:
       if (aiData.delete === true) {
         await supabase.from(table).delete().eq("id", record.id);
         
-        if (table === 'transactions' && record.category === 'Dízimo/Oferta') {
-          await supabase
-            .from('tithe_payments')
-            .delete()
-            .eq('short_code', record.short_code)
-            .eq('user_id', supabaseUserId);
-        }
-
-        if (table === 'tithe_payments') {
-          await supabase
-            .from('transactions')
-            .delete()
-            .eq('short_code', record.short_code)
-            .eq('user_id', supabaseUserId);
+        // Cascading Deletions
+        if (table === 'transactions') {
+          // Unpay monthly bill if linked
+          await supabase.from('monthly_bills').update({ paid: false, paid_at: null }).eq('short_code', record.short_code).eq('user_id', supabaseUserId);
+          // Delete tithe payment if linked
+          if (record.category === 'Dízimo/Oferta') {
+            await supabase.from('tithe_payments').delete().eq('short_code', record.short_code).eq('user_id', supabaseUserId);
+          }
+        } else if (table === 'monthly_bills') {
+          // Delete linked transaction
+          await supabase.from('transactions').delete().eq('short_code', record.short_code).eq('user_id', supabaseUserId);
+        } else if (table === 'tithe_payments') {
+          // Delete linked transaction
+          await supabase.from('transactions').delete().eq('short_code', record.short_code).eq('user_id', supabaseUserId);
         }
         
         return ctx.reply(`🗑️ Transação #${code} apagada.`);
@@ -938,16 +946,23 @@ O que você pode mudar:
       const { error: updateErr } = await supabase.from(table).update(updates).eq("short_code", code);
       if (updateErr) throw updateErr;
 
-      if (updates.value !== undefined && table === 'monthly_bills' && record.subtype === 'fixed') {
-        const { data: fixedExpenses } = await supabase.from('fixed_expenses').select('*').eq('user_id', supabaseUserId).eq('active', true);
-        const keywords = (record.name || '').toLowerCase().split(' ').filter((w: string) => w.length > 2);
-        const matchedFixed = fixedExpenses?.find(f => keywords.some((kw: string) => f.name.toLowerCase().includes(kw)));
-        if (matchedFixed) {
-           await supabase.from('fixed_expenses').update({ value: updates.value }).eq('id', matchedFixed.id);
+      // Cascading Updates
+      if (table === 'monthly_bills' && updates.value !== undefined) {
+        await supabase.from('transactions').update({ value: updates.value }).eq('short_code', code).eq('user_id', supabaseUserId);
+        
+        if (record.subtype === 'fixed') {
+          const { data: fixedExpenses } = await supabase.from('fixed_expenses').select('*').eq('user_id', supabaseUserId).eq('active', true);
+          const keywords = (record.name || '').toLowerCase().split(' ').filter((w: string) => w.length > 2);
+          const matchedFixed = fixedExpenses?.find(f => keywords.some((kw: string) => f.name.toLowerCase().includes(kw)));
+          if (matchedFixed) {
+             await supabase.from('fixed_expenses').update({ value: updates.value }).eq('id', matchedFixed.id);
+          }
         }
+      } else if (table === 'transactions' && updates.value !== undefined) {
+         await supabase.from('monthly_bills').update({ value: updates.value }).eq('short_code', code).eq('user_id', supabaseUserId);
       }
 
-      return ctx.reply(`✏️ #${code} atualizado!\n${changeLogs.join('\n')}`);
+      return ctx.reply(`✅ #${code} atualizado! 🍐\n${changeLogs.join('\n')}`);
     }
 
     // 2a. DETECÇÃO DE MENSAGEM AMBÍGUA (verbo passado sem valor)
@@ -1091,34 +1106,31 @@ Exemplos que funcionam:
         const year = now.getFullYear();
 
         // 1. BUSCA MAIS FLEXÍVEL DE CONTAS (Month Bills)
-        const keywords = item.description.toLowerCase().split(' ')
-          .filter(w => w.length > 2 && !['de', 'do', 'da', 'os', 'as', 'um', 'uma', 'the', 'para', 'com'].includes(w));
-
-        // --- Lógica Especial: Dízimo ---
-        if (isDizimo(item.description)) {
-          const summary = await getTitheSummary(supabaseUserId);
-          
-          if (summary.length === 0) {
-            return ctx.reply(`✅ Seu dízimo já está em dia! 🍐`);
-          }
-
-          const targetMonth = parseMonth(text);
-          let selectedMonth = null;
-
-          if (targetMonth) {
-            selectedMonth = summary.find(m => m.month === targetMonth);
-          }
-
-          // Se só tem um mês pendente e o usuário não especificou outro mês
-          if (summary.length === 1 && !selectedMonth) {
-            selectedMonth = summary[0];
-          }
-
-          if (selectedMonth) {
-            const shortCode = generateShortCode();
+        const keywords = item.de            const shortCode = selectedMonth.short_code || generateShortCode();
             const valueToPay = item.value !== undefined ? item.value : selectedMonth.balance_due;
             
             await supabase.from('tithe_payments').insert({
+              user_id: supabaseUserId,
+              value: valueToPay,
+              description: `Dízimo ${MONTH_NAMES_PT[selectedMonth.month - 1]} via Telegram`,
+              short_code: shortCode,
+              paid_at: new Date().toISOString()
+            });
+
+            await supabase.from('transactions').insert({
+              user_id: supabaseUserId,
+              value: valueToPay,
+              type: 'expense',
+              category: 'Dízimo/Oferta',
+              subtype: 'fixed',
+              urgency: 'planned',
+              description: `Dízimo ${MONTH_NAMES_PT[selectedMonth.month - 1]}`,
+              source: 'text',
+              short_code: shortCode
+            });
+
+            return ctx.reply(`✅ Dízimo de ${MONTH_NAMES_PT[selectedMonth.month - 1]} registrado! #${shortCode}\n💰 R$ ${Number(valueToPay).toFixed(2)}`);
+s').insert({
               user_id: supabaseUserId,
               value: valueToPay,
               description: `Dízimo ${MONTH_NAMES_PT[selectedMonth.month - 1]} via Telegram`,

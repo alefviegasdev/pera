@@ -378,7 +378,11 @@ const Home = ({
   const totalFixedVal = (unpaidBillsVal + paidBillsVal) + installmentTotal + titheTotalDue;
   const remainingFixedVal = unpaidBillsVal + unpaidInstallmentTotal + tithing;
   
-  const realAvailable = income - totalActualExpense - remainingFixedVal;
+  // Variable expenses = Total spent so far - Fixed items already paid
+  // This ensures that paying a fixed bill doesn't change the "available" projection
+  const variableExpenses = Math.max(0, expense - (paidBillsVal + paidInstallmentTotal + tithePaidVal));
+  
+  const realAvailable = income - variableExpenses - totalFixedVal;
   const isNegative = realAvailable < 0;
 
   // Unified list for Vencimentos

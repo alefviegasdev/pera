@@ -302,12 +302,18 @@ app.get('/transactions/summary', async (req, res) => {
 
     const { start, end } = getDateRange(period as string, start_date as string, end_date as string);
 
-    const { data: transactions, error } = await supabase
+    let query = supabase
       .from('transactions')
       .select('*')
-      .eq('user_id', user_id)
-      .gte('occurred_at', start.toISOString())
-      .lte('occurred_at', end.toISOString());
+      .eq('user_id', user_id);
+
+    if (period !== 'all') {
+      query = query
+        .gte('occurred_at', start.toISOString())
+        .lte('occurred_at', end.toISOString());
+    }
+
+    const { data: transactions, error } = await query;
 
     if (error) throw error;
 
