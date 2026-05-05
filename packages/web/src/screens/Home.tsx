@@ -338,10 +338,15 @@ const Home = ({
 
   // Values for the Total Card
   const titheTotalDue = titheActive ? (titheSummary?.tithe_due || 0) : 0;
+  const tithePaidVal = tithesPaidThisMonth.reduce((sum, t) => sum + Number(t.value), 0);
+  
   const totalFixedVal = (totalBills + paidBillsVal) + installmentTotal + titheTotalDue;
   const remainingFixedVal = unpaidBillsVal + unpaidInstallmentTotal + tithing;
   
-  const realAvailable = income - expense - remainingFixedVal;
+  // O dízimo e contas pagas devem ser somados às saídas variáveis (expense) para o total real
+  const totalActualExpense = expense + paidBillsVal + tithePaidVal;
+  
+  const realAvailable = income - totalActualExpense - remainingFixedVal;
   const isNegative = realAvailable < 0;
 
   // Unified list for Vencimentos
@@ -563,7 +568,7 @@ const Home = ({
                   <span className="text-[9px] font-bold uppercase tracking-tight text-on-primary-container">Saídas</span>
                 </div>
                 <p className="text-on-primary-container font-extrabold text-sm font-headline tracking-tighter">
-                  {maskValue(fmt(expense), hideMaster)}
+                  {maskValue(fmt(totalActualExpense), hideMaster)}
                 </p>
               </div>
 
@@ -627,7 +632,7 @@ const Home = ({
                 <span className="text-[9px] font-black uppercase tracking-[0.1em] text-on-primary-container opacity-60">Saídas</span>
               </div>
               <p className="text-on-primary-container font-headline font-black text-xl tracking-tight">
-                {maskValue(fmt(expense), hideMaster)}
+                {maskValue(fmt(totalActualExpense), hideMaster)}
               </p>
             </div>
 
@@ -677,7 +682,7 @@ const Home = ({
                 <Calendar size={14} className="text-error" />
               </div>
               <p className="text-[9px] font-bold text-on-surface-variant uppercase text-center leading-tight">Contas fixas</p>
-              <p className="text-xs font-black text-on-surface">{maskValue(fmt(totalBills + paidBillsVal).split(',')[0], hideMaster)}</p>
+              <p className="text-xs font-black text-on-surface">{maskValue(fmt(totalBills + paidBillsVal + titheTotalDue).split(',')[0], hideMaster)}</p>
             </div>
             <span className="text-on-surface-variant/30 font-bold mb-4">-</span>
             <div className="flex flex-col items-center gap-1 flex-1">

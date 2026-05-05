@@ -18,7 +18,10 @@ if (!token || !geminiKey || !supabaseUrl || !supabaseKey) {
 const bot = new Bot(token);
 const supabase = createClient(supabaseUrl, supabaseKey);
 const pendingConfirmations = new Map<string, string>(); // Link confirmations
+const pendingTitheSelection = new Map<string, any>();
 const ADMIN_TELEGRAM_ID = '5637235532'; // substituir pelo seu ID
+
+const MONTH_NAMES_PT = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 
 const SYSTEM_PROMPT = `
 Você é um assistente financeiro inteligente chamado Pera.
@@ -362,6 +365,97 @@ function isDizimo(text: string): boolean {
   
   const words = t.split(/\s+/);
   return words.some(w => w.length >= 4 && levenshtein(w, 'dizimo') <= 2);
+}
+
+function parseMonth(text: string): number | null {
+  const t = text.toLowerCase();
+  const months = [
+    ['janeiro', 'jan'],
+    ['fevereiro', 'fev'],
+    ['março', 'marco', 'mar'],
+    ['abril', 'abr'],
+    ['maio'],
+    ['junho', 'jun'],
+    ['julho', 'jul'],
+    ['agosto', 'ago'],
+    ['setembro', 'set'],
+    ['outubro', 'out'],
+    ['novembro', 'nov'],
+    ['dezembro', 'dez']
+  ];
+  
+  for (let i = 0; i < months.length; i++) {
+    if (months[i].some(m => t.includes(m))) {
+      return i + 1;
+    }
+  }
+  return null;
+}
+
+async function getTitheSummary(supabaseUserId: string) {
+  const [profileRes, txRes, paymentsRes] = await Promise.all([
+    supabase.from('user_profiles').select('tithe_percentage, tithe_percentage_previous, tithe_percentage_changed_at').eq('user_id', supabaseUserId).single(),
+    supabase.from('transactions').select('id, description, value, occurred_at')
+      .eq('user_id', supabaseUserId).eq('counts_for_tithe', true).eq('type', 'income')
+      .order('occurred_at', { ascending: false }),
+    supabase.from('tithe_payments').select('*')
+      .eq('user_id', supabaseUserId).order('paid_at', { ascending: false })
+  ]);
+
+  const percentage = profileRes.data?.tithe_percentage ?? 10;
+  const incomes = txRes.data || [];
+  const payments = paymentsRes.data || [];
+
+  const monthlyMap: Record<string, any> = {};
+  incomes.forEach(inc => {
+    const d = new Date(inc.occurred_at);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    if (!monthlyMap[key]) {
+      monthlyMap[key] = {
+        key,
+        month: d.getMonth() + 1,
+        year: d.getFullYear(),
+        total_income: 0,
+        tithe_due: 0,
+        incomes: []
+      };
+    }
+    monthlyMap[key].total_income += Number(inc.value);
+    monthlyMap[key].incomes.push(inc);
+  });
+
+  const changedAt = profileRes.data?.tithe_percentage_changed_at;
+  const previousPct = profileRes.data?.tithe_percentage_previous ?? percentage;
+
+  Object.values(monthlyMap).forEach((m: any) => {
+    m.tithe_due = 0;
+    m.incomes.forEach((inc: any) => {
+      const incDate = new Date(inc.occurred_at);
+      const pctToUse = (changedAt && incDate < new Date(changedAt))
+        ? previousPct
+        : percentage;
+      m.tithe_due += Number(inc.value) * (pctToUse / 100);
+    });
+  });
+
+  const sortedMonths = Object.values(monthlyMap).sort((a: any, b: any) =>
+    a.key.localeCompare(b.key)
+  );
+
+  let remainingPayments = payments.reduce((sum, p) => sum + Number(p.value), 0);
+  sortedMonths.forEach((m: any) => {
+    if (remainingPayments >= m.tithe_due) {
+      m.paid = m.tithe_due;
+      m.balance_due = 0;
+      remainingPayments -= m.tithe_due;
+    } else {
+      m.paid = remainingPayments;
+      m.balance_due = m.tithe_due - remainingPayments;
+      remainingPayments = 0;
+    }
+  });
+
+  return sortedMonths.filter(m => m.balance_due > 0.01);
 }
 
 function levenshteinDistance(a: string, b: string): number {
@@ -985,65 +1079,66 @@ Exemplos que funcionam:
 
         // --- Lógica Especial: Dízimo ---
         if (isDizimo(item.description)) {
-          // 1. Buscar perfil para pegar porcentagem
-          const { data: userProfile } = await supabase
-            .from('user_profiles')
-            .select('tithe_percentage')
-            .eq('user_id', supabaseUserId)
-            .maybeSingle();
-
-          const tithePercentage = userProfile?.tithe_percentage ?? 10;
-
-          // 2. Buscar APENAS receitas com counts_for_tithe = true
-          const { data: titheableIncomes } = await supabase
-            .from('transactions')
-            .select('value')
-            .eq('user_id', supabaseUserId)
-            .eq('type', 'income')
-            .eq('counts_for_tithe', true);
-
-          const totalTitheable = titheableIncomes?.reduce((sum, tx) => sum + Number(tx.value), 0) || 0;
-          const titheDue = totalTitheable * (tithePercentage / 100);
-
-          // 3. Buscar total já pago em tithe_payments
-          const { data: existingPayments } = await supabase
-            .from('tithe_payments')
-            .select('value')
-            .eq('user_id', supabaseUserId);
-
-          const totalPaid = existingPayments?.reduce((sum, p) => sum + Number(p.value), 0) || 0;
-          const balanceDue = titheDue - totalPaid;
-
-          if (balanceDue <= 0) {
-            return ctx.reply(`✅ Dízimo já está em dia!\n💰 Total devido: R$ ${titheDue.toFixed(2)}\n✔️ Total pago: R$ ${totalPaid.toFixed(2)}`);
+          const summary = await getTitheSummary(supabaseUserId);
+          
+          if (summary.length === 0) {
+            return ctx.reply(`✅ Seu dízimo já está em dia! 🍐`);
           }
 
-          const shortCode = generateShortCode();
+          const targetMonth = parseMonth(text);
+          let selectedMonth = null;
 
-          // 4. Inserir em tithe_payments (para o app reconhecer)
-          await supabase.from('tithe_payments').insert({
-            user_id: supabaseUserId,
-            value: balanceDue,
-            description: 'Dízimo pago via Telegram',
-            short_code: shortCode,
-            paid_at: new Date().toISOString(),
-            tithe_pct: tithePercentage
-          });
+          if (targetMonth) {
+            selectedMonth = summary.find(m => m.month === targetMonth);
+          }
 
-          // 5. Inserir também em transactions (para o histórico)
-          await supabase.from('transactions').insert({
-            user_id: supabaseUserId,
-            value: balanceDue,
-            type: 'expense',
-            category: 'Dízimo/Oferta',
-            subtype: 'fixed',
-            urgency: 'planned',
-            description: 'Dízimo',
-            source: 'text',
-            short_code: shortCode
-          });
+          // Se só tem um mês pendente e o usuário não especificou outro mês
+          if (summary.length === 1 && !selectedMonth) {
+            selectedMonth = summary[0];
+          }
 
-          return ctx.reply(`✅ Dízimo registrado! #${shortCode}\n💰 R$ ${Number(balanceDue).toFixed(2)}\n📊 Baseado em R$ ${totalTitheable.toFixed(2)} em receitas computáveis`);
+          if (selectedMonth) {
+            const shortCode = generateShortCode();
+            const valueToPay = item.value !== undefined ? item.value : selectedMonth.balance_due;
+            
+            await supabase.from('tithe_payments').insert({
+              user_id: supabaseUserId,
+              value: valueToPay,
+              description: `Dízimo ${MONTH_NAMES_PT[selectedMonth.month - 1]} via Telegram`,
+              short_code: shortCode,
+              paid_at: new Date().toISOString()
+            });
+
+            await supabase.from('transactions').insert({
+              user_id: supabaseUserId,
+              value: valueToPay,
+              type: 'expense',
+              category: 'Dízimo/Oferta',
+              subtype: 'fixed',
+              urgency: 'planned',
+              description: `Dízimo ${MONTH_NAMES_PT[selectedMonth.month - 1]}`,
+              source: 'text',
+              short_code: shortCode
+            });
+
+            return ctx.reply(`✅ Dízimo de ${MONTH_NAMES_PT[selectedMonth.month - 1]} registrado! #${shortCode}\n💰 R$ ${Number(valueToPay).toFixed(2)}`);
+          } else {
+            // Múltiplos meses ou mês específico não encontrado
+            if (targetMonth && !selectedMonth) {
+              return ctx.reply(`❓ Não encontrei dízimo pendente para o mês de ${MONTH_NAMES_PT[targetMonth - 1]}.`);
+            }
+
+            const keyboard = new InlineKeyboard();
+            summary.forEach(m => {
+              keyboard.text(`${MONTH_NAMES_PT[m.month - 1]} — R$ ${m.balance_due.toFixed(2)}`, `tithe_month_select_${m.key}`).row();
+            });
+
+            pendingTitheSelection.set(supabaseUserId, { item, supabaseUserId });
+
+            return ctx.reply(`🙏 Você tem dízimos pendentes de mais de um mês. Qual deles você pagou?`, {
+              reply_markup: keyboard
+            });
+          }
         }
 
         const { data: bills, error: findError } = await supabase
@@ -1404,6 +1499,64 @@ bot.on('callback_query:data', async (ctx) => {
       (ctx.callbackQuery.message?.text?.split('\n\n')[0] || '✅ Receita atualizada') + 
       `\n\n${countsForTithe ? '✅ Conta para o dízimo' : '❌ Não conta para o dízimo'}`
     );
+  }
+
+  if (data.startsWith('tithe_month_select_')) {
+    const monthKey = data.replace('tithe_month_select_', ''); // Format: YYYY-MM
+    const userId = ctx.from.id.toString();
+    
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('user_id')
+      .eq('telegram_id', userId)
+      .maybeSingle();
+    const supabaseUserId = profile?.user_id;
+
+    if (!supabaseUserId) {
+      await ctx.answerCallbackQuery();
+      return ctx.editMessageText('❌ Usuário não encontrado.');
+    }
+
+    const pending = pendingTitheSelection.get(supabaseUserId);
+    if (!pending) {
+      await ctx.answerCallbackQuery();
+      return ctx.editMessageText('⚠️ Seleção expirada. Tente novamente.');
+    }
+
+    const summary = await getTitheSummary(supabaseUserId);
+    const selectedMonth = summary.find(m => m.key === monthKey);
+
+    if (!selectedMonth) {
+      await ctx.answerCallbackQuery();
+      return ctx.editMessageText('❌ Mês não encontrado ou já pago.');
+    }
+
+    const shortCode = generateShortCode();
+    const valueToPay = pending.item.value !== undefined ? pending.item.value : selectedMonth.balance_due;
+
+    await supabase.from('tithe_payments').insert({
+      user_id: supabaseUserId,
+      value: valueToPay,
+      description: `Dízimo ${MONTH_NAMES_PT[selectedMonth.month - 1]} via Telegram`,
+      short_code: shortCode,
+      paid_at: new Date().toISOString()
+    });
+
+    await supabase.from('transactions').insert({
+      user_id: supabaseUserId,
+      value: valueToPay,
+      type: 'expense',
+      category: 'Dízimo/Oferta',
+      subtype: 'fixed',
+      urgency: 'planned',
+      description: `Dízimo ${MONTH_NAMES_PT[selectedMonth.month - 1]}`,
+      source: 'text',
+      short_code: shortCode
+    });
+
+    pendingTitheSelection.delete(supabaseUserId);
+    await ctx.answerCallbackQuery();
+    await ctx.editMessageText(`✅ Dízimo de ${MONTH_NAMES_PT[selectedMonth.month - 1]} registrado! #${shortCode}\n💰 R$ ${Number(valueToPay).toFixed(2)}`);
   }
 });
 
