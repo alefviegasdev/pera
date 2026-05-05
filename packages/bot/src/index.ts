@@ -1106,31 +1106,34 @@ Exemplos que funcionam:
         const year = now.getFullYear();
 
         // 1. BUSCA MAIS FLEXÍVEL DE CONTAS (Month Bills)
-        const keywords = item.de            const shortCode = selectedMonth.short_code || generateShortCode();
+        const keywords = item.description.toLowerCase().split(' ')
+          .filter(w => w.length > 2 && !['de', 'do', 'da', 'os', 'as', 'um', 'uma', 'the', 'para', 'com'].includes(w));
+
+        // --- Lógica Especial: Dízimo ---
+        if (isDizimo(item.description)) {
+          const summary = await getTitheSummary(supabaseUserId);
+          
+          if (summary.length === 0) {
+            return ctx.reply(`✅ Seu dízimo já está em dia! 🍐`);
+          }
+
+          const targetMonth = parseMonth(text);
+          let selectedMonth = null;
+
+          if (targetMonth) {
+            selectedMonth = summary.find(m => m.month === targetMonth);
+          }
+
+          // Se só tem um mês pendente e o usuário não especificou outro mês
+          if (summary.length === 1 && !selectedMonth) {
+            selectedMonth = summary[0];
+          }
+
+          if (selectedMonth) {
+            const shortCode = selectedMonth.short_code || generateShortCode();
             const valueToPay = item.value !== undefined ? item.value : selectedMonth.balance_due;
             
             await supabase.from('tithe_payments').insert({
-              user_id: supabaseUserId,
-              value: valueToPay,
-              description: `Dízimo ${MONTH_NAMES_PT[selectedMonth.month - 1]} via Telegram`,
-              short_code: shortCode,
-              paid_at: new Date().toISOString()
-            });
-
-            await supabase.from('transactions').insert({
-              user_id: supabaseUserId,
-              value: valueToPay,
-              type: 'expense',
-              category: 'Dízimo/Oferta',
-              subtype: 'fixed',
-              urgency: 'planned',
-              description: `Dízimo ${MONTH_NAMES_PT[selectedMonth.month - 1]}`,
-              source: 'text',
-              short_code: shortCode
-            });
-
-            return ctx.reply(`✅ Dízimo de ${MONTH_NAMES_PT[selectedMonth.month - 1]} registrado! #${shortCode}\n💰 R$ ${Number(valueToPay).toFixed(2)}`);
-s').insert({
               user_id: supabaseUserId,
               value: valueToPay,
               description: `Dízimo ${MONTH_NAMES_PT[selectedMonth.month - 1]} via Telegram`,
