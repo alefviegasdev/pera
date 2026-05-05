@@ -672,9 +672,10 @@ Quanto mais detalhes você der, melhor eu classifico!
         const { data: tData } = await supabase.from("transactions").select("*").ilike("short_code", replyCode).eq("user_id", supabaseUserId).maybeSingle();
         const { data: iData } = await supabase.from("installments").select("*").ilike("short_code", replyCode).eq("user_id", supabaseUserId).maybeSingle();
         const { data: bData } = await supabase.from("monthly_bills").select("*").ilike("short_code", replyCode).eq("user_id", supabaseUserId).maybeSingle();
+        const { data: tpData } = await supabase.from("tithe_payments").select("*").ilike("short_code", replyCode).eq("user_id", supabaseUserId).maybeSingle();
         
-        const record = tData || iData || bData;
-        const table = tData ? "transactions" : (iData ? "installments" : (bData ? "monthly_bills" : null));
+        const record = tData || iData || bData || tpData;
+        const table = tData ? "transactions" : (iData ? "installments" : (bData ? "monthly_bills" : (tpData ? "tithe_payments" : null)));
 
         const SUBCAT_TO_CAT: Record<string, {category: string, subcategory: string}> = {
           'mercado': { category: 'Alimentação', subcategory: 'Mercado' },
@@ -713,7 +714,7 @@ Quanto mais detalhes você der, melhor eu classifico!
           return ctx.reply(`✏️ #${replyCode} atualizado!\n📂 categoria: ${record.category} → ${mapped.category} | ${mapped.subcategory}`);
         }
 
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${geminiKey}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
         const response = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -735,7 +736,15 @@ Quanto mais detalhes você der, melhor eu classifico!
               await supabase
                 .from('tithe_payments')
                 .delete()
-                .eq('short_code', replyCode)
+                .eq('short_code', record.short_code)
+                .eq('user_id', supabaseUserId);
+            }
+
+            if (table === 'tithe_payments') {
+              await supabase
+                .from('transactions')
+                .delete()
+                .eq('short_code', record.short_code)
                 .eq('user_id', supabaseUserId);
             }
             
@@ -791,9 +800,9 @@ Quanto mais detalhes você der, melhor eu classifico!
 
     if (cmdMatch) {
       console.log("Tipo detectado: comando/correção (IA)");
-      const code = cmdMatch[1].replace('#', '').toUpperCase();
+      const code = cmdMatch[1].replace('#', '');
       
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${geminiKey}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
       const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -807,13 +816,14 @@ Quanto mais detalhes você der, melhor eu classifico!
       const aiText = result.candidates?.[0]?.content?.parts?.[0]?.text?.trim().replace(/```json|```/g, "") || "";
       const aiData = JSON.parse(aiText);
 
-      // --- Localizar registro em ambas as tabelas ---
-      const { data: tData } = await supabase.from("transactions").select("*").eq("short_code", code).eq("user_id", supabaseUserId).maybeSingle();
-      const { data: iData } = await supabase.from("installments").select("*").eq("short_code", code).eq("user_id", supabaseUserId).maybeSingle();
-      const { data: bData } = await supabase.from("monthly_bills").select("*").eq("short_code", code).eq("user_id", supabaseUserId).maybeSingle();
+      // --- Localizar registro em todas as tabelas ---
+      const { data: tData } = await supabase.from("transactions").select("*").ilike("short_code", code).eq("user_id", supabaseUserId).maybeSingle();
+      const { data: iData } = await supabase.from("installments").select("*").ilike("short_code", code).eq("user_id", supabaseUserId).maybeSingle();
+      const { data: bData } = await supabase.from("monthly_bills").select("*").ilike("short_code", code).eq("user_id", supabaseUserId).maybeSingle();
+      const { data: tpData } = await supabase.from("tithe_payments").select("*").ilike("short_code", code).eq("user_id", supabaseUserId).maybeSingle();
 
-      const record = tData || iData || bData;
-      const table = tData ? "transactions" : (iData ? "installments" : (bData ? "monthly_bills" : null));
+      const record = tData || iData || bData || tpData;
+      const table = tData ? "transactions" : (iData ? "installments" : (bData ? "monthly_bills" : (tpData ? "tithe_payments" : null)));
 
       if (!record || !table) {
         return ctx.reply(`❌ Não encontrei nenhuma transação com o código #${code}.
@@ -829,10 +839,17 @@ Possíveis motivos:
       if (aiData.delete === true) {
         await supabase.from(table).delete().eq("id", record.id);
         
-        // Se era uma transação de dízimo, limpar tithe_payments também
         if (table === 'transactions' && record.category === 'Dízimo/Oferta') {
           await supabase
             .from('tithe_payments')
+            .delete()
+            .eq('short_code', record.short_code)
+            .eq('user_id', supabaseUserId);
+        }
+
+        if (table === 'tithe_payments') {
+          await supabase
+            .from('transactions')
             .delete()
             .eq('short_code', record.short_code)
             .eq('user_id', supabaseUserId);
@@ -934,7 +951,7 @@ O que você pode mudar:
     }
 
     // 2a. DETECÇÃO DE MENSAGEM AMBÍGUA (verbo passado sem valor)
-    const ambiguousUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${geminiKey}`;
+    const ambiguousUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
     const ambiguousResponse = await fetch(ambiguousUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -959,7 +976,7 @@ O que você pode mudar:
     }
 
     // 2b. DETECÇÃO DE LISTA DE COMPRAS
-    const shoppingUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${geminiKey}`;
+    const shoppingUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
     const shoppingResponse = await fetch(shoppingUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -992,7 +1009,7 @@ O que você pode mudar:
 
     // 2. PROCESSAMENTO FINANCEIRO COM GEMINI
     console.log("Tipo detectado: financeiro");
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${geminiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
     
     const response = await fetch(url, {
       method: "POST",

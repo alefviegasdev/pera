@@ -139,17 +139,18 @@ const Home = ({
   const fetchData = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
+      const t = Date.now();
       const [sRes, bRes, tRes, iRes, budgetsRes, titheSummaryRes, profileRes, totalRes, ccRes, ccBillsRes] = await Promise.all([
-        fetch(`/api/transactions/summary?user_id=${userId}&period=month`),
-        fetch(`/api/monthly-bills-all?user_id=${userId}`),
-        fetch(`/api/transactions?user_id=${userId}&period=month`),
-        fetch(`/api/installments?user_id=${userId}`),
-        fetch(`/api/budgets?user_id=${userId}`),
-        fetch(`/api/tithe-summary?user_id=${userId}`),
-        fetch(`/api/user-profile?user_id=${userId}`),
-        fetch(`/api/transactions/summary?user_id=${userId}&period=all`),
-        fetch(`/api/credit-cards?user_id=${userId}`),
-        fetch(`/api/credit-card-bills?user_id=${userId}`)
+        fetch(`/api/transactions/summary?user_id=${userId}&period=month&t=${t}`),
+        fetch(`/api/monthly-bills-all?user_id=${userId}&t=${t}`),
+        fetch(`/api/transactions?user_id=${userId}&period=month&t=${t}`),
+        fetch(`/api/installments?user_id=${userId}&t=${t}`),
+        fetch(`/api/budgets?user_id=${userId}&t=${t}`),
+        fetch(`/api/tithe-summary?user_id=${userId}&t=${t}`),
+        fetch(`/api/user-profile?user_id=${userId}&t=${t}`),
+        fetch(`/api/transactions/summary?user_id=${userId}&period=all&t=${t}`),
+        fetch(`/api/credit-cards?user_id=${userId}&t=${t}`),
+        fetch(`/api/credit-card-bills?user_id=${userId}&t=${t}`)
       ]);
       setSummary(await sRes.json());
       const allBillsData = await bRes.json();
@@ -312,14 +313,18 @@ const Home = ({
   const income = summary?.total_income ?? 0;
   const expense = summary?.total_expense ?? 0;
   
+  // O dízimo e contas pagas devem ser somados às saídas variáveis (expense) para o total real
+  // No entanto, se já criamos uma transação para a conta/parcela/dízimo, o 'expense' já a inclui.
+  const totalActualExpense = expense;
+
+  const paidBillsVal = paidBills.reduce((sum, b) => sum + Number(b.value), 0);
+  const unpaidBillsVal = pendingBills.reduce((sum, b) => sum + Number(b.value), 0);
+  
+  const installmentTotal = installments.reduce((sum, i) => sum + Number(i.installment_value), 0);
   const paidInstallmentNames = txs
     .filter(t => t.subtype === 'semifixed' && t.type === 'expense')
     .map(t => t.description?.toLowerCase());
-
-  const paidBillsVal = paidBills.reduce((sum, b) => sum + Number(b.value), 0);
-  const totalBills = bills.reduce((sum, b) => sum + Number(b.value), 0);
-  const unpaidBillsVal = pendingBills.reduce((sum, b) => sum + Number(b.value), 0);
-  const installmentTotal = installments.reduce((sum, i) => sum + Number(i.installment_value), 0);
+    
   const unpaidInstallments = installments.filter(i => 
     !paidInstallmentNames.some(name => 
       i.description?.toLowerCase().includes(name) || 
@@ -327,14 +332,14 @@ const Home = ({
     )
   );
   const unpaidInstallmentTotal = unpaidInstallments.reduce((sum, i) => sum + Number(i.installment_value), 0);
-    
-    const dizimoBudget = budgets.find(b => b.category === 'Dízimo/Oferta');
-    const tithingFallback = dizimoBudget?.monthly_limit 
-      ? Number(dizimoBudget.monthly_limit) 
-      : income * 0.10;
 
-    const tithePending = titheSummary?.balance_due > 0 ? titheSummary.balance_due : 0;
-    const tithing = titheActive ? tithePending : 0;
+  const dizimoBudget = budgets.find(b => b.category === 'Dízimo/Oferta');
+  const tithingFallback = dizimoBudget?.monthly_limit 
+    ? Number(dizimoBudget.monthly_limit) 
+    : income * 0.10;
+
+  const tithePending = titheSummary?.balance_due > 0 ? titheSummary.balance_due : 0;
+  const tithing = titheActive ? tithePending : 0;
 
   // Agrupar pagamentos de dízimo por mês
   const tithePaymentsByMonth: Record<string, any> = {};
@@ -370,11 +375,8 @@ const Home = ({
   const titheTotalDue = titheActive ? (titheSummary?.tithe_due || 0) : 0;
   const tithePaidVal = tithesPaidThisMonth.reduce((sum, t) => sum + Number(t.value), 0);
   
-  const totalFixedVal = (totalBills + paidBillsVal) + installmentTotal + titheTotalDue;
+  const totalFixedVal = (unpaidBillsVal + paidBillsVal) + installmentTotal + titheTotalDue;
   const remainingFixedVal = unpaidBillsVal + unpaidInstallmentTotal + tithing;
-  
-  // O dízimo e contas pagas devem ser somados às saídas variáveis (expense) para o total real
-  const totalActualExpense = expense + paidBillsVal + tithePaidVal;
   
   const realAvailable = income - totalActualExpense - remainingFixedVal;
   const isNegative = realAvailable < 0;
