@@ -685,7 +685,7 @@ const Home = ({
                 <Calendar size={14} className="text-error" />
               </div>
               <p className="text-[9px] font-bold text-on-surface-variant uppercase text-center leading-tight">Contas fixas</p>
-              <p className="text-xs font-black text-on-surface">{maskValue(fmt(totalBills + paidBillsVal + titheTotalDue).split(',')[0], hideMaster)}</p>
+              <p className="text-xs font-black text-on-surface">{maskValue(fmt(unpaidBillsVal + paidBillsVal + titheTotalDue).split(',')[0], hideMaster)}</p>
             </div>
             <span className="text-on-surface-variant/30 font-bold mb-4">-</span>
             <div className="flex flex-col items-center gap-1 flex-1">
