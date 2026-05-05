@@ -336,6 +336,36 @@ const Home = ({
     const tithePending = titheSummary?.balance_due > 0 ? titheSummary.balance_due : 0;
     const tithing = titheActive ? tithePending : 0;
 
+  // Agrupar pagamentos de dízimo por mês
+  const tithePaymentsByMonth: Record<string, any> = {};
+  (titheSummary?.payments || [])
+    .filter((p: any) => {
+      const paidDate = new Date(p.paid_at);
+      const now = new Date();
+      return paidDate.getMonth() === now.getMonth() && 
+             paidDate.getFullYear() === now.getFullYear();
+    })
+    .forEach((p: any) => {
+      const pct = p.tithe_pct || titheSummary?.tithe_pct_current || 10;
+      const key = `${new Date(p.paid_at).getFullYear()}-${new Date(p.paid_at).getMonth()}-${pct}`;
+      if (!tithePaymentsByMonth[key]) {
+        tithePaymentsByMonth[key] = {
+          id: `tithe-paid-${key}`,
+          name: 'Dízimo',
+          value: 0,
+          itemType: 'tithing',
+          paid_at: p.paid_at,
+          isFromPreviousMonth: false,
+          tithePct: pct,
+          paymentCount: 0
+        };
+      }
+      tithePaymentsByMonth[key].value += Number(p.value);
+      tithePaymentsByMonth[key].paymentCount += 1;
+    });
+
+  const tithesPaidThisMonth = titheActive ? Object.values(tithePaymentsByMonth) : [];
+
   // Values for the Total Card
   const titheTotalDue = titheActive ? (titheSummary?.tithe_due || 0) : 0;
   const tithePaidVal = tithesPaidThisMonth.reduce((sum, t) => sum + Number(t.value), 0);
@@ -389,35 +419,6 @@ const Home = ({
     }))
   ];
 
-  // Agrupar pagamentos de dízimo por mês
-  const tithePaymentsByMonth: Record<string, any> = {};
-  (titheSummary?.payments || [])
-    .filter((p: any) => {
-      const paidDate = new Date(p.paid_at);
-      const now = new Date();
-      return paidDate.getMonth() === now.getMonth() && 
-             paidDate.getFullYear() === now.getFullYear();
-    })
-    .forEach((p: any) => {
-      const pct = p.tithe_pct || titheSummary?.tithe_pct_current || 10;
-      const key = `${new Date(p.paid_at).getFullYear()}-${new Date(p.paid_at).getMonth()}-${pct}`;
-      if (!tithePaymentsByMonth[key]) {
-        tithePaymentsByMonth[key] = {
-          id: `tithe-paid-${key}`,
-          name: 'Dízimo',
-          value: 0,
-          itemType: 'tithing',
-          paid_at: p.paid_at,
-          isFromPreviousMonth: false,
-          tithePct: pct,
-          paymentCount: 0
-        };
-      }
-      tithePaymentsByMonth[key].value += Number(p.value);
-      tithePaymentsByMonth[key].paymentCount += 1;
-    });
-
-  const tithesPaidThisMonth = titheActive ? Object.values(tithePaymentsByMonth) : [];
 
   const allPaid = [
     ...paidBills.map(b => ({ ...b, itemType: 'bill', isFromPreviousMonth: false })),
