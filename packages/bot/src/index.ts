@@ -541,6 +541,24 @@ async function registerCreditTransaction(
   }
 }
 
+async function fetchGemini(geminiKey: string, body: object, retries = 3): Promise<any> {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${geminiKey}`;
+  for (let i = 0; i < retries; i++) {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+    if (res.ok) return res.json();
+    if (res.status === 503 && i < retries - 1) {
+      await new Promise(r => setTimeout(r, 2000 * (i + 1)));
+      continue;
+    }
+    const err = await res.json().catch(() => ({}));
+    throw new Error(`Gemini API error: ${res.status} ${JSON.stringify(err)}`);
+  }
+}
+
 bot.on("message:text", async (ctx) => {
   const text = ctx.message.text.trim();
   const userId = ctx.from.id.toString();
@@ -714,17 +732,9 @@ Quanto mais detalhes você der, melhor eu classifico!
           return ctx.reply(`✏️ #${replyCode} atualizado!\n📂 categoria: ${record.category} → ${mapped.category} | ${mapped.subcategory}`);
         }
 
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${geminiKey}`;
-        const response = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: CORRECTION_PROMPT + text }] }]
-          })
+        const result = await fetchGemini(geminiKey, {
+          contents: [{ parts: [{ text: CORRECTION_PROMPT + text }] }]
         });
-        
-        if (!response.ok) throw new Error(`Gemini Error: ${response.status}`);
-        const result = await response.json();
         const aiText = result.candidates?.[0]?.content?.parts?.[0]?.text?.trim().replace(/```json|```/g, "") || "";
         const aiData = JSON.parse(aiText);
         
@@ -810,17 +820,9 @@ Quanto mais detalhes você der, melhor eu classifico!
       console.log("Tipo detectado: comando/correção (IA)");
       const code = cmdMatch[1].replace('#', '');
       
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${geminiKey}`;
-      const response = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: CORRECTION_PROMPT + text }] }]
-        })
+      const result = await fetchGemini(geminiKey, {
+        contents: [{ parts: [{ text: CORRECTION_PROMPT + text }] }]
       });
-
-      if (!response.ok) throw new Error(`Gemini Correction Error: ${response.status}`);
-      const result = await response.json();
       const aiText = result.candidates?.[0]?.content?.parts?.[0]?.text?.trim().replace(/```json|```/g, "") || "";
       const aiData = JSON.parse(aiText);
 
@@ -966,16 +968,10 @@ O que você pode mudar:
     }
 
     // 2a. DETECÇÃO DE MENSAGEM AMBÍGUA (verbo passado sem valor)
-    const ambiguousUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${geminiKey}`;
-    const ambiguousResponse = await fetch(ambiguousUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: AMBIGUOUS_PROMPT + text }] }]
-      })
-    });
-    if (ambiguousResponse.ok) {
-      const ambiguousResult = await ambiguousResponse.json();
+    const ambiguousResult = await fetchGemini(geminiKey, {
+      contents: [{ parts: [{ text: AMBIGUOUS_PROMPT + text }] }]
+    }).catch(() => null);
+    if (ambiguousResult) {
       const ambiguousText = ambiguousResult.candidates?.[0]?.content?.parts?.[0]?.text
         ?.trim().replace(/```json|```/g, "") || "";
       try {
@@ -991,16 +987,10 @@ O que você pode mudar:
     }
 
     // 2b. DETECÇÃO DE LISTA DE COMPRAS
-    const shoppingUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${geminiKey}`;
-    const shoppingResponse = await fetch(shoppingUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: SHOPPING_PROMPT + text }] }]
-      })
-    });
-    if (shoppingResponse.ok) {
-      const shoppingResult = await shoppingResponse.json();
+    const shoppingResult = await fetchGemini(geminiKey, {
+      contents: [{ parts: [{ text: SHOPPING_PROMPT + text }] }]
+    }).catch(() => null);
+    if (shoppingResult) {
       const shoppingText = shoppingResult.candidates?.[0]?.content?.parts?.[0]?.text
         ?.trim().replace(/```json|```/g, "") || "";
       try {
@@ -1024,22 +1014,9 @@ O que você pode mudar:
 
     // 2. PROCESSAMENTO FINANCEIRO COM GEMINI
     console.log("Tipo detectado: financeiro");
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${geminiKey}`;
-    
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: SYSTEM_PROMPT + text }] }]
-      })
+    const result = await fetchGemini(geminiKey, {
+      contents: [{ parts: [{ text: SYSTEM_PROMPT + text }] }]
     });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(`Gemini API error: ${response.status} ${JSON.stringify(errorData)}`);
-    }
-
-    const result = await response.json();
     const responseText = result.candidates?.[0]?.content?.parts?.[0]?.text?.trim().replace(/```json|```/g, "") || "";
     
     if (!responseText) throw new Error("Resposta vazia do Gemini");
