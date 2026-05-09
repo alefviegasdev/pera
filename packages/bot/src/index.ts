@@ -711,7 +711,15 @@ Quanto mais detalhes você der, melhor eu classifico!
 
     // STEP bank — usuário digita o nome do banco
     if (regPending && regPending.step === 'bank') {
-      const bank = text.trim();
+      const BANK_NAMES = ['Nubank', 'Itaú', 'Bradesco', 'Inter',
+        'C6 Bank', 'Santander', 'Caixa', 'Banco do Brasil', 'XP', 'BTG'];
+      const bankInput = text.trim();
+      const matchedBank = BANK_NAMES.find(b =>
+        b.toLowerCase() === bankInput.toLowerCase() ||
+        b.toLowerCase().includes(bankInput.toLowerCase()) ||
+        bankInput.toLowerCase().includes(b.toLowerCase())
+      );
+      const bank = matchedBank || bankInput;
       pendingCardRegistration.set(supabaseUserId, {
         ...regPending, bank, step: 'closing_day'
       });

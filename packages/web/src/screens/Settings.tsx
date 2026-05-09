@@ -430,7 +430,12 @@ const Settings = ({
                       onClick={() => {
                         setEditingCard(card);
                         setCardName(card.name || '');
-                        setCardBank(card.bank || 'Nubank');
+                        const matchedBank = BANKS.find(b =>
+                          b.toLowerCase() === (card.bank || '').toLowerCase() ||
+                          b.toLowerCase().includes((card.bank || '').toLowerCase()) ||
+                          (card.bank || '').toLowerCase().includes(b.toLowerCase())
+                        );
+                        setCardBank(matchedBank || card.bank || 'Nubank');
                         setCardLimit(String(card.card_limit || ''));
                         setCardClosingDay(card.closing_day || 1);
                         setCardDueDay(card.due_day || 10);
