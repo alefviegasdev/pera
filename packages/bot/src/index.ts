@@ -700,11 +700,13 @@ Quanto mais detalhes você der, melhor eu classifico!
       pendingCardRegistration.delete(supabaseUserId);
 
       const subcatLine = regPending.item.subcategory ? ` | ${regPending.item.subcategory}` : '';
-      return ctx.reply(`✅ Cartão ${regPending.bank} cadastrado e transação registrada!
+      return ctx.reply(`✅ Cartão ${regPending.bank} cadastrado e transação registrada! #${regPending.shortCode}
 💰 R$ ${Number(regPending.item.value).toFixed(2)}
 📂 ${regPending.item.category}${subcatLine}
 📝 ${regPending.item.description}
-💳 ${regPending.bank} (crédito)`);
+💳 ${regPending.bank} (crédito)
+
+✏️ Para corrigir ou apagar, responda esta mensagem com o comando desejado.`);
     }
 
     // STEP bank — usuário digita o nome do banco
