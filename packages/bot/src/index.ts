@@ -707,6 +707,45 @@ Quanto mais detalhes você der, melhor eu classifico!
 💳 ${regPending.bank} (crédito)`);
     }
 
+    // STEP bank — usuário digita o nome do banco
+    if (regPending && regPending.step === 'bank') {
+      const bank = text.trim();
+      pendingCardRegistration.set(supabaseUserId, {
+        ...regPending, bank, step: 'closing_day'
+      });
+      return ctx.reply(
+        `💳 Banco: ${bank}\n\nQual é o dia de fechamento da fatura? (digite só o número, ex: 12)`
+      );
+    }
+
+    // STEP closing_day — usuário digita o dia de fechamento
+    if (regPending && regPending.step === 'closing_day') {
+      const day = parseInt(text.trim());
+      if (isNaN(day) || day < 1 || day > 31) {
+        return ctx.reply('⚠️ Dia inválido. Digite um número entre 1 e 31.');
+      }
+      pendingCardRegistration.set(supabaseUserId, {
+        ...regPending, closing_day: day, step: 'due_day'
+      });
+      return ctx.reply(
+        `💳 Banco: ${regPending.bank}\n📅 Fechamento: dia ${day}\n\nQual é o dia de vencimento? (digite só o número, ex: 20)`
+      );
+    }
+
+    // STEP due_day — usuário digita o dia de vencimento
+    if (regPending && regPending.step === 'due_day') {
+      const day = parseInt(text.trim());
+      if (isNaN(day) || day < 1 || day > 31) {
+        return ctx.reply('⚠️ Dia inválido. Digite um número entre 1 e 31.');
+      }
+      pendingCardRegistration.set(supabaseUserId, {
+        ...regPending, due_day: day, step: 'limit'
+      });
+      return ctx.reply(
+        `💳 Banco: ${regPending.bank}\n📅 Fechamento: dia ${regPending.closing_day} | Vencimento: dia ${day}\n\n💰 Qual é o limite do cartão? (ex: 5000)`
+      );
+    }
+
     // --- CORREÇÃO RÁPIDA DE DIA DE VENCIMENTO (Regex) ---
     // Padrões: #CODE 10 dia ou #CODE dia 10
     const dayRegex1 = /^#?(?:id)?([a-zA-Z0-9]{4})\s+(\d{1,2})\s+dia$/i;
@@ -1413,22 +1452,18 @@ Exemplos que funcionam:
             .eq('user_id', supabaseUserId);
 
           if (!cards || cards.length === 0) {
-            // Sem cartão — iniciar cadastro
+            // Sem cartão — iniciar cadastro por texto
             pendingCardRegistration.set(supabaseUserId, {
               item,
               shortCode,
               step: 'bank'
             });
 
-            const BANKS = ['Nubank', 'Itaú', 'Bradesco', 'Inter', 'C6 Bank',
-                           'Santander', 'Caixa', 'Banco do Brasil', 'XP', 'BTG'];
-            const keyboard = new InlineKeyboard();
-            BANKS.forEach(bank => {
-              keyboard.text(bank, `reg_card_bank_${bank}`).row();
-            });
+            const keyboard = new InlineKeyboard()
+              .text('❌ Cancelar cadastro', 'reg_card_cancel');
 
             await ctx.reply(
-              `💳 Você não tem cartão cadastrado ainda.\n\nVamos cadastrar agora! Qual é o seu banco?`,
+              `💳 Você não tem cartão cadastrado ainda.\n\nVamos cadastrar agora! Qual é o nome do seu banco?\n\nEx: Nubank, Itaú, Bradesco, Inter...`,
               { reply_markup: keyboard }
             );
             continue;
@@ -1521,75 +1556,15 @@ O que você pode fazer:
 bot.on('callback_query:data', async (ctx) => {
   const data = ctx.callbackQuery.data;
 
-  // STEP 1 — banco selecionado
-  if (data.startsWith('reg_card_bank_')) {
-    const bank = data.replace('reg_card_bank_', '');
+  // Cancelar cadastro de cartão
+  if (data === 'reg_card_cancel') {
     const userId = ctx.from.id.toString();
     const { data: profile } = await supabase
       .from('user_profiles').select('user_id')
       .eq('telegram_id', userId).maybeSingle();
-    const supabaseUserId = profile?.user_id;
-    if (!supabaseUserId) { await ctx.answerCallbackQuery(); return; }
-
-    const pending = pendingCardRegistration.get(supabaseUserId);
-    if (!pending) { await ctx.answerCallbackQuery(); return; }
-
-    pendingCardRegistration.set(supabaseUserId, { ...pending, bank, step: 'closing_day' });
-
-    const keyboard = new InlineKeyboard();
-    [1,5,10,15,20,25,28].forEach(d => keyboard.text(`Dia ${d}`, `reg_card_closing_${d}`));
-
+    if (profile?.user_id) pendingCardRegistration.delete(profile.user_id);
     await ctx.answerCallbackQuery();
-    await ctx.editMessageText(
-      `💳 Banco: ${bank}\n\nQual é o dia de fechamento da fatura?`,
-      { reply_markup: keyboard }
-    );
-  }
-
-  // STEP 2 — dia de fechamento
-  if (data.startsWith('reg_card_closing_')) {
-    const closingDay = parseInt(data.replace('reg_card_closing_', ''));
-    const userId = ctx.from.id.toString();
-    const { data: profile } = await supabase
-      .from('user_profiles').select('user_id')
-      .eq('telegram_id', userId).maybeSingle();
-    const supabaseUserId = profile?.user_id;
-    if (!supabaseUserId) { await ctx.answerCallbackQuery(); return; }
-
-    const pending = pendingCardRegistration.get(supabaseUserId);
-    if (!pending) { await ctx.answerCallbackQuery(); return; }
-
-    pendingCardRegistration.set(supabaseUserId, { ...pending, closing_day: closingDay, step: 'due_day' });
-
-    const keyboard = new InlineKeyboard();
-    [1,5,10,15,20,25,28].forEach(d => keyboard.text(`Dia ${d}`, `reg_card_due_${d}`));
-
-    await ctx.answerCallbackQuery();
-    await ctx.editMessageText(
-      `💳 Banco: ${pending.bank}\n📅 Fechamento: dia ${closingDay}\n\nQual é o dia de vencimento?`,
-      { reply_markup: keyboard }
-    );
-  }
-
-  // STEP 3 — dia de vencimento
-  if (data.startsWith('reg_card_due_')) {
-    const dueDay = parseInt(data.replace('reg_card_due_', ''));
-    const userId = ctx.from.id.toString();
-    const { data: profile } = await supabase
-      .from('user_profiles').select('user_id')
-      .eq('telegram_id', userId).maybeSingle();
-    const supabaseUserId = profile?.user_id;
-    if (!supabaseUserId) { await ctx.answerCallbackQuery(); return; }
-
-    const pending = pendingCardRegistration.get(supabaseUserId);
-    if (!pending) { await ctx.answerCallbackQuery(); return; }
-
-    pendingCardRegistration.set(supabaseUserId, { ...pending, due_day: dueDay, step: 'limit' });
-
-    await ctx.answerCallbackQuery();
-    await ctx.editMessageText(
-      `💳 Banco: ${pending.bank}\n📅 Fechamento: dia ${pending.closing_day} | Vencimento: dia ${dueDay}\n\n💰 Qual é o limite do cartão? (envie o valor, ex: 5000)`
-    );
+    await ctx.editMessageText('❌ Cadastro de cartão cancelado.');
   }
 
   if (data.startsWith('card_select_')) {
