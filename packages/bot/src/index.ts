@@ -1846,6 +1846,7 @@ bot.on('callback_query:data', async (ctx) => {
 
   // EDITAR item da nota fiscal
   if (data.startsWith('receipt_edit_')) {
+    await ctx.answerCallbackQuery();
     const itemId = data.replace('receipt_edit_', '');
     const userId = ctx.from.id.toString();
     const { data: profile } = await supabase
@@ -1853,12 +1854,11 @@ bot.on('callback_query:data', async (ctx) => {
       .eq('telegram_id', userId).maybeSingle();
     const supabaseUserId = profile?.user_id;
     const pending = pendingReceiptReview.get(supabaseUserId);
-    if (!pending) { await ctx.answerCallbackQuery(); return; }
+    if (!pending) return;
     const item = pending.items.find((i: any) => i.id === itemId);
-    if (!item) { await ctx.answerCallbackQuery(); return; }
+    if (!item) return;
     pending.editingItemId = itemId;
     pendingReceiptReview.set(supabaseUserId, pending);
-    await ctx.answerCallbackQuery();
     await ctx.reply(
       `✏️ Editando: *${item.description}* (${item.value.toFixed(2)})\n\nEnvie:\n- Um número para alterar o valor (ex: 8.50)\n- Texto para alterar o nome\n- Uma categoria para alterar a categoria`,
       { parse_mode: 'Markdown' }
@@ -1867,6 +1867,7 @@ bot.on('callback_query:data', async (ctx) => {
 
   // REMOVER item da nota fiscal
   if (data.startsWith('receipt_remove_')) {
+    await ctx.answerCallbackQuery();
     const itemId = data.replace('receipt_remove_', '');
     const userId = ctx.from.id.toString();
     const { data: profile } = await supabase
@@ -1874,10 +1875,9 @@ bot.on('callback_query:data', async (ctx) => {
       .eq('telegram_id', userId).maybeSingle();
     const supabaseUserId = profile?.user_id;
     const pending = pendingReceiptReview.get(supabaseUserId);
-    if (!pending) { await ctx.answerCallbackQuery(); return; }
+    if (!pending) return;
     pending.items = pending.items.filter((i: any) => i.id !== itemId);
     pendingReceiptReview.set(supabaseUserId, pending);
-    await ctx.answerCallbackQuery();
     if (pending.items.length === 0) {
       pendingReceiptReview.delete(supabaseUserId);
       await ctx.editMessageText('🗑️ Todos os itens foram removidos. Nota cancelada.');
@@ -1889,14 +1889,14 @@ bot.on('callback_query:data', async (ctx) => {
 
   // CONFIRMAR todos os itens da nota fiscal
   if (data === 'receipt_confirm') {
+    await ctx.answerCallbackQuery();
     const userId = ctx.from.id.toString();
     const { data: profile } = await supabase
       .from('user_profiles').select('user_id, default_payment')
       .eq('telegram_id', userId).maybeSingle();
     const supabaseUserId = profile?.user_id;
     const pending = pendingReceiptReview.get(supabaseUserId);
-    if (!pending) { await ctx.answerCallbackQuery(); return; }
-    await ctx.answerCallbackQuery();
+    if (!pending) return;
     await ctx.editMessageText('⏳ Registrando itens...');
     let registered = 0;
     let errors = 0;
