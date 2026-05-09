@@ -271,11 +271,33 @@ app.post('/transactions', async (req, res) => {
 app.delete('/transactions/:id', async (req, res) => {
   try {
     const { id } = req.params;
+
+    const { data: tx } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('id', id)
+      .single();
+
     const { error } = await supabase
       .from('transactions')
       .delete()
       .eq('id', id);
     if (error) throw error;
+
+    if (tx?.short_code) {
+      await supabase.from('monthly_bills')
+        .update({ paid: false, paid_at: null })
+        .eq('short_code', tx.short_code)
+        .eq('user_id', tx.user_id);
+
+      if (tx.category === 'Dízimo/Oferta') {
+        await supabase.from('tithe_payments')
+          .delete()
+          .eq('short_code', tx.short_code)
+          .eq('user_id', tx.user_id);
+      }
+    }
+
     res.json({ success: true });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
@@ -742,8 +764,14 @@ app.patch('/budgets/:id', async (req, res) => {
 app.patch('/installments/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { current_installment, active } = req.body;
-    
+    const { current_installment, active, user_id } = req.body;
+
+    const { data: inst } = await supabase
+      .from('installments')
+      .select('*')
+      .eq('id', id)
+      .single();
+
     const { data, error } = await supabase
       .from('installments')
       .update({ current_installment, active })
@@ -751,6 +779,26 @@ app.patch('/installments/:id', async (req, res) => {
       .select();
 
     if (error) throw error;
+
+    if (inst && (user_id || inst.user_id)) {
+      const uid = user_id || inst.user_id;
+      const isFinished = current_installment >= inst.total_installments;
+      const shortCode = generateShortCode();
+      await supabase.from('transactions').insert({
+        user_id: uid,
+        value: inst.installment_value,
+        type: 'expense',
+        category: inst.category || 'Outros',
+        subtype: 'semifixed',
+        urgency: 'necessity',
+        description: isFinished
+          ? `${inst.description} (Final)`
+          : `${inst.description} (Parcela ${current_installment}/${inst.total_installments})`,
+        source: 'app',
+        short_code: shortCode
+      });
+    }
+
     res.json(data[0]);
   } catch (e: any) {
     res.status(500).json({ error: e.message });
