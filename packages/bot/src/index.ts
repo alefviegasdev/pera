@@ -1891,6 +1891,8 @@ bot.on('callback_query:data', async (ctx) => {
     await ctx.editMessageText('⏳ Registrando itens...');
     let registered = 0;
     let errors = 0;
+    const registeredMessages: string[] = [];
+
     for (const item of pending.items) {
       const shortCode = generateShortCode();
       try {
@@ -1907,11 +1909,14 @@ bot.on('callback_query:data', async (ctx) => {
               cards[0].closing_day,
               cards[0].due_day
             );
+            const subcatLine = item.subcategory ? ` | ${item.subcategory}` : '';
+            registeredMessages.push(`✅ #${shortCode}\n📝 ${item.description}\n💰 R$ ${Number(item.value).toFixed(2)}\n📂 ${item.category}${subcatLine}\n💳 ${cards[0].bank} (crédito)`);
             registered++;
             continue;
           }
         }
-        await supabase.from('transactions').insert({
+
+        const { error: txError } = await supabase.from('transactions').insert({
           user_id: supabaseUserId,
           value: item.value,
           type: 'expense',
@@ -1922,19 +1927,35 @@ bot.on('callback_query:data', async (ctx) => {
           source: 'text',
           short_code: shortCode,
           subcategory: item.subcategory || null,
-          payment_method: pending.paymentMethod
+          payment_method: pending.paymentMethod || 'debit'
         });
+
+        if (txError) {
+          console.error('[NOTA] Erro ao inserir transação:', txError);
+          errors++;
+          continue;
+        }
+
+        const subcatLine = item.subcategory ? ` | ${item.subcategory}` : '';
+        registeredMessages.push(`✅ #${shortCode}\n📝 ${item.description}\n💰 R$ ${Number(item.value).toFixed(2)}\n📂 ${item.category}${subcatLine}`);
         registered++;
+
       } catch (e) {
         console.error('[NOTA] Erro ao registrar item:', e);
         errors++;
       }
     }
+
     pendingReceiptReview.delete(supabaseUserId);
-    const fmtTotal = (n: number) => `R$ ${Number(n).toFixed(2)}`;
+
+    for (const msg of registeredMessages) {
+      await ctx.reply(msg);
+    }
+
+    const fmt = (n: number) => `R$ ${Number(n).toFixed(2)}`;
     const total = pending.items.reduce((s: number, i: any) => s + i.value, 0);
     await ctx.reply(
-      `✅ ${registered} ${registered === 1 ? 'item registrado' : 'itens registrados'}!\n💰 Total: ${fmtTotal(total)}${errors > 0 ? `\n⚠️ ${errors} erro(s)` : ''}`
+      `🧾 ${registered} ${registered === 1 ? 'item registrado' : 'itens registrados'}!\n💰 Total: ${fmt(total)}${errors > 0 ? `\n⚠️ ${errors} erro(s) — verifique os logs` : ''}`
     );
   }
 
