@@ -826,7 +826,7 @@ app.get('/user-profile', async (req, res) => {
   try {
     const { user_id } = req.query;
     if (!user_id) return res.status(400).json({ error: "user_id is required" });
-    const { data, error } = await supabase.from('user_profiles').select('tithe_active, tithe_percentage').eq('user_id', user_id).single();
+    const { data, error } = await supabase.from('user_profiles').select('tithe_active, tithe_percentage, default_payment').eq('user_id', user_id).single();
     if (error && error.code !== 'PGRST116') throw error;
     res.json(data || { tithe_active: true, tithe_percentage: 10 });
   } catch (e: any) {
@@ -844,6 +844,7 @@ app.patch('/user-profile', async (req, res) => {
     if (tithe_percentage !== undefined) updates.tithe_percentage = tithe_percentage;
     if (tithe_percentage_changed_at !== undefined) updates.tithe_percentage_changed_at = tithe_percentage_changed_at;
     if (tithe_percentage_previous !== undefined) updates.tithe_percentage_previous = tithe_percentage_previous;
+    if (req.body.default_payment !== undefined) updates.default_payment = req.body.default_payment;
 
     const { data: existing } = await supabase.from('user_profiles').select('id').eq('user_id', user_id).single();
 

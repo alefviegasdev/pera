@@ -6,6 +6,7 @@ interface TransactionModalProps {
   tx: any;
   onRefresh?: () => void;
   onClose: () => void;
+  creditCards?: any[];
 }
 
 const fmt = (n: number) =>
@@ -27,7 +28,7 @@ const SUBCATEGORIES: Record<string, string[]> = {
 
 const hasSubcategories = (cat: string) => !!SUBCATEGORIES[cat];
 
-const TransactionModal: React.FC<TransactionModalProps> = ({ tx, onRefresh, onClose }) => {
+const TransactionModal: React.FC<TransactionModalProps> = ({ tx, onRefresh, onClose, creditCards }) => {
   const color = catColor(tx.category);
   const isIncome = tx.type === 'income';
   const initials = getInitials(tx.description);
@@ -207,6 +208,22 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ tx, onRefresh, onCl
               <p className="text-[10px] text-on-surface-variant font-bold mt-0.5">{tx.subcategory}</p>
             )}
           </div>
+          {tx.payment_method && (
+            <div className="bg-white/50 border border-surface-container p-4 rounded-2xl">
+              <div className="flex items-center gap-2 mb-1.5 opacity-40">
+                <Layers size={12} />
+                <span className="text-[9px] font-black uppercase tracking-widest">Pagamento</span>
+              </div>
+              <p className="font-bold text-sm text-on-surface">
+                {tx.payment_method === 'credit' ? '💳 Crédito' : '🏦 Débito'}
+                {tx.payment_method === 'credit' && tx.credit_card_id && creditCards && creditCards.length > 0 && (
+                  <span className="text-primary ml-1">
+                    · {creditCards.find((c: any) => c.id === tx.credit_card_id)?.bank || ''}
+                  </span>
+                )}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Action Center */}

@@ -1033,7 +1033,14 @@ const Home = ({
                     </div>
                     <div>
                       <p className="text-on-surface font-bold font-body">{t.description}</p>
-                      <p className="text-on-surface-variant text-xs">{t.category}</p>
+                      <p className="text-on-surface-variant text-xs">
+                        {t.category}
+                        {t.payment_method === 'credit' && (
+                          <span className="ml-1 text-primary font-bold">
+                            · {creditCards.find((c: any) => c.id === t.credit_card_id)?.bank || 'Crédito'}
+                          </span>
+                        )}
+                      </p>
                     </div>
                   </div>
                   <p className={`font-extrabold ${isIncome ? 'text-tertiary' : 'text-on-surface'}`}>
@@ -1054,6 +1061,7 @@ const Home = ({
           tx={selectedTx} 
           onClose={() => setSelectedTx(null)}
           onRefresh={() => fetchData(true)}
+          creditCards={creditCards}
         />
       )}
 
