@@ -5,7 +5,7 @@ import FixedDetailsModal from '../components/FixedDetailsModal';
 import CategoryDetailsModal from '../components/CategoryDetailsModal';
 import IncomeDetailsModal from '../components/IncomeDetailsModal';
 import TitheDetailsModal from '../components/TitheDetailsModal';
-import { ArrowRight, ArrowUpRight, ArrowDownRight, AlertTriangle, CreditCard, ChevronRight, Zap, Wifi, Home as HomeIcon, Dumbbell, Pin, AlertCircle, CheckCircle2, Heart, Eye, EyeOff, Calendar } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, ArrowDownRight, AlertTriangle, CreditCard, ChevronRight, Zap, Wifi, Home as HomeIcon, Dumbbell, Pin, AlertCircle, CheckCircle2, Heart, Eye, EyeOff, Calendar, Trash2 } from 'lucide-react';
 
 const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
@@ -45,6 +45,7 @@ const Home = ({
   const [activeCardIdx, setActiveCardIdx] = useState(0);
   const [cardDragX, setCardDragX] = useState(0);
   const [cardDragStart, setCardDragStart] = useState<number | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<any>(null);
   const cardSwipeRef = useRef<HTMLDivElement>(null);
   const isHorizontalSwipe = useRef<boolean | null>(null);
   const cardDragStartRef = useRef<number | null>(null);
@@ -218,6 +219,16 @@ const Home = ({
       fetchData(true);
     } catch (e) {
       console.error('[PARCELA] Erro:', e);
+    }
+  };
+
+  const handleDeleteTransaction = async (tx: any) => {
+    try {
+      await fetch(`/api/transactions/${tx.id}`, { method: 'DELETE' });
+      setConfirmDelete(null);
+      fetchData(true);
+    } catch (e) {
+      console.error('[DELETE] Erro:', e);
     }
   };
 
@@ -933,8 +944,29 @@ const Home = ({
                     </div>
                     <div className="flex flex-col items-end gap-3">
                       <p className="text-on-surface-variant font-black text-lg tracking-tight">{fmt(b.value)}</p>
-                      <div className="bg-tertiary-container text-on-tertiary-container px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest">
-                        Pago
+                      <div className="flex items-center gap-2">
+                        <div className="bg-tertiary-container text-on-tertiary-container px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest">
+                          Pago
+                        </div>
+                        {(() => {
+                          const linkedTx = txs.find(t => {
+                            if (b.itemType === 'bill') return t.short_code === b.short_code;
+                            if (b.itemType === 'installment') return t.description?.toLowerCase().includes(b.name?.toLowerCase()) && t.subtype === 'semifixed';
+                            return false;
+                          });
+                          if (!linkedTx) return null;
+                          return (
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setConfirmDelete(linkedTx);
+                              }}
+                              className="p-1.5 text-error hover:bg-error/10 rounded-full transition-colors active:scale-90"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          );
+                        })()}
                       </div>
                     </div>
                   </div>
@@ -1058,6 +1090,38 @@ const Home = ({
           titheSummary={titheSummary}
           onClose={() => { setShowTitheModal(false); fetchData(true); }}
         />
+      )}
+
+      {/* DELETE CONFIRMATION MODAL */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center px-6">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setConfirmDelete(null)} />
+          <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl relative z-10 animate-in zoom-in-95 duration-200">
+            <div className="w-16 h-16 bg-error/10 rounded-full flex items-center justify-center mb-6">
+              <Trash2 size={32} className="text-error" />
+            </div>
+            <h3 className="text-on-surface font-headline font-black text-2xl tracking-tight mb-2">Apagar transação?</h3>
+            <p className="text-on-surface-variant font-medium text-sm leading-relaxed mb-8">
+              Deseja realmente apagar a transação <span className="font-bold text-on-surface">"{confirmDelete.description}"</span>?
+              <br/><br/>
+              A conta será marcada como não paga novamente.
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              <button 
+                onClick={() => setConfirmDelete(null)}
+                className="py-4 rounded-full text-sm font-black uppercase tracking-widest text-on-surface-variant hover:bg-surface-container transition-colors"
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={() => handleDeleteTransaction(confirmDelete)}
+                className="py-4 rounded-full text-sm font-black uppercase tracking-widest bg-error text-white shadow-lg shadow-error/20 active:scale-95 transition-all"
+              >
+                Apagar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
