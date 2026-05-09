@@ -182,33 +182,11 @@ const Home = ({
 
   const markAsPaid = async (bill: any) => {
     try {
-      const shortCode = Math.random().toString(36).substring(2, 6).toUpperCase();
-      
-      // 1. Mark bill as paid
-      const billPromise = fetch(`/api/monthly-bills/${bill.id}/pay`, {
+      await fetch(`/api/monthly-bills/${bill.id}/pay`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paid: true })
+        body: JSON.stringify({ paid: true, user_id: userId })
       });
-
-      // 2. Create transaction
-      const txPromise = fetch(`/api/transactions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: userId,
-          value: bill.value,
-          type: 'expense',
-          category: 'Contas',
-          subtype: 'fixed',
-          urgency: 'secondary',
-          description: bill.name,
-          source: 'text',
-          short_code: shortCode
-        })
-      });
-
-      await Promise.all([billPromise, txPromise]);
       fetchData();
     } catch (e) {
       console.error(e);
@@ -226,39 +204,17 @@ const Home = ({
 
   const markInstallmentAsPaid = async (inst: any) => {
     try {
-      const shortCode = Math.random().toString(36).substring(2, 6).toUpperCase();
-      
       const nextCount = inst.current + 1;
       const isFinished = nextCount >= inst.total;
-
-      // 1. Update installment in DB
-      const patchPromise = fetch(`/api/installments/${inst.id}`, {
+      await fetch(`/api/installments/${inst.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           current_installment: nextCount,
-          active: !isFinished
+          active: !isFinished,
+          user_id: userId
         })
       });
-
-      // 2. Create transaction
-      const txPromise = fetch(`/api/transactions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: userId,
-          value: inst.value,
-          type: 'expense',
-          category: inst.category || 'Outros',
-          subtype: 'semifixed',
-          urgency: 'secondary',
-          description: isFinished ? `${inst.name} (Final)` : `${inst.name} (Parcela ${nextCount}/${inst.total})`,
-          source: 'text',
-          short_code: shortCode
-        })
-      });
-
-      await Promise.all([patchPromise, txPromise]);
       fetchData(true);
     } catch (e) {
       console.error('[PARCELA] Erro:', e);
