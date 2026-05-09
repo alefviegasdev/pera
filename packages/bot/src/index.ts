@@ -485,6 +485,18 @@ const pendingCardSelection = new Map<string, any>();
 const pendingCardRegistration = new Map<string, any>();
 // Estrutura: { item, shortCode, step, bank?, closing_day?, due_day? }
 
+const pendingReceiptReview = new Map<string, {
+  items: Array<{
+    id: string;
+    description: string;
+    value: number;
+    category: string;
+    subcategory?: string;
+  }>;
+  paymentMethod: string;
+  editingItemId?: string;
+}>();
+
 function getBillingMonth(closingDay: number): string {
   const today = new Date();
   const day = today.getDate();
@@ -571,6 +583,148 @@ async function fetchGemini(geminiKey: string, body: object, retries = 3): Promis
     throw new Error(`Gemini API error: ${res.status} ${JSON.stringify(err)}`);
   }
 }
+
+
+const RECEIPT_PROMPT = `
+Analise esta imagem de nota fiscal e retorne um JSON com todos os itens encontrados.
+
+Retorne APENAS um array JSON no formato:
+[
+  {
+    "description": "nome curto do item",
+    "value": numero decimal,
+    "category": "categoria conforme lista padrao",
+    "subcategory": "subcategoria se aplicavel"
+  }
+]
+
+CATEGORIAS PADRAO: Alimentacao, Transporte, Saude, Lazer, Educacao, Contas, Vestuario, Eletronicos, Dizimo/Oferta, Outros.
+
+SUBCATEGORIAS:
+- Alimentacao: Mercado, Padaria
+- Lazer: Fast Food, Delivery, Restaurante, Lanchonete, Cafeteria, Doces, Petiscos
+- Saude: Farmacia, Medico, Academia, Exames
+- Transporte: Uber/Taxi, Combustivel, Transporte Publico
+
+Se nao conseguir identificar claramente os itens, retorne array vazio [].
+`;
+
+async function sendReceiptReview(
+  ctx: any,
+  supabaseUserId: string,
+  items: any[],
+  paymentMethod: string
+) {
+  const fmtR = (n: number) => `R$ ${Number(n).toFixed(2)}`;
+  const total = items.reduce((s: number, i: any) => s + i.value, 0);
+  const payLabel = paymentMethod === 'credit' ? '💳 Crédito' : '🏦 Débito';
+
+  let text = `🧾 *Nota fiscal detectada* — ${payLabel}\n\n`;
+  items.forEach((item: any, idx: number) => {
+    const subcat = item.subcategory ? ` | ${item.subcategory}` : '';
+    text += `${idx + 1}. *${item.description}*\n`;
+    text += `   💰 ${fmtR(item.value)} · 📂 ${item.category}${subcat}\n\n`;
+  });
+  text += `*Total: ${fmtR(total)}*\n\nConfirma o registro?`;
+
+  const keyboard = new InlineKeyboard();
+  items.forEach((item: any, idx: number) => {
+    keyboard
+      .text(`✏️ Editar ${idx + 1}`, `receipt_edit_${item.id}`)
+      .text(`🗑️ Remover ${idx + 1}`, `receipt_remove_${item.id}`)
+      .row();
+  });
+  keyboard.text('✅ Confirmar tudo', 'receipt_confirm').row();
+  keyboard.text('❌ Cancelar', 'receipt_cancel');
+
+  await ctx.reply(text, { parse_mode: 'Markdown', reply_markup: keyboard });
+}
+
+bot.on("message:photo", async (ctx) => {
+  const userId = ctx.from.id.toString();
+  const caption = ctx.message.caption?.trim() || '';
+
+  try {
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('user_id, default_payment')
+      .eq('telegram_id', userId)
+      .maybeSingle();
+
+    if (!profile?.user_id) {
+      return ctx.reply('❌ Conta não vinculada. Acesse o app para vincular.');
+    }
+
+    const supabaseUserId = profile.user_id;
+
+    const captionLower = caption.toLowerCase();
+    let paymentMethod = profile.default_payment || 'debit';
+    if (captionLower.includes('crédito') || captionLower.includes('credito') || captionLower.includes('cartão')) {
+      paymentMethod = 'credit';
+    } else if (captionLower.includes('débito') || captionLower.includes('debito')) {
+      paymentMethod = 'debit';
+    }
+
+    await ctx.reply('🔍 Analisando a nota fiscal...');
+
+    const photo = ctx.message.photo[ctx.message.photo.length - 1];
+    const fileInfo = await ctx.api.getFile(photo.file_id);
+    const fileUrl = `https://api.telegram.org/file/bot${process.env.TELEGRAM_BOT_TOKEN}/${fileInfo.file_path}`;
+    const fileRes = await fetch(fileUrl);
+    const fileBuffer = await fileRes.arrayBuffer();
+    const base64 = Buffer.from(fileBuffer).toString('base64');
+    const mimeType = 'image/jpeg';
+
+    const geminiRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${geminiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { text: RECEIPT_PROMPT },
+              { inline_data: { mime_type: mimeType, data: base64 } }
+            ]
+          }]
+        })
+      }
+    );
+
+    if (!geminiRes.ok) {
+      throw new Error(`Gemini error: ${geminiRes.status}`);
+    }
+
+    const geminiData = await geminiRes.json();
+    const rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text
+      ?.trim().replace(/```json|```/g, '') || '[]';
+
+    const items = JSON.parse(rawText);
+
+    if (!Array.isArray(items) || items.length === 0) {
+      return ctx.reply('❌ Não consegui identificar itens na nota. Tente uma foto mais nítida.');
+    }
+
+    const itemsWithId = items.map((item: any, idx: number) => ({
+      id: `item_${idx}`,
+      description: item.description || 'Item',
+      value: Number(item.value) || 0,
+      category: item.category || 'Outros',
+      subcategory: item.subcategory || undefined
+    }));
+
+    pendingReceiptReview.set(supabaseUserId, {
+      items: itemsWithId,
+      paymentMethod
+    });
+
+    await sendReceiptReview(ctx, supabaseUserId, itemsWithId, paymentMethod);
+
+  } catch (e) {
+    console.error('[FOTO] Erro:', e);
+    await ctx.reply('⚠️ Erro ao processar a imagem. Tente novamente.');
+  }
+});
 
 bot.on("message:text", async (ctx) => {
   const text = ctx.message.text.trim();
@@ -752,6 +906,53 @@ Quanto mais detalhes você der, melhor eu classifico!
       return ctx.reply(
         `💳 Banco: ${regPending.bank}\n📅 Fechamento: dia ${regPending.closing_day} | Vencimento: dia ${day}\n\n💰 Qual é o limite do cartão? (ex: 5000)`
       );
+    }
+
+    // --- EDIÇÃO DE ITEM DA NOTA FISCAL ---
+    const receiptPending = pendingReceiptReview.get(supabaseUserId);
+    if (receiptPending?.editingItemId) {
+      const itemId = receiptPending.editingItemId;
+      const item = receiptPending.items.find((i: any) => i.id === itemId);
+      if (!item) {
+        receiptPending.editingItemId = undefined;
+        pendingReceiptReview.set(supabaseUserId, receiptPending);
+        return ctx.reply('❌ Item não encontrado.');
+      }
+
+      const CATEGORIES_RECEIPT = ['Alimentação', 'Transporte', 'Saúde', 'Lazer',
+        'Educação', 'Contas', 'Vestuário', 'Eletrônicos', 'Dízimo/Oferta', 'Outros'];
+      const SUBCATEGORIES_RECEIPT = ['Mercado', 'Padaria', 'Fast Food', 'Delivery',
+        'Restaurante', 'Lanchonete', 'Cafeteria', 'Doces', 'Petiscos',
+        'Farmácia', 'Médico', 'Academia', 'Exames',
+        'Uber/Táxi', 'Combustível', 'Transporte Público'];
+
+      const numValue = parseFloat(text.replace(',', '.'));
+      const textLower = text.trim().toLowerCase();
+
+      if (!isNaN(numValue) && numValue > 0) {
+        item.value = numValue;
+      } else {
+        const matchedCat = CATEGORIES_RECEIPT.find(c =>
+          c.toLowerCase() === textLower || c.toLowerCase().includes(textLower)
+        );
+        const matchedSub = SUBCATEGORIES_RECEIPT.find(s =>
+          s.toLowerCase() === textLower || s.toLowerCase().includes(textLower)
+        );
+        if (matchedCat) {
+          item.category = matchedCat;
+          item.subcategory = undefined;
+        } else if (matchedSub) {
+          item.subcategory = matchedSub;
+        } else {
+          item.description = text.trim();
+        }
+      }
+
+      receiptPending.editingItemId = undefined;
+      pendingReceiptReview.set(supabaseUserId, receiptPending);
+      await ctx.reply('✅ Item atualizado!');
+      await sendReceiptReview(ctx, supabaseUserId, receiptPending.items, receiptPending.paymentMethod);
+      return;
     }
 
     // --- CORREÇÃO RÁPIDA DE DIA DE VENCIMENTO (Regex) ---
@@ -1617,6 +1818,120 @@ bot.on('callback_query:data', async (ctx) => {
     if (profile?.user_id) pendingCardRegistration.delete(profile.user_id);
     await ctx.answerCallbackQuery();
     await ctx.editMessageText('❌ Cadastro de cartão cancelado.');
+  }
+
+  // EDITAR item da nota fiscal
+  if (data.startsWith('receipt_edit_')) {
+    const itemId = data.replace('receipt_edit_', '');
+    const userId = ctx.from.id.toString();
+    const { data: profile } = await supabase
+      .from('user_profiles').select('user_id')
+      .eq('telegram_id', userId).maybeSingle();
+    const supabaseUserId = profile?.user_id;
+    const pending = pendingReceiptReview.get(supabaseUserId);
+    if (!pending) { await ctx.answerCallbackQuery(); return; }
+    const item = pending.items.find((i: any) => i.id === itemId);
+    if (!item) { await ctx.answerCallbackQuery(); return; }
+    pending.editingItemId = itemId;
+    pendingReceiptReview.set(supabaseUserId, pending);
+    await ctx.answerCallbackQuery();
+    await ctx.reply(
+      `✏️ Editando: *${item.description}* (${item.value.toFixed(2)})\n\nEnvie:\n- Um número para alterar o valor (ex: 8.50)\n- Texto para alterar o nome\n- Uma categoria para alterar a categoria`,
+      { parse_mode: 'Markdown' }
+    );
+  }
+
+  // REMOVER item da nota fiscal
+  if (data.startsWith('receipt_remove_')) {
+    const itemId = data.replace('receipt_remove_', '');
+    const userId = ctx.from.id.toString();
+    const { data: profile } = await supabase
+      .from('user_profiles').select('user_id')
+      .eq('telegram_id', userId).maybeSingle();
+    const supabaseUserId = profile?.user_id;
+    const pending = pendingReceiptReview.get(supabaseUserId);
+    if (!pending) { await ctx.answerCallbackQuery(); return; }
+    pending.items = pending.items.filter((i: any) => i.id !== itemId);
+    pendingReceiptReview.set(supabaseUserId, pending);
+    await ctx.answerCallbackQuery();
+    if (pending.items.length === 0) {
+      pendingReceiptReview.delete(supabaseUserId);
+      await ctx.editMessageText('🗑️ Todos os itens foram removidos. Nota cancelada.');
+      return;
+    }
+    await ctx.editMessageText('✅ Item removido.');
+    await sendReceiptReview(ctx, supabaseUserId, pending.items, pending.paymentMethod);
+  }
+
+  // CONFIRMAR todos os itens da nota fiscal
+  if (data === 'receipt_confirm') {
+    const userId = ctx.from.id.toString();
+    const { data: profile } = await supabase
+      .from('user_profiles').select('user_id, default_payment')
+      .eq('telegram_id', userId).maybeSingle();
+    const supabaseUserId = profile?.user_id;
+    const pending = pendingReceiptReview.get(supabaseUserId);
+    if (!pending) { await ctx.answerCallbackQuery(); return; }
+    await ctx.answerCallbackQuery();
+    await ctx.editMessageText('⏳ Registrando itens...');
+    let registered = 0;
+    let errors = 0;
+    for (const item of pending.items) {
+      const shortCode = generateShortCode();
+      try {
+        if (pending.paymentMethod === 'credit') {
+          const { data: cards } = await supabase
+            .from('credit_cards').select('*')
+            .eq('user_id', supabaseUserId);
+          if (cards && cards.length === 1) {
+            await registerCreditTransaction(
+              supabaseUserId,
+              { ...item, type: 'expense' },
+              shortCode,
+              cards[0].id,
+              cards[0].closing_day,
+              cards[0].due_day
+            );
+            registered++;
+            continue;
+          }
+        }
+        await supabase.from('transactions').insert({
+          user_id: supabaseUserId,
+          value: item.value,
+          type: 'expense',
+          category: item.category || 'Outros',
+          subtype: 'variable',
+          urgency: 'necessity',
+          description: item.description,
+          source: 'text',
+          short_code: shortCode,
+          subcategory: item.subcategory || null,
+          payment_method: pending.paymentMethod
+        });
+        registered++;
+      } catch (e) {
+        console.error('[NOTA] Erro ao registrar item:', e);
+        errors++;
+      }
+    }
+    pendingReceiptReview.delete(supabaseUserId);
+    const fmtTotal = (n: number) => `R$ ${Number(n).toFixed(2)}`;
+    const total = pending.items.reduce((s: number, i: any) => s + i.value, 0);
+    await ctx.reply(
+      `✅ ${registered} ${registered === 1 ? 'item registrado' : 'itens registrados'}!\n💰 Total: ${fmtTotal(total)}${errors > 0 ? `\n⚠️ ${errors} erro(s)` : ''}`
+    );
+  }
+
+  // CANCELAR nota fiscal
+  if (data === 'receipt_cancel') {
+    const userId = ctx.from.id.toString();
+    const { data: profile } = await supabase
+      .from('user_profiles').select('user_id')
+      .eq('telegram_id', userId).maybeSingle();
+    if (profile?.user_id) pendingReceiptReview.delete(profile.user_id);
+    await ctx.answerCallbackQuery();
+    await ctx.editMessageText('❌ Nota fiscal cancelada.');
   }
 
   if (data.startsWith('card_select_')) {
