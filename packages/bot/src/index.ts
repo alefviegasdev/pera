@@ -586,27 +586,42 @@ async function fetchGemini(geminiKey: string, body: object, retries = 3): Promis
 
 
 const RECEIPT_PROMPT = `
-Analise esta imagem de nota fiscal e retorne um JSON com todos os itens encontrados.
+Analise esta imagem de nota fiscal brasileira e extraia
+APENAS os itens de produtos/serviços individualmente.
 
-Retorne APENAS um array JSON no formato:
+REGRAS IMPORTANTES:
+- Retorne SOMENTE os itens comprados, um por linha da nota
+- NÃO inclua totais, subtotais, taxas, descontos ou valores
+  de pagamento (ex: "TOTAL", "SUBTOTAL", "TROCO", "DINHEIRO",
+  "CARTÃO", "VALOR PAGO")
+- Se um item aparecer com quantidade (ex: 2x), crie uma
+  entrada por unidade OU multiplique o valor pela quantidade
+  e mantenha como um item só — prefira manter como um item
+  com o valor total daquela linha
+- O valor de cada item é o valor daquela linha específica,
+  não o total da nota
+
+Retorne APENAS um array JSON válido, sem texto antes ou depois:
 [
   {
-    "description": "nome curto do item",
-    "value": numero decimal,
-    "category": "categoria conforme lista padrao",
-    "subcategory": "subcategoria se aplicavel"
+    "description": "nome curto do produto",
+    "value": número decimal com ponto (ex: 8.50),
+    "category": "categoria",
+    "subcategory": "subcategoria se aplicável"
   }
 ]
 
-CATEGORIAS PADRAO: Alimentacao, Transporte, Saude, Lazer, Educacao, Contas, Vestuario, Eletronicos, Dizimo/Oferta, Outros.
+CATEGORIAS: Alimentação, Transporte, Saúde, Lazer,
+Educação, Contas, Vestuário, Eletrônicos, Dízimo/Oferta, Outros.
 
 SUBCATEGORIAS:
-- Alimentacao: Mercado, Padaria
-- Lazer: Fast Food, Delivery, Restaurante, Lanchonete, Cafeteria, Doces, Petiscos
-- Saude: Farmacia, Medico, Academia, Exames
-- Transporte: Uber/Taxi, Combustivel, Transporte Publico
+- Alimentação: Mercado, Padaria
+- Lazer: Fast Food, Delivery, Restaurante, Lanchonete,
+  Cafeteria, Doces, Petiscos
+- Saúde: Farmácia, Médico, Academia, Exames
+- Transporte: Uber/Táxi, Combustível, Transporte Público
 
-Se nao conseguir identificar claramente os itens, retorne array vazio [].
+Se não identificar itens claramente, retorne [].
 `;
 
 async function sendReceiptReview(
