@@ -1183,7 +1183,7 @@ Exemplos que funcionam:
           }
 
           const shortCode = generateShortCode();
-          await supabase.from("transactions").insert({
+          const { error: txError } = await supabase.from("transactions").insert({
             user_id: supabaseUserId,
             value: finalValue,
             type: 'expense',
@@ -1194,6 +1194,11 @@ Exemplos que funcionam:
             source: 'text',
             short_code: shortCode
           });
+
+          if (txError) {
+            console.error('[PAGAMENTO] Erro ao criar transação:', txError);
+            return ctx.reply(`✅ Conta marcada como paga, mas houve um erro ao registrar a transação: ${txError.message}`);
+          }
 
           await ctx.reply(`✅ Conta paga! #${shortCode}
 📝 ${bill.name}
@@ -1226,7 +1231,7 @@ Exemplos que funcionam:
               .eq("id", installment.id);
 
             const shortCode = generateShortCode();
-            await supabase.from("transactions").insert({
+            const { error: txError } = await supabase.from("transactions").insert({
               user_id: supabaseUserId,
               value: installment.installment_value,
               type: 'expense',
@@ -1239,6 +1244,11 @@ Exemplos que funcionam:
               source: 'text',
               short_code: shortCode
             });
+
+            if (txError) {
+              console.error('[PAGAMENTO] Erro ao criar transação (parcela):', txError);
+              return ctx.reply(`✅ Parcela registrada como paga, mas houve um erro ao registrar a transação: ${txError.message}`);
+            }
 
             if (isFinished) {
               await ctx.reply(`✅ Parcelamento quitado! 🎉
