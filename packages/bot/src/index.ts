@@ -863,6 +863,26 @@ Quanto mais detalhes você der, melhor eu classifico!
               // Delete linked transaction
               await supabase.from('transactions').delete().eq('short_code', record.short_code).eq('user_id', supabaseUserId);
             }
+
+            // Atualizar fatura do cartão se era transação de crédito
+            if (table === 'transactions' && record.payment_method === 'credit'
+                && record.credit_card_id && record.billing_month) {
+              const { data: ccBill } = await supabase
+                .from('credit_card_bills')
+                .select('id, amount')
+                .eq('credit_card_id', record.credit_card_id)
+                .eq('billing_month', record.billing_month)
+                .maybeSingle();
+
+              if (ccBill) {
+                const newAmount = Number(ccBill.amount) - Number(record.value);
+                if (newAmount <= 0) {
+                  await supabase.from('credit_card_bills').delete().eq('id', ccBill.id);
+                } else {
+                  await supabase.from('credit_card_bills').update({ amount: newAmount }).eq('id', ccBill.id);
+                }
+              }
+            }
             
             return ctx.reply(`🗑️ Transação #${replyCode} apagada.`);
           }
@@ -972,6 +992,26 @@ Possíveis motivos:
         } else if (table === 'tithe_payments') {
           // Delete linked transaction
           await supabase.from('transactions').delete().eq('short_code', record.short_code).eq('user_id', supabaseUserId);
+        }
+
+        // Atualizar fatura do cartão se era transação de crédito
+        if (table === 'transactions' && record.payment_method === 'credit'
+            && record.credit_card_id && record.billing_month) {
+          const { data: ccBill } = await supabase
+            .from('credit_card_bills')
+            .select('id, amount')
+            .eq('credit_card_id', record.credit_card_id)
+            .eq('billing_month', record.billing_month)
+            .maybeSingle();
+
+          if (ccBill) {
+            const newAmount = Number(ccBill.amount) - Number(record.value);
+            if (newAmount <= 0) {
+              await supabase.from('credit_card_bills').delete().eq('id', ccBill.id);
+            } else {
+              await supabase.from('credit_card_bills').update({ amount: newAmount }).eq('id', ccBill.id);
+            }
+          }
         }
         
         return ctx.reply(`🗑️ Transação #${code} apagada.`);
