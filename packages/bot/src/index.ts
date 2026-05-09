@@ -587,40 +587,34 @@ async function fetchGemini(geminiKey: string, body: object, retries = 3): Promis
 
 const RECEIPT_PROMPT = `
 Analise esta imagem de nota fiscal brasileira e extraia
-APENAS os itens de produtos/serviços individualmente.
+os itens comprados.
 
-REGRAS IMPORTANTES:
-- Retorne SOMENTE os itens comprados, um por linha da nota
-- NÃO inclua totais, subtotais, taxas, descontos ou valores
-  de pagamento (ex: "TOTAL", "SUBTOTAL", "TROCO", "DINHEIRO",
-  "CARTÃO", "VALOR PAGO")
-- Se um item aparecer com quantidade (ex: 2x), crie uma
-  entrada por unidade OU multiplique o valor pela quantidade
-  e mantenha como um item só — prefira manter como um item
-  com o valor total daquela linha
-- O valor de cada item é o valor daquela linha específica,
-  não o total da nota
-- Para o campo "description", extrair APENAS o nome
-  essencial do produto, ignorando:
-  · Marcas comerciais (ex: "Sadia", "Deale", "Friboi")
-  · Quantidades e unidades (ex: "1 UN", "2 KG", "500G")
-  · Códigos e abreviações desnecessárias
-  · Sufixos como "BAN", "FA", "BR", "LT", etc.
-  Exemplos:
-  · "FILEZ SASSAMI SADIA BAN 1 UN" → "Filé sassami"
-  · "QUEIJO MUSSARELA DEALE FA" → "Queijo mussarela"
-  · "AGUA MINERAL CRYSTAL 500ML" → "Água mineral"
-  · "REFRIGERANTE COCA COLA 2L" → "Refrigerante"
-- O campo "description" deve ter apenas a primeira letra
-  maiúscula e o restante minúsculo. Exemplos:
-  · "ARROZ AGULHINHA" → "Arroz agulhinha"
-  · "PÃO DE FORMA" → "Pão de forma"
+REGRA PRINCIPAL DO NOME:
+Extraia SOMENTE o tipo do produto em português simples,
+com apenas a primeira letra maiúscula.
+IGNORE completamente: marcas, quantidades, unidades,
+códigos, abreviações.
 
-Retorne APENAS um array JSON válido, sem texto antes ou depois:
+EXEMPLOS DE TRANSFORMAÇÃO DE NOME:
+- "FILEZ SASSAMI SADIA BAN 1 UN" → "Filé sassami"
+- "QUEIJO MUSSARELA DEALE FA 500G" → "Queijo mussarela"
+- "REFRIGERANTE COCA COLA 2L" → "Refrigerante"
+- "AGUA MINERAL CRYSTAL 500ML" → "Água mineral"
+- "ARROZ AGULHINHA TIOJOAO 5KG" → "Arroz"
+- "PAO DE FORMA WICKBOLD" → "Pão de forma"
+- "LEITE INTEGRAL ITALAC 1L" → "Leite integral"
+- "FRANGO INTEIRO SADIA KG" → "Frango"
+
+REGRAS DE VALOR:
+- Use o valor da linha do item, não o total da nota
+- IGNORE linhas de: TOTAL, SUBTOTAL, TROCO, DESCONTO,
+  VALOR PAGO, DINHEIRO, CARTÃO, TAXA
+
+Retorne APENAS um array JSON válido:
 [
   {
-    "description": "nome curto do produto",
-    "value": número decimal com ponto (ex: 8.50),
+    "description": "nome simples do produto",
+    "value": número decimal com ponto,
     "category": "categoria",
     "subcategory": "subcategoria se aplicável"
   }
@@ -636,7 +630,7 @@ SUBCATEGORIAS:
 - Saúde: Farmácia, Médico, Academia, Exames
 - Transporte: Uber/Táxi, Combustível, Transporte Público
 
-Se não identificar itens claramente, retorne [].
+Se não identificar itens, retorne [].
 `;
 
 async function sendReceiptReview(
