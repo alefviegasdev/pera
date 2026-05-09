@@ -744,8 +744,11 @@ Quanto mais detalhes você der, melhor eu classifico!
             
             // Cascading Deletions
             if (table === 'transactions') {
-              // Unpay monthly bill if linked
-              await supabase.from('monthly_bills').update({ paid: false, paid_at: null }).eq('short_code', record.short_code).eq('user_id', supabaseUserId);
+              // Resetar monthly_bill se existir com esse short_code
+              await supabase.from('monthly_bills')
+                .update({ paid: false, paid_at: null })
+                .eq('short_code', record.short_code)
+                .eq('user_id', supabaseUserId);
               // Delete tithe payment if linked
               if (record.category === 'Dízimo/Oferta') {
                 await supabase.from('tithe_payments').delete().eq('short_code', record.short_code).eq('user_id', supabaseUserId);
@@ -851,8 +854,11 @@ Possíveis motivos:
         
         // Cascading Deletions
         if (table === 'transactions') {
-          // Unpay monthly bill if linked
-          await supabase.from('monthly_bills').update({ paid: false, paid_at: null }).eq('short_code', record.short_code).eq('user_id', supabaseUserId);
+          // Resetar monthly_bill se existir com esse short_code
+          await supabase.from('monthly_bills')
+            .update({ paid: false, paid_at: null })
+            .eq('short_code', record.short_code)
+            .eq('user_id', supabaseUserId);
           // Delete tithe payment if linked
           if (record.category === 'Dízimo/Oferta') {
             await supabase.from('tithe_payments').delete().eq('short_code', record.short_code).eq('user_id', supabaseUserId);
@@ -1176,10 +1182,13 @@ Exemplos que funcionam:
 
           if (payError) throw payError;
           
-          const shortCode = generateShortCode();
-          await supabase.from('monthly_bills')
-            .update({ short_code: shortCode })
-            .eq('id', bill.id);
+          const shortCode = bill.short_code || generateShortCode();
+
+          if (!bill.short_code) {
+            await supabase.from('monthly_bills')
+              .update({ short_code: shortCode })
+              .eq('id', bill.id);
+          }
 
           if (item.value !== undefined && item.value !== bill.value && bill.subtype === 'fixed') {
              const { data: fixedExpenses } = await supabase.from('fixed_expenses').select('*').eq('user_id', supabaseUserId).eq('active', true);
