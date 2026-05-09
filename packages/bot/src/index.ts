@@ -706,7 +706,7 @@ Quanto mais detalhes você der, melhor eu classifico!
 📝 ${regPending.item.description}
 💳 ${regPending.bank} (crédito)
 
-✏️ Para corrigir ou apagar, responda esta mensagem com o comando desejado.`);
+✏️ Responda esta mensagem para corrigir ou apagar.`);
     }
 
     // STEP bank — usuário digita o nome do banco
@@ -1526,7 +1526,13 @@ Exemplos que funcionam:
               card.id, card.closing_day, card.due_day
             );
             const subcatLine = item.subcategory ? ` | ${item.subcategory}` : '';
-            await ctx.reply(`✅ Registrado!\n💰 R$ ${Number(item.value).toFixed(2)}\n📂 ${item.category}${subcatLine}\n📝 ${item.description}\n💳 ${card.bank} (crédito)`);
+            await ctx.reply(`✅ Registrado! #${shortCode}
+💰 R$ ${Number(item.value).toFixed(2)}
+📂 ${item.category}${subcatLine}
+📝 ${item.description}
+💳 ${card.bank} (crédito)
+
+✏️ Responda esta mensagem para corrigir ou apagar.`);
             continue;
           }
 
@@ -1661,7 +1667,13 @@ bot.on('callback_query:data', async (ctx) => {
 
     const subcatLine = pending.item.subcategory ? ` | ${pending.item.subcategory}` : '';
     await ctx.answerCallbackQuery();
-    await ctx.editMessageText(`✅ Registrado! #${pending.shortCode}\n💰 R$ ${Number(pending.item.value).toFixed(2)}\n📂 ${pending.item.category}${subcatLine}\n📝 ${pending.item.description}\n💳 ${card.bank} (crédito)`);
+    await ctx.editMessageText(`✅ Registrado! #${pending.shortCode}
+💰 R$ ${Number(pending.item.value).toFixed(2)}
+📂 ${pending.item.category}${subcatLine}
+📝 ${pending.item.description}
+💳 ${card.bank} (crédito)
+
+✏️ Responda esta mensagem para corrigir ou apagar.`);
   }
 
   if (data.startsWith('tithe_yes_') || data.startsWith('tithe_no_')) {
