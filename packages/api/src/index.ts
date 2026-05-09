@@ -698,7 +698,7 @@ app.patch('/monthly-bills/:id/pay', async (req, res) => {
           .eq('id', id);
       }
 
-      await supabase.from('transactions').insert({
+      const { error: txError } = await supabase.from('transactions').insert({
         user_id: req.body.user_id,
         value: bill.value,
         type: 'expense',
@@ -706,9 +706,13 @@ app.patch('/monthly-bills/:id/pay', async (req, res) => {
         subtype: 'fixed',
         urgency: 'necessity',
         description: bill.name,
-        source: 'api',
+        source: 'app',
         short_code: txShortCode
       });
+
+      if (txError) {
+        console.error('[PAY BILL] Erro ao criar transação:', txError);
+      }
     }
 
     res.json(data[0]);
