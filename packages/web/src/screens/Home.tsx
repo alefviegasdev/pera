@@ -350,7 +350,7 @@ const Home = ({
   // This ensures that paying a fixed bill doesn't change the "available" projection
   const variableExpenses = Math.max(0, expense - (paidBillsVal + paidInstallmentTotal + tithePaidVal));
   
-  const realAvailable = income - variableExpenses - totalFixedVal;
+  const realAvailable = income - totalFixedVal;
   const isNegative = realAvailable < 0;
 
   // Unified list for Vencimentos
