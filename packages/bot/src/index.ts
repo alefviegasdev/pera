@@ -33,9 +33,9 @@ REGRAS DE CLASSIFICAÇÃO:
    - "semifixed": Despesas recorrentes com prazo de fim ou temporárias (terapia, curso, parcelamentos, tratamentos, assinaturas temporárias).
    - "variable": Despesas pontuais sem recorrência (alimentação fora, lazer, compras avulsas).
 2. "urgency":
-   - "urgent": Toda transação de uma compra que precisou ser feita por necessidade não cotidiana (remédios, conserto de carro, 2ª via de documentos, óculos de grau, uniforme). Imprevistos urgentes.
-   - "necessity": Importante para a subsistência básica (alimentos do dia a dia - arroz, feijão, pão, etc; produtos de casa; gasolina; transporte; contas básicas).
-   - "variable": Tudo o que não se encaixa nos anteriores (lazer, fastfood, restaurantes, doces, petiscos, compras não essenciais).
+   - "urgent": Emergências, imprevistos, saúde urgente, conserto de carro, remédio urgente, contas fixas obrigatórias.
+   - "necessity": Gastos necessários para sobrevivência — alimentação, transporte, saúde básica, higiene.
+   - "secondary": Todo o resto — lazer, vestuário, eletrônicos, streaming, etc.
 3. CASOS ESPECÍFICOS:
    - "Dízimo" -> subtype: "fixed".
    - "Oferta" ou "Ofertas" -> subtype: "variable".
@@ -182,7 +182,7 @@ Retorne neste formato:
   "description": string ou null,
   "category": string ou null,
   "subtype": "fixed", "variable", "semifixed" ou null,
-  "urgency": "urgent", "necessity", "variable" ou null,
+  "urgency": "urgent", "necessity", "secondary" ou null,
   "installments": número ou null,
   "delete": true ou null
 }
@@ -201,7 +201,7 @@ Regras:
 - Se mencionar semi-fixo/temporário/por enquanto → subtype: semifixed
 - Se mencionar urgente/emergência/imprevisto/necessidade não cotidiana → urgency: urgent
 - Se mencionar necessidade/subsistência/básico/dia a dia → urgency: necessity
-- Se mencionar variável/lazer/extra/não essencial → urgency: variable
+- Se mencionar variável/lazer/extra/não essencial → urgency: secondary
 - Se mencionar parcelas/vezes/dividir/x → preenche installments
 - Se mencionar apagar/deletar/excluir/remover/cancelar → delete: true
 - Retorna null nos campos não mencionados
@@ -1050,7 +1050,9 @@ Exemplos que funcionam:
 
     for (const item of items) {
       const shortCode = generateShortCode();
-      const urgencyLabel = item.urgency === 'urgent' ? 'Urgente' : 'Não urgente';
+      const urgencyLabel = item.urgency === 'urgent' ? '🔴 Urgente' 
+        : item.urgency === 'necessity' ? '🟡 Necessidade' 
+        : '⚪ Secundário';
       const subtypeMap: any = { fixed: 'Fixo', variable: 'Variável', semifixed: 'Semi-fixo' };
       const subtypeLabel = subtypeMap[item.subtype] || 'Variável';
 
@@ -1124,7 +1126,7 @@ Exemplos que funcionam:
               type: 'expense',
               category: 'Dízimo/Oferta',
               subtype: 'fixed',
-              urgency: 'planned',
+              urgency: 'necessity',
               description: `Dízimo ${MONTH_NAMES_PT[selectedMonth.month - 1]}`,
               source: 'text',
               short_code: shortCode
@@ -1173,6 +1175,11 @@ Exemplos que funcionam:
             .eq("id", bill.id);
 
           if (payError) throw payError;
+          
+          const shortCode = generateShortCode();
+          await supabase.from('monthly_bills')
+            .update({ short_code: shortCode })
+            .eq('id', bill.id);
 
           if (item.value !== undefined && item.value !== bill.value && bill.subtype === 'fixed') {
              const { data: fixedExpenses } = await supabase.from('fixed_expenses').select('*').eq('user_id', supabaseUserId).eq('active', true);
@@ -1182,14 +1189,13 @@ Exemplos que funcionam:
              }
           }
 
-          const shortCode = generateShortCode();
           const { error: txError } = await supabase.from("transactions").insert({
             user_id: supabaseUserId,
             value: finalValue,
             type: 'expense',
             category: 'Contas',
             subtype: 'fixed',
-            urgency: 'planned',
+            urgency: 'necessity',
             description: bill.name,
             source: 'text',
             short_code: shortCode
@@ -1237,7 +1243,7 @@ Exemplos que funcionam:
               type: 'expense',
               category: installment.category,
               subtype: 'semifixed',
-              urgency: 'planned',
+              urgency: 'necessity',
               description: isFinished 
                 ? `${installment.description} (Final)` 
                 : `${installment.description} (Parcela ${currentCount}/${installment.total_installments})`,
@@ -1353,7 +1359,7 @@ Exemplos que funcionam:
               type: item.type,
               category: item.category || 'Outros',
               subtype: item.subtype || 'variable',
-              urgency: item.urgency || 'planned',
+              urgency: item.urgency || 'necessity',
               description: item.description || 'Sem descrição',
               source: 'text',
               short_code: shortCode,
@@ -1400,7 +1406,7 @@ Exemplos que funcionam:
           type: item.type,
           category: item.category || 'Outros',
           subtype: item.subtype || 'variable',
-          urgency: item.urgency || 'planned',
+          urgency: item.urgency || 'necessity',
           description: item.description || item.category || 'Sem descrição',
           source: 'text',
           short_code: shortCode,
@@ -1567,7 +1573,7 @@ bot.on('callback_query:data', async (ctx) => {
       type: 'expense',
       category: 'Dízimo/Oferta',
       subtype: 'fixed',
-      urgency: 'planned',
+      urgency: 'necessity',
       description: `Dízimo ${MONTH_NAMES_PT[selectedMonth.month - 1]}`,
       source: 'text',
       short_code: shortCode

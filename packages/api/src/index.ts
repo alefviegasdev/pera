@@ -331,7 +331,7 @@ app.get('/transactions/summary', async (req, res) => {
     let total_expense = 0;
     const by_category: any = {};
     const by_subtype = { fixed: 0, variable: 0, semifixed: 0 };
-    const by_urgency = { urgent: 0, planned: 0 };
+    const by_urgency = { urgent: 0, necessity: 0, secondary: 0 };
 
     transactions.forEach(t => {
       const val = Number(t.value);
@@ -645,6 +645,15 @@ app.patch('/monthly-bills/:id/pay', async (req, res) => {
     const { id } = req.params;
     const { paid } = req.body;
     
+    // Get the bill info for transaction
+    const { data: bill, error: fetchError } = await supabase
+      .from('monthly_bills')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (fetchError) throw fetchError;
+
     const { data, error } = await supabase
       .from('monthly_bills')
       .update({ 
@@ -655,6 +664,31 @@ app.patch('/monthly-bills/:id/pay', async (req, res) => {
       .select();
 
     if (error) throw error;
+
+    // Create transaction if paid
+    if ((paid ?? true) && req.body.user_id) {
+      const txShortCode = bill.short_code || generateShortCode();
+      
+      // Update bill with short_code if it was missing
+      if (!bill.short_code) {
+        await supabase.from('monthly_bills')
+          .update({ short_code: txShortCode })
+          .eq('id', id);
+      }
+
+      await supabase.from('transactions').insert({
+        user_id: req.body.user_id,
+        value: bill.value,
+        type: 'expense',
+        category: bill.category || 'Contas',
+        subtype: 'fixed',
+        urgency: 'necessity',
+        description: bill.name,
+        source: 'api',
+        short_code: txShortCode
+      });
+    }
+
     res.json(data[0]);
   } catch (e: any) {
     res.status(500).json({ error: e.message });
