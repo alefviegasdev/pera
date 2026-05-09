@@ -5,6 +5,15 @@ import path from 'path';
 
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 
+function generateShortCode(): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let code = 'id';
+  for (let i = 0; i < 4; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
+
 const app = express();
 app.use(express.json());
 
@@ -122,7 +131,8 @@ const syncMonthlyBills = async (user_id: string, month: number, year: number) =>
           category: f.category,
           subtype: 'fixed',
           month,
-          year
+          year,
+          short_code: generateShortCode()
         });
       }
     });
