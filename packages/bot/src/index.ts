@@ -471,6 +471,8 @@ function levenshteinDistance(a: string, b: string): number {
 }
 
 const pendingCardSelection = new Map<string, any>();
+const pendingCardRegistration = new Map<string, any>();
+// Estrutura: { item, shortCode, step, bank?, closing_day?, due_day? }
 
 function getBillingMonth(closingDay: number): string {
   const today = new Date();
@@ -651,6 +653,47 @@ Quanto mais detalhes você der, melhor eu classifico!
 
     if (!supabaseUserId) {
       return ctx.reply('❌ Sua conta não está vinculada ou houve um erro na sincronização.\n\nAcesse "Ajustes > Vincular Telegram" no app e tente novamente. 🍐');
+    }
+
+    // --- AGUARDAR LIMITE DO CARTÃO (cadastro em andamento) ---
+    const regPending = pendingCardRegistration.get(supabaseUserId);
+    if (regPending && regPending.step === 'limit') {
+      const limitValue = parseFloat(text.replace(',', '.'));
+      if (isNaN(limitValue) || limitValue <= 0) {
+        return ctx.reply('⚠️ Valor inválido. Envie apenas o número, ex: 5000');
+      }
+
+      const { data: newCard, error: cardError } = await supabase
+        .from('credit_cards')
+        .insert({
+          user_id: supabaseUserId,
+          name: regPending.bank,
+          bank: regPending.bank,
+          card_limit: limitValue,
+          closing_day: regPending.closing_day,
+          due_day: regPending.due_day
+        })
+        .select()
+        .single();
+
+      if (cardError) {
+        pendingCardRegistration.delete(supabaseUserId);
+        return ctx.reply(`❌ Erro ao cadastrar cartão: ${cardError.message}`);
+      }
+
+      await registerCreditTransaction(
+        supabaseUserId, regPending.item, regPending.shortCode,
+        newCard.id, newCard.closing_day, newCard.due_day
+      );
+
+      pendingCardRegistration.delete(supabaseUserId);
+
+      const subcatLine = regPending.item.subcategory ? ` | ${regPending.item.subcategory}` : '';
+      return ctx.reply(`✅ Cartão ${regPending.bank} cadastrado e transação registrada!
+💰 R$ ${Number(regPending.item.value).toFixed(2)}
+📂 ${regPending.item.category}${subcatLine}
+📝 ${regPending.item.description}
+💳 ${regPending.bank} (crédito)`);
     }
 
     // --- CORREÇÃO RÁPIDA DE DIA DE VENCIMENTO (Regex) ---
@@ -1353,55 +1396,50 @@ Exemplos que funcionam:
         const paymentMethod = item.payment_method || defaultPayment;
 
         if (paymentMethod === 'credit' && item.type === 'expense') {
-          // Buscar cartões do usuário
           const { data: cards } = await supabase
             .from('credit_cards')
             .select('*')
             .eq('user_id', supabaseUserId);
 
           if (!cards || cards.length === 0) {
-            // Sem cartão cadastrado — registrar como débito normal
-            // e avisar o usuário
-            await supabase.from('transactions').insert({
-              user_id: supabaseUserId,
-              value: item.value,
-              type: item.type,
-              category: item.category || 'Outros',
-              subtype: item.subtype || 'variable',
-              urgency: item.urgency || 'necessity',
-              description: item.description || 'Sem descrição',
-              source: 'text',
-              short_code: shortCode,
-              subcategory: item.subcategory || null,
-              payment_method: 'debit'
+            // Sem cartão — iniciar cadastro
+            pendingCardRegistration.set(supabaseUserId, {
+              item,
+              shortCode,
+              step: 'bank'
             });
-            const subcatLine = item.subcategory ? ` | ${item.subcategory}` : '';
-            await ctx.reply(`✅ Registrado! #${shortCode}\n💰 R$ ${Number(item.value).toFixed(2)}\n📂 ${item.category}${subcatLine}\n📝 ${item.description}\n⚠️ Nenhum cartão cadastrado — registrado como débito.\nCadastre um cartão no app em Ajustes > Cartões.`);
+
+            const BANKS = ['Nubank', 'Itaú', 'Bradesco', 'Inter', 'C6 Bank',
+                           'Santander', 'Caixa', 'Banco do Brasil', 'XP', 'BTG'];
+            const keyboard = new InlineKeyboard();
+            BANKS.forEach(bank => {
+              keyboard.text(bank, `reg_card_bank_${bank}`).row();
+            });
+
+            await ctx.reply(
+              `💳 Você não tem cartão cadastrado ainda.\n\nVamos cadastrar agora! Qual é o seu banco?`,
+              { reply_markup: keyboard }
+            );
             continue;
           }
 
           if (cards.length === 1) {
-            // Apenas um cartão — usar automaticamente
             const card = cards[0];
             await registerCreditTransaction(
               supabaseUserId, item, shortCode,
               card.id, card.closing_day, card.due_day
             );
             const subcatLine = item.subcategory ? ` | ${item.subcategory}` : '';
-            await ctx.reply(`✅ Registrado! #${shortCode}\n💰 R$ ${Number(item.value).toFixed(2)}\n📂 ${item.category}${subcatLine}\n📝 ${item.description}\n💳 ${card.bank} (crédito)`);
+            await ctx.reply(`✅ Registrado!\n💰 R$ ${Number(item.value).toFixed(2)}\n📂 ${item.category}${subcatLine}\n📝 ${item.description}\n💳 ${card.bank} (crédito)`);
             continue;
           }
 
-          // Múltiplos cartões — perguntar qual
-          pendingCardSelection.set(supabaseUserId, {
-            item, shortCode, supabaseUserId
-          });
-
+          // Múltiplos cartões
+          pendingCardSelection.set(supabaseUserId, { item, shortCode, supabaseUserId });
           const keyboard = new InlineKeyboard();
           cards.forEach(card => {
-            keyboard.text(`💳 ${card.bank} — ${card.name}`, `card_select_${card.id}_${shortCode}`).row();
+            keyboard.text(`💳 ${card.bank}`, `card_select_${card.id}_${shortCode}`).row();
           });
-
           await ctx.reply(
             `💳 Em qual cartão foi essa compra?\n\n📝 ${item.description}\n💰 R$ ${Number(item.value).toFixed(2)}`,
             { reply_markup: keyboard }
@@ -1471,7 +1509,78 @@ O que você pode fazer:
 
 bot.on('callback_query:data', async (ctx) => {
   const data = ctx.callbackQuery.data;
-  
+
+  // STEP 1 — banco selecionado
+  if (data.startsWith('reg_card_bank_')) {
+    const bank = data.replace('reg_card_bank_', '');
+    const userId = ctx.from.id.toString();
+    const { data: profile } = await supabase
+      .from('user_profiles').select('user_id')
+      .eq('telegram_id', userId).maybeSingle();
+    const supabaseUserId = profile?.user_id;
+    if (!supabaseUserId) { await ctx.answerCallbackQuery(); return; }
+
+    const pending = pendingCardRegistration.get(supabaseUserId);
+    if (!pending) { await ctx.answerCallbackQuery(); return; }
+
+    pendingCardRegistration.set(supabaseUserId, { ...pending, bank, step: 'closing_day' });
+
+    const keyboard = new InlineKeyboard();
+    [1,5,10,15,20,25,28].forEach(d => keyboard.text(`Dia ${d}`, `reg_card_closing_${d}`));
+
+    await ctx.answerCallbackQuery();
+    await ctx.editMessageText(
+      `💳 Banco: ${bank}\n\nQual é o dia de fechamento da fatura?`,
+      { reply_markup: keyboard }
+    );
+  }
+
+  // STEP 2 — dia de fechamento
+  if (data.startsWith('reg_card_closing_')) {
+    const closingDay = parseInt(data.replace('reg_card_closing_', ''));
+    const userId = ctx.from.id.toString();
+    const { data: profile } = await supabase
+      .from('user_profiles').select('user_id')
+      .eq('telegram_id', userId).maybeSingle();
+    const supabaseUserId = profile?.user_id;
+    if (!supabaseUserId) { await ctx.answerCallbackQuery(); return; }
+
+    const pending = pendingCardRegistration.get(supabaseUserId);
+    if (!pending) { await ctx.answerCallbackQuery(); return; }
+
+    pendingCardRegistration.set(supabaseUserId, { ...pending, closing_day: closingDay, step: 'due_day' });
+
+    const keyboard = new InlineKeyboard();
+    [1,5,10,15,20,25,28].forEach(d => keyboard.text(`Dia ${d}`, `reg_card_due_${d}`));
+
+    await ctx.answerCallbackQuery();
+    await ctx.editMessageText(
+      `💳 Banco: ${pending.bank}\n📅 Fechamento: dia ${closingDay}\n\nQual é o dia de vencimento?`,
+      { reply_markup: keyboard }
+    );
+  }
+
+  // STEP 3 — dia de vencimento
+  if (data.startsWith('reg_card_due_')) {
+    const dueDay = parseInt(data.replace('reg_card_due_', ''));
+    const userId = ctx.from.id.toString();
+    const { data: profile } = await supabase
+      .from('user_profiles').select('user_id')
+      .eq('telegram_id', userId).maybeSingle();
+    const supabaseUserId = profile?.user_id;
+    if (!supabaseUserId) { await ctx.answerCallbackQuery(); return; }
+
+    const pending = pendingCardRegistration.get(supabaseUserId);
+    if (!pending) { await ctx.answerCallbackQuery(); return; }
+
+    pendingCardRegistration.set(supabaseUserId, { ...pending, due_day: dueDay, step: 'limit' });
+
+    await ctx.answerCallbackQuery();
+    await ctx.editMessageText(
+      `💳 Banco: ${pending.bank}\n📅 Fechamento: dia ${pending.closing_day} | Vencimento: dia ${dueDay}\n\n💰 Qual é o limite do cartão? (envie o valor, ex: 5000)`
+    );
+  }
+
   if (data.startsWith('card_select_')) {
     const parts = data.replace('card_select_', '').split('_');
     const cardId = parts[0];
