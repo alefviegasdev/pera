@@ -704,9 +704,7 @@ Quanto mais detalhes você der, melhor eu classifico!
 💰 R$ ${Number(regPending.item.value).toFixed(2)}
 📂 ${regPending.item.category}${subcatLine}
 📝 ${regPending.item.description}
-💳 ${regPending.bank} (crédito)
-
-✏️ Responda esta mensagem para corrigir ou apagar.`);
+💳 ${regPending.bank} (crédito)`);
     }
 
     // STEP bank — usuário digita o nome do banco
@@ -1530,9 +1528,7 @@ Exemplos que funcionam:
 💰 R$ ${Number(item.value).toFixed(2)}
 📂 ${item.category}${subcatLine}
 📝 ${item.description}
-💳 ${card.bank} (crédito)
-
-✏️ Responda esta mensagem para corrigir ou apagar.`);
+💳 ${card.bank} (crédito)`);
             continue;
           }
 
@@ -1671,9 +1667,7 @@ bot.on('callback_query:data', async (ctx) => {
 💰 R$ ${Number(pending.item.value).toFixed(2)}
 📂 ${pending.item.category}${subcatLine}
 📝 ${pending.item.description}
-💳 ${card.bank} (crédito)
-
-✏️ Responda esta mensagem para corrigir ou apagar.`);
+💳 ${card.bank} (crédito)`);
   }
 
   if (data.startsWith('tithe_yes_') || data.startsWith('tithe_no_')) {
