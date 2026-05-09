@@ -298,6 +298,30 @@ app.delete('/transactions/:id', async (req, res) => {
       }
     }
 
+    if (tx?.payment_method === 'credit' && tx?.credit_card_id && tx?.billing_month) {
+      const { data: bill } = await supabase
+        .from('credit_card_bills')
+        .select('id, amount')
+        .eq('credit_card_id', tx.credit_card_id)
+        .eq('billing_month', tx.billing_month)
+        .maybeSingle();
+
+      if (bill) {
+        const newAmount = Number(bill.amount) - Number(tx.value);
+        if (newAmount <= 0) {
+          await supabase
+            .from('credit_card_bills')
+            .delete()
+            .eq('id', bill.id);
+        } else {
+          await supabase
+            .from('credit_card_bills')
+            .update({ amount: newAmount })
+            .eq('id', bill.id);
+        }
+      }
+    }
+
     res.json({ success: true });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
