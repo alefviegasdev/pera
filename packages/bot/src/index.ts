@@ -600,6 +600,21 @@ REGRAS IMPORTANTES:
   com o valor total daquela linha
 - O valor de cada item é o valor daquela linha específica,
   não o total da nota
+- Para o campo "description", extrair APENAS o nome
+  essencial do produto, ignorando:
+  · Marcas comerciais (ex: "Sadia", "Deale", "Friboi")
+  · Quantidades e unidades (ex: "1 UN", "2 KG", "500G")
+  · Códigos e abreviações desnecessárias
+  · Sufixos como "BAN", "FA", "BR", "LT", etc.
+  Exemplos:
+  · "FILEZ SASSAMI SADIA BAN 1 UN" → "Filé sassami"
+  · "QUEIJO MUSSARELA DEALE FA" → "Queijo mussarela"
+  · "AGUA MINERAL CRYSTAL 500ML" → "Água mineral"
+  · "REFRIGERANTE COCA COLA 2L" → "Refrigerante"
+- O campo "description" deve ter apenas a primeira letra
+  maiúscula e o restante minúsculo. Exemplos:
+  · "ARROZ AGULHINHA" → "Arroz agulhinha"
+  · "PÃO DE FORMA" → "Pão de forma"
 
 Retorne APENAS um array JSON válido, sem texto antes ou depois:
 [
