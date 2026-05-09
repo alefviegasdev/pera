@@ -706,7 +706,7 @@ app.patch('/monthly-bills/:id/pay', async (req, res) => {
         subtype: 'fixed',
         urgency: 'necessity',
         description: bill.name,
-        source: 'app',
+        source: 'text',
         short_code: txShortCode
       });
 
@@ -798,7 +798,7 @@ app.patch('/installments/:id', async (req, res) => {
         description: isFinished
           ? `${inst.description} (Final)`
           : `${inst.description} (Parcela ${current_installment}/${inst.total_installments})`,
-        source: 'app',
+        source: 'text',
         short_code: shortCode
       });
     }
