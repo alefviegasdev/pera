@@ -135,7 +135,8 @@ JSON Structure (dentro do array):
   "due_day": número (apenas se for type: bill),
   "is_installment": boolean,
   "installment_count": número (opcional),
-  "subcategory": string (opcional)
+  "subcategory": string (opcional),
+  "payment_method": "credit" | "debit" (opcional, incluir apenas se mencionado)
 }
 
 Se o usuário disser 'paguei [nome]', 'pagar [nome]', 'quitei [nome]', retorne type: 'payment' com description: nome do que foi pago. Se o usuário incluir o valor pago, adicione também o campo "value". Se não tiver valor, não inclua o campo "value". O sistema usará o valor enviado ou buscará o padrão cadastrado automaticamente.
@@ -167,6 +168,16 @@ ou qualquer variação fonética próxima → retornar SEMPRE:
 
 NÃO retornar not_financial para essas mensagens.
 
+
+10. MÉTODO DE PAGAMENTO:
+Se a mensagem mencionar "crédito", "no crédito", "cartão", "no cartão" → adicionar "payment_method": "credit" ao JSON.
+Se mencionar "débito", "no débito" → adicionar "payment_method": "debit" ao JSON.
+Se não mencionar → não incluir o campo.
+
+EXEMPLOS:
+- "50 hamburguer crédito" → { ..., "payment_method": "credit" }
+- "50 hamburguer débito" → { ..., "payment_method": "debit" }
+- "50 hamburguer" → { ... } (sem payment_method)
 
 Se a mensagem não contiver informações financeiras, retorne: {"error": "not_financial"}.
 
