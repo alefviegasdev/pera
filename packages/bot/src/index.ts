@@ -1921,7 +1921,7 @@ bot.on('callback_query:data', async (ctx) => {
           value: item.value,
           type: 'expense',
           category: item.category || 'Outros',
-          subtype: 'variable',
+          subtype: 'unique',
           urgency: 'necessity',
           description: item.description,
           source: 'text',
