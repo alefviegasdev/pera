@@ -120,6 +120,7 @@ const Settings = ({
   const [notifPermission, setNotifPermission] = useState<NotificationPermission | null>(null);
   const [notifLoading, setNotifLoading] = useState(false);
   const [notifActive, setNotifActive] = useState(false);
+  const [notifCardHidden, setNotifCardHidden] = useState(true);
   const [budgets, setBudgets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const cachedActive = localStorage.getItem(`tithe_active_${userId}`);
@@ -205,9 +206,14 @@ const Settings = ({
         navigator.serviceWorker.ready.then(reg => {
           reg.pushManager.getSubscription().then(sub => {
             setNotifActive(!!sub);
+            setNotifCardHidden(!!sub);
           });
         });
+      } else {
+        setNotifCardHidden(false);
       }
+    } else {
+      setNotifCardHidden(false);
     }
   }, []);
 
@@ -322,6 +328,9 @@ const Settings = ({
 
   const handleToggleNotifications = async (active: boolean) => {
     setNotifActive(active);
+    if (!active) {
+      setNotifCardHidden(false);
+    }
     try {
       const reg = await navigator.serviceWorker.ready;
       if (active) {
@@ -345,6 +354,9 @@ const Settings = ({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ user_id: userId })
         });
+        setTimeout(() => {
+          setNotifCardHidden(true);
+        }, 5000);
       } else {
         const existing = await reg.pushManager.getSubscription();
         if (existing) {
@@ -354,6 +366,7 @@ const Settings = ({
     } catch (e) {
       console.error(e);
       setNotifActive(!active);
+      if (!active) setNotifCardHidden(true);
     }
   };
 
@@ -493,11 +506,13 @@ const Settings = ({
             )}
           </div>
 
-          <div className={`bg-white rounded-[2rem] shadow-sm border border-surface-container/50 flex items-center justify-between gap-4 transition-all overflow-hidden ${notifPermission === 'granted' && notifActive ? 'opacity-40 max-h-0 py-0 border-none' : 'p-6 opacity-100 max-h-[500px]'}`}>
+          <div className={`bg-white rounded-[2rem] shadow-sm border border-surface-container/50 flex items-center justify-between gap-4 transition-all overflow-hidden ${notifPermission === 'granted' && notifCardHidden ? 'opacity-40 max-h-0 py-0 border-none' : 'p-6 opacity-100 max-h-[500px]'}`}>
             <div className="flex-1">
               <p className="font-bold text-on-surface text-base">Vencimentos e atrasos</p>
               <p className="text-xs text-on-surface-variant mt-0.5">
-                {notifPermission === 'granted'
+                {notifPermission === 'granted' && notifActive
+                  ? '✅ Notificações ativadas'
+                  : notifPermission === 'granted' && !notifActive
                   ? 'Receba alertas de contas próximas do vencimento'
                   : notifPermission === 'denied'
                   ? '❌ Bloqueadas — ative nas configurações do sistema'
