@@ -485,6 +485,13 @@ const pendingCardSelection = new Map<string, any>();
 const pendingCardRegistration = new Map<string, any>();
 // Estrutura: { item, shortCode, step, bank?, closing_day?, due_day? }
 
+const pendingInstallmentSetup = new Map<string, {
+  item: any;
+  shortCode: string;
+  startThisMonth?: boolean;
+  cardId?: string;
+}>();
+
 const pendingReceiptReview = new Map<string, {
   items: Array<{
     id: string;
@@ -1429,27 +1436,19 @@ Exemplos que funcionam:
       const subtypeLabel = subtypeMap[item.subtype] || 'Variável';
 
       if (item.is_installment && item.installment_count > 1) {
-        const instValue = item.value / item.installment_count;
-        
-        const { error } = await supabase.from("installments").insert({
-          user_id: supabaseUserId,
-          description: item.description,
-          total_value: item.value,
-          installment_value: instValue,
-          total_installments: item.installment_count,
-          current_installment: 0,
-          category: item.category || 'Outros',
-          short_code: shortCode
+        pendingInstallmentSetup.set(supabaseUserId, {
+          item, shortCode
         });
 
-        if (error) throw error;
+        const keyboard = new InlineKeyboard()
+          .text('📅 Este mês', 'inst_month_current')
+          .text('📅 Próximo mês', 'inst_month_next');
 
-        await ctx.reply(`🛍️ Parcelamento registrado! #${shortCode}
-📝 ${item.description}
-💰 Total: R$ ${Number(item.value).toFixed(2)}
-📆 ${item.installment_count}x de R$ ${Number(instValue).toFixed(2)}
-📂 ${item.category}
-⏱️ ${urgencyLabel}`);
+        await ctx.reply(
+          `🛍️ Parcelamento detectado!\n📝 ${item.description}\n💰 Total: R$ ${Number(item.value).toFixed(2)}\n📆 ${item.installment_count}x de R$ ${Number(item.value / item.installment_count).toFixed(2)}\n\nA primeira parcela vence neste mês ou no próximo?`,
+          { reply_markup: keyboard }
+        );
+        continue;
 
       } else if (item.type === 'payment') {
         const now = new Date();
@@ -1832,6 +1831,96 @@ O que você pode fazer:
 
 bot.on('callback_query:data', async (ctx) => {
   const data = ctx.callbackQuery.data;
+
+  // STEP 1 — mês da primeira parcela
+  if (data === 'inst_month_current' || data === 'inst_month_next') {
+    await ctx.answerCallbackQuery();
+    const userId = ctx.from.id.toString();
+    const { data: profile } = await supabase
+      .from('user_profiles').select('user_id')
+      .eq('telegram_id', userId).maybeSingle();
+    const supabaseUserId = profile?.user_id;
+    const pending = pendingInstallmentSetup.get(supabaseUserId);
+    if (!pending) return;
+
+    pending.startThisMonth = data === 'inst_month_current';
+    pendingInstallmentSetup.set(supabaseUserId, pending);
+
+    // Buscar cartões
+    const { data: cards } = await supabase
+      .from('credit_cards').select('*')
+      .eq('user_id', supabaseUserId);
+
+    const keyboard = new InlineKeyboard();
+    (cards || []).forEach(card => {
+      keyboard.text(`💳 ${card.bank}`, `inst_card_${card.id}`).row();
+    });
+    keyboard.text('🏦 Outros / Sem cartão', 'inst_card_none');
+
+    await ctx.editMessageText(
+      `📅 ${pending.startThisMonth ? 'Primeira parcela este mês' : 'Primeira parcela no próximo mês'}\n\nQual cartão foi utilizado?`
+    );
+    await ctx.reply('Selecione o cartão:', { reply_markup: keyboard });
+  }
+
+  // STEP 2 — cartão selecionado
+  if (data.startsWith('inst_card_')) {
+    await ctx.answerCallbackQuery();
+    const cardId = data.replace('inst_card_', '');
+    const userId = ctx.from.id.toString();
+    const { data: profile } = await supabase
+      .from('user_profiles').select('user_id')
+      .eq('telegram_id', userId).maybeSingle();
+    const supabaseUserId = profile?.user_id;
+    const pending = pendingInstallmentSetup.get(supabaseUserId);
+    if (!pending) return;
+
+    const { item, shortCode, startThisMonth } = pending;
+    const instValue = item.value / item.installment_count;
+
+    // Calcular start_date
+    const now = new Date();
+    const startDate = startThisMonth
+      ? new Date(now.getFullYear(), now.getMonth(), 1)
+      : new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+    // Inserir parcelamento
+    const insertData: any = {
+      user_id: supabaseUserId,
+      description: item.description,
+      total_value: item.value,
+      installment_value: instValue,
+      total_installments: item.installment_count,
+      current_installment: 0,
+      category: item.category || 'Outros',
+      short_code: shortCode
+    };
+
+    if (cardId !== 'none') {
+      insertData.credit_card_id = cardId;
+    }
+
+    const { error } = await supabase.from('installments').insert(insertData);
+    if (error) {
+      console.error('[PARCELA] Erro:', error);
+      pendingInstallmentSetup.delete(supabaseUserId);
+      return ctx.reply(`❌ Erro ao registrar parcelamento: ${error.message}`);
+    }
+
+    pendingInstallmentSetup.delete(supabaseUserId);
+
+    let cardInfo = 'Sem cartão vinculado';
+    if (cardId !== 'none') {
+      const { data: card } = await supabase
+        .from('credit_cards').select('bank')
+        .eq('id', cardId).maybeSingle();
+      if (card) cardInfo = `💳 ${card.bank}`;
+    }
+
+    await ctx.editMessageText(
+      `✅ Parcelamento registrado! #${shortCode}\n📝 ${item.description}\n💰 Total: R$ ${Number(item.value).toFixed(2)}\n📆 ${item.installment_count}x de R$ ${Number(instValue).toFixed(2)}\n${cardInfo}\n📅 Início: ${startThisMonth ? 'este mês' : 'próximo mês'}`
+    );
+  }
 
   // Cancelar cadastro de cartão
   if (data === 'reg_card_cancel') {
