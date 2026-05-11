@@ -877,6 +877,38 @@ Quanto mais detalhes você der, melhor eu classifico!
         return ctx.reply(`❌ Erro ao cadastrar cartão: ${cardError.message}`);
       }
 
+      if (regPending.fromInstallment) {
+        const instPending = pendingInstallmentSetup.get(supabaseUserId);
+        if (instPending) {
+          const { item, shortCode, startThisMonth } = instPending;
+          const instValue = item.value / item.installment_count;
+
+          const insertData: any = {
+            user_id: supabaseUserId,
+            description: item.description,
+            total_value: item.value,
+            installment_value: instValue,
+            total_installments: item.installment_count,
+            current_installment: 0,
+            category: item.category || 'Outros',
+            short_code: shortCode,
+            credit_card_id: newCard.id
+          };
+
+          const { error } = await supabase.from('installments').insert(insertData);
+          pendingInstallmentSetup.delete(supabaseUserId);
+          pendingCardRegistration.delete(supabaseUserId);
+
+          if (error) {
+            return ctx.reply(`❌ Erro ao registrar parcelamento: ${error.message}`);
+          }
+
+          return ctx.reply(
+            `✅ Cartão ${regPending.bank} cadastrado e parcelamento registrado! #${shortCode}\n📝 ${item.description}\n💰 Total: R$ ${Number(item.value).toFixed(2)}\n📆 ${item.installment_count}x de R$ ${Number(instValue).toFixed(2)}\n💳 ${regPending.bank}\n📅 Início: ${startThisMonth ? 'este mês' : 'próximo mês'}`
+          );
+        }
+      }
+
       await registerCreditTransaction(
         supabaseUserId, regPending.item, regPending.shortCode,
         newCard.id, newCard.closing_day, newCard.due_day
@@ -1855,6 +1887,7 @@ bot.on('callback_query:data', async (ctx) => {
     (cards || []).forEach(card => {
       keyboard.text(`💳 ${card.bank}`, `inst_card_${card.id}`).row();
     });
+    keyboard.text('➕ Cadastrar novo cartão', 'inst_card_new').row();
     keyboard.text('🏦 Outros / Sem cartão', 'inst_card_none');
 
     await ctx.editMessageText(
@@ -1863,8 +1896,32 @@ bot.on('callback_query:data', async (ctx) => {
     await ctx.reply('Selecione o cartão:', { reply_markup: keyboard });
   }
 
+  if (data === 'inst_card_new') {
+    await ctx.answerCallbackQuery();
+    const userId = ctx.from.id.toString();
+    const { data: profile } = await supabase
+      .from('user_profiles').select('user_id')
+      .eq('telegram_id', userId).maybeSingle();
+    const supabaseUserId = profile?.user_id;
+    const pending = pendingInstallmentSetup.get(supabaseUserId);
+    if (!pending) return;
+
+    // Iniciar cadastro de cartão, salvando contexto de parcelamento
+    pendingCardRegistration.set(supabaseUserId, {
+      step: 'bank',
+      fromInstallment: true,
+      installmentShortCode: pending.shortCode
+    });
+
+    await ctx.reply(
+      `💳 Vamos cadastrar seu cartão!\n\nQual é o nome do seu banco?\n\nEx: Nubank, Itaú, Bradesco, Inter...`,
+      { reply_markup: new InlineKeyboard().text('❌ Cancelar', 'reg_card_cancel') }
+    );
+    return;
+  }
+
   // STEP 2 — cartão selecionado
-  if (data.startsWith('inst_card_')) {
+  if (data.startsWith('inst_card_') && data !== 'inst_card_new') {
     await ctx.answerCallbackQuery();
     const cardId = data.replace('inst_card_', '');
     const userId = ctx.from.id.toString();
