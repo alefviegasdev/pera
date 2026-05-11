@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Reorder, useDragControls } from 'framer-motion';
-import { Target, Calendar, ChevronRight, User, Heart, LogOut, PlusCircle, Home, Wifi, Utensils, Zap, HelpCircle, Coffee, Car, HeartPulse, Gamepad2, BookOpen, ReceiptText, Shirt, Smartphone, Hand, CircleEllipsis, Pencil, GripVertical, CreditCard, Trash2, X } from 'lucide-react';
+import { Target, Calendar, ChevronRight, User, Heart, LogOut, PlusCircle, Home, Wifi, Utensils, Zap, HelpCircle, Coffee, Car, HeartPulse, Gamepad2, BookOpen, ReceiptText, Shirt, Smartphone, Hand, CircleEllipsis, Pencil, GripVertical, CreditCard, Trash2, X, CheckCircle2, Bell } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { BANK_COLORS } from '../utils/categories';
 import NewBillModal from '../components/NewBillModal';
@@ -117,6 +117,8 @@ const Settings = ({
 }) => {
   const [fixed,   setFixed]   = useState<any[]>([]);
   const [goals,   setGoals]   = useState<any[]>([]);
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission | null>(null);
+  const [notifLoading, setNotifLoading] = useState(false);
   const [budgets, setBudgets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const cachedActive = localStorage.getItem(`tithe_active_${userId}`);
@@ -195,6 +197,12 @@ const Settings = ({
     return () => clearInterval(interval);
   }, [userId]);
 
+  useEffect(() => {
+    if ('Notification' in window) {
+      setNotifPermission(Notification.permission);
+    }
+  }, []);
+
   const fetchData = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
@@ -253,6 +261,53 @@ const Settings = ({
       localStorage.clear();
       sessionStorage.clear();
       window.location.href = '/';
+    }
+  };
+
+  const handleEnableNotifications = async () => {
+    if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+      alert('Seu dispositivo não suporta notificações push.');
+      return;
+    }
+
+    setNotifLoading(true);
+    try {
+      const permission = await Notification.requestPermission();
+      setNotifPermission(permission);
+
+      if (permission === 'granted') {
+        // Registrar subscription
+        const reg = await navigator.serviceWorker.ready;
+        const existing = await reg.pushManager.getSubscription();
+
+        const sub = existing || await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: import.meta.env.VITE_VAPID_PUBLIC_KEY
+        });
+
+        const subJson = sub.toJSON();
+        await fetch('/api/push-subscriptions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: userId,
+            endpoint: subJson.endpoint,
+            p256dh: (subJson.keys as any)?.p256dh,
+            auth: (subJson.keys as any)?.auth
+          })
+        });
+
+        // Enviar push de confirmação
+        await fetch('/api/push-subscriptions/test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_id: userId })
+        });
+      }
+    } catch (e) {
+      console.error('[Notif] Erro:', e);
+    } finally {
+      setNotifLoading(false);
     }
   };
 
@@ -368,6 +423,44 @@ const Settings = ({
             <LogOut size={16} />
             Sair da conta
           </button>
+        </section>
+
+        {/* Notifications Section */}
+        <section className="space-y-4">
+          <div className="flex items-center justify-between px-1">
+            <h3 className="font-headline text-xl font-extrabold tracking-tight text-on-background">
+              Notificações
+            </h3>
+          </div>
+
+          <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-surface-container/50 flex items-center justify-between gap-4">
+            <div className="flex-1">
+              <p className="font-bold text-on-surface text-base">Vencimentos e atrasos</p>
+              <p className="text-xs text-on-surface-variant mt-0.5">
+                {notifPermission === 'granted'
+                  ? '✅ Notificações ativadas'
+                  : notifPermission === 'denied'
+                  ? '❌ Bloqueadas — ative nas configurações do sistema'
+                  : 'Receba alertas de contas próximas do vencimento'}
+              </p>
+            </div>
+
+            {notifPermission !== 'denied' && notifPermission !== 'granted' && (
+              <button
+                onClick={handleEnableNotifications}
+                disabled={notifLoading}
+                className="bg-primary text-on-primary px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-widest shadow-lg shadow-primary/20 active:scale-95 transition-all disabled:opacity-50 whitespace-nowrap"
+              >
+                {notifLoading ? 'Ativando...' : 'Ativar'}
+              </button>
+            )}
+
+            {notifPermission === 'granted' && (
+              <div className="w-10 h-10 rounded-full bg-tertiary-container flex items-center justify-center flex-shrink-0">
+                <CheckCircle2 size={20} className="text-tertiary" />
+              </div>
+            )}
+          </div>
         </section>
 
         {/* Payment Preference + Credit Cards */}
