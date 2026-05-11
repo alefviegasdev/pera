@@ -493,12 +493,12 @@ const Settings = ({
             )}
           </div>
 
-          <div className={`bg-white rounded-[2rem] shadow-sm border border-surface-container/50 flex items-center justify-between gap-4 transition-all overflow-hidden ${notifPermission === 'granted' && !notifActive ? 'opacity-40 max-h-0 py-0 border-none' : 'p-6 opacity-100 max-h-[500px]'}`}>
+          <div className={`bg-white rounded-[2rem] shadow-sm border border-surface-container/50 flex items-center justify-between gap-4 transition-all overflow-hidden ${notifPermission === 'granted' && notifActive ? 'opacity-40 max-h-0 py-0 border-none' : 'p-6 opacity-100 max-h-[500px]'}`}>
             <div className="flex-1">
               <p className="font-bold text-on-surface text-base">Vencimentos e atrasos</p>
               <p className="text-xs text-on-surface-variant mt-0.5">
                 {notifPermission === 'granted'
-                  ? '✅ Notificações ativadas'
+                  ? 'Receba alertas de contas próximas do vencimento'
                   : notifPermission === 'denied'
                   ? '❌ Bloqueadas — ative nas configurações do sistema'
                   : 'Receba alertas de contas próximas do vencimento'}
