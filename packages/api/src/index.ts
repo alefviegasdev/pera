@@ -2,15 +2,8 @@ import express from 'express';
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import path from 'path';
-import webpush from 'web-push';
 
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
-
-webpush.setVapidDetails(
-  'mailto:contato@pera.app',
-  process.env.VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!
-);
 
 function generateShortCode(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -166,72 +159,6 @@ function getDueDate(billingMonth: Date, dueDay: number): Date {
 }
 
 // Routes
-app.post('/push-subscriptions', async (req, res) => {
-  try {
-    const { user_id, endpoint, p256dh, auth } = req.body;
-    if (!user_id || !endpoint) return res.status(400).json({ error: 'Missing fields' });
-
-    await supabase.from('push_subscriptions').upsert({
-      user_id, endpoint, p256dh, auth
-    }, { onConflict: 'user_id,endpoint' });
-
-    res.json({ success: true });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-app.post('/push-subscriptions/test', async (req, res) => {
-  try {
-    const { user_id } = req.body;
-    if (!user_id) return res.status(400).json({ error: 'Missing user_id' });
-
-    const { data: subs } = await supabase
-      .from('push_subscriptions')
-      .select('*')
-      .eq('user_id', user_id);
-
-    if (!subs?.length) return res.json({ success: false });
-
-    for (const sub of subs) {
-      try {
-        await webpush.sendNotification(
-          {
-            endpoint: sub.endpoint,
-            keys: { p256dh: sub.p256dh, auth: sub.auth }
-          },
-          JSON.stringify({
-            title: '🍐 Pera ativado!',
-            body: 'Você receberá notificações de vencimentos e contas atrasadas.',
-            url: '/'
-          })
-        );
-      } catch (e: any) {
-        if (e.statusCode === 410) {
-          await supabase.from('push_subscriptions').delete().eq('id', sub.id);
-        }
-      }
-    }
-
-    res.json({ success: true });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-app.post('/push-subscriptions/remove', async (req, res) => {
-  try {
-    const { user_id } = req.body;
-    if (!user_id) return res.status(400).json({ error: 'Missing user_id' });
-    await supabase.from('push_subscriptions')
-      .delete()
-      .eq('user_id', user_id);
-    res.json({ success: true });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
 app.get('/', (req, res) => {
   res.json({ status: 'ok' });
 });

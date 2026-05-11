@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Reorder, useDragControls } from 'framer-motion';
-import { Target, Calendar, ChevronRight, User, Heart, LogOut, PlusCircle, Home, Wifi, Utensils, Zap, HelpCircle, Coffee, Car, HeartPulse, Gamepad2, BookOpen, ReceiptText, Shirt, Smartphone, Hand, CircleEllipsis, Pencil, GripVertical, CreditCard, Trash2, X, CheckCircle2, Bell } from 'lucide-react';
+import { Target, Calendar, ChevronRight, User, Heart, LogOut, PlusCircle, Home, Wifi, Utensils, Zap, HelpCircle, Coffee, Car, HeartPulse, Gamepad2, BookOpen, ReceiptText, Shirt, Smartphone, Hand, CircleEllipsis, Pencil, GripVertical, CreditCard, Trash2, X, CheckCircle2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { BANK_COLORS } from '../utils/categories';
 import NewBillModal from '../components/NewBillModal';
@@ -8,7 +8,7 @@ import NewBudgetModal from '../components/NewBudgetModal';
 import NewGoalModal from '../components/NewGoalModal';
 
 const BANKS = ['Nubank', 'Itaú', 'Bradesco', 'Inter', 'C6 Bank', 'Santander', 'Caixa', 'Banco do Brasil', 'XP', 'BTG'];
-const NOTIF_ACTIVE_KEY = 'pera_notif_active';
+const BANKS = ['Nubank', 'Itaú', 'Bradesco', 'Inter', 'C6 Bank', 'Santander', 'Caixa', 'Banco do Brasil', 'XP', 'BTG'];
 
 const SectionHeader = ({ title, onAdd }: { title: string; onAdd?: () => void }) => (
   <div className="flex items-center justify-between mb-4">
@@ -103,17 +103,6 @@ const CategoryCardItem = ({
   );
 };
 
-function urlBase64ToUint8Array(base64String: string) {
-  const padding = '='.repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding)
-    .replace(/-/g, '+').replace(/_/g, '/');
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
-}
 
 const Settings = ({ 
   userId, 
@@ -130,10 +119,6 @@ const Settings = ({
 }) => {
   const [fixed,   setFixed]   = useState<any[]>([]);
   const [goals,   setGoals]   = useState<any[]>([]);
-  const [notifPermission, setNotifPermission] = useState<NotificationPermission | null>(null);
-  const [notifLoading, setNotifLoading] = useState(false);
-  const [notifActive, setNotifActive] = useState(false);
-  const [notifCardHidden, setNotifCardHidden] = useState(true);
   const [budgets, setBudgets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const cachedActive = localStorage.getItem(`tithe_active_${userId}`);
@@ -212,35 +197,6 @@ const Settings = ({
     return () => clearInterval(interval);
   }, [userId]);
 
-  useEffect(() => {
-    if (!('Notification' in window)) {
-      setNotifCardHidden(false);
-      return;
-    }
-
-    setNotifPermission(Notification.permission);
-
-    if (Notification.permission === 'granted' && 'serviceWorker' in navigator) {
-      const savedActive = localStorage.getItem(NOTIF_ACTIVE_KEY);
-      // Se nunca foi salvo, verificar service worker
-      if (savedActive === null) {
-        navigator.serviceWorker.ready.then(reg => {
-          reg.pushManager.getSubscription().then(sub => {
-            const active = !!sub;
-            setNotifActive(active);
-            setNotifCardHidden(active);
-            localStorage.setItem(NOTIF_ACTIVE_KEY, String(active));
-          });
-        });
-      } else {
-        const active = savedActive === 'true';
-        setNotifActive(active);
-        setNotifCardHidden(active);
-      }
-    } else {
-      setNotifCardHidden(false);
-    }
-  }, []);
 
   const fetchData = async (silent = false) => {
     if (!silent) setLoading(true);
@@ -303,127 +259,6 @@ const Settings = ({
     }
   };
 
-  const handleEnableNotifications = async () => {
-    if (!('Notification' in window) || !('serviceWorker' in navigator)) {
-      alert('Seu dispositivo não suporta notificações push.');
-      return;
-    }
-
-    setNotifLoading(true);
-    try {
-      const permission = await Notification.requestPermission();
-      setNotifPermission(permission);
-
-      if (permission === 'granted') {
-        const reg = await navigator.serviceWorker.ready;
-        
-        // Verificar se já existe subscription
-        let sub = await reg.pushManager.getSubscription();
-        
-        // Se não existe, criar nova
-        if (!sub) {
-          const vapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
-          console.log('[Push] VAPID key:', vapidKey ? 'presente' : 'ausente');
-          sub = await reg.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(vapidKey)
-          });
-        }
-
-        const subJson = sub.toJSON();
-        console.log('[Push] Subscription criada:', subJson.endpoint);
-
-        // Salvar no banco
-        const saveRes = await fetch('/api/push-subscriptions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            user_id: userId,
-            endpoint: subJson.endpoint,
-            p256dh: (subJson.keys as any)?.p256dh,
-            auth: (subJson.keys as any)?.auth
-          })
-        });
-        const saveData = await saveRes.json();
-        console.log('[Push] Salvo:', saveData);
-
-        // Aguardar 2s para garantir que a subscription foi processada
-        await new Promise(resolve => setTimeout(resolve, 2000));
-
-        // Enviar push de confirmação
-        const testRes = await fetch('/api/push-subscriptions/test', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ user_id: userId })
-        });
-        const testData = await testRes.json();
-        console.log('[Push] Teste enviado:', testData);
-
-        setNotifActive(true);
-        setNotifCardHidden(true);
-        localStorage.setItem(NOTIF_ACTIVE_KEY, 'true');
-      }
-    } catch (e) {
-      console.error('[Notif] Erro:', e);
-    } finally {
-      setNotifLoading(false);
-    }
-  };
-
-  const handleToggleNotifications = async (active: boolean) => {
-    try {
-      const reg = await navigator.serviceWorker.ready;
-
-      if (active) {
-        // Reativar
-        let sub = await reg.pushManager.getSubscription();
-        if (!sub) {
-          sub = await reg.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(
-              import.meta.env.VITE_VAPID_PUBLIC_KEY
-            )
-          });
-        }
-        const subJson = sub.toJSON();
-        await fetch('/api/push-subscriptions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            user_id: userId,
-            endpoint: subJson.endpoint,
-            p256dh: (subJson.keys as any)?.p256dh,
-            auth: (subJson.keys as any)?.auth
-          })
-        });
-        await fetch('/api/push-subscriptions/test', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ user_id: userId })
-        });
-        setNotifActive(true);
-        setNotifCardHidden(true);
-        localStorage.setItem(NOTIF_ACTIVE_KEY, 'true');
-      } else {
-        // Desativar
-        const sub = await reg.pushManager.getSubscription();
-        if (sub) {
-          await sub.unsubscribe();
-          // Remover do banco
-          await fetch('/api/push-subscriptions/remove', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_id: userId })
-          });
-        }
-        setNotifActive(false);
-        setNotifCardHidden(false);
-        localStorage.setItem(NOTIF_ACTIVE_KEY, 'false');
-      }
-    } catch (e) {
-      console.error('[Toggle Notif] Erro:', e);
-    }
-  };
 
   const fmt = (n: number) =>
     n?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) ?? 'R$\u00a00,00';
@@ -539,59 +374,6 @@ const Settings = ({
           </button>
         </section>
 
-        {/* Notifications Section */}
-        <section className="space-y-4">
-          <div className="flex items-center justify-between px-1">
-            <h3 className="font-headline text-xl font-extrabold tracking-tight text-on-background">
-              Notificações
-            </h3>
-            {notifPermission === 'granted' && (
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input 
-                  type="checkbox" 
-                  checked={notifActive} 
-                  onChange={() => handleToggleNotifications(!notifActive)}
-                  className="sr-only peer" 
-                />
-                <div className="w-11 h-6 bg-outline-variant rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all shadow-inner"></div>
-                <span className="ms-3 text-[10px] font-black uppercase tracking-widest text-on-surface-variant">
-                  {notifActive ? 'Ativo' : 'Inativo'}
-                </span>
-              </label>
-            )}
-          </div>
-
-          <div className={`bg-white rounded-[2rem] shadow-sm border border-surface-container/50 flex items-center justify-between gap-4 transition-all overflow-hidden ${notifPermission === 'granted' && notifCardHidden ? 'opacity-40 max-h-0 py-0 border-none' : 'p-6 opacity-100 max-h-[500px]'}`}>
-            <div className="flex-1">
-              <p className="font-bold text-on-surface text-base">Vencimentos e atrasos</p>
-              <p className="text-xs text-on-surface-variant mt-0.5">
-                {notifPermission === 'granted' && notifActive
-                  ? '✅ Notificações ativadas'
-                  : notifPermission === 'granted' && !notifActive
-                  ? 'Receba alertas de contas próximas do vencimento'
-                  : notifPermission === 'denied'
-                  ? '❌ Bloqueadas — ative nas configurações do sistema'
-                  : 'Receba alertas de contas próximas do vencimento'}
-              </p>
-            </div>
-
-            {notifPermission !== 'denied' && notifPermission !== 'granted' && (
-              <button
-                onClick={handleEnableNotifications}
-                disabled={notifLoading}
-                className="bg-primary text-on-primary px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-widest shadow-lg shadow-primary/20 active:scale-95 transition-all disabled:opacity-50 whitespace-nowrap"
-              >
-                {notifLoading ? 'Ativando...' : 'Ativar'}
-              </button>
-            )}
-
-            {notifPermission === 'granted' && notifActive && (
-              <div className="w-10 h-10 rounded-full bg-tertiary-container flex items-center justify-center flex-shrink-0">
-                <CheckCircle2 size={20} className="text-tertiary" />
-              </div>
-            )}
-          </div>
-        </section>
 
         {/* Payment Preference + Credit Cards */}
         <section className="space-y-4">
