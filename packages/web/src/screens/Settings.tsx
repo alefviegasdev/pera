@@ -8,7 +8,6 @@ import NewBudgetModal from '../components/NewBudgetModal';
 import NewGoalModal from '../components/NewGoalModal';
 
 const BANKS = ['Nubank', 'Itaú', 'Bradesco', 'Inter', 'C6 Bank', 'Santander', 'Caixa', 'Banco do Brasil', 'XP', 'BTG'];
-const BANKS = ['Nubank', 'Itaú', 'Bradesco', 'Inter', 'C6 Bank', 'Santander', 'Caixa', 'Banco do Brasil', 'XP', 'BTG'];
 
 const SectionHeader = ({ title, onAdd }: { title: string; onAdd?: () => void }) => (
   <div className="flex items-center justify-between mb-4">
