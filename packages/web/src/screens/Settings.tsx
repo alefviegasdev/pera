@@ -302,18 +302,26 @@ const Settings = ({
       setNotifPermission(permission);
 
       if (permission === 'granted') {
-        setNotifActive(true);
-        // Registrar subscription
         const reg = await navigator.serviceWorker.ready;
-        const existing = await reg.pushManager.getSubscription();
-
-        const sub = existing || await reg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(import.meta.env.VITE_VAPID_PUBLIC_KEY)
-        });
+        
+        // Verificar se já existe subscription
+        let sub = await reg.pushManager.getSubscription();
+        
+        // Se não existe, criar nova
+        if (!sub) {
+          const vapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+          console.log('[Push] VAPID key:', vapidKey ? 'presente' : 'ausente');
+          sub = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(vapidKey)
+          });
+        }
 
         const subJson = sub.toJSON();
-        await fetch('/api/push-subscriptions', {
+        console.log('[Push] Subscription criada:', subJson.endpoint);
+
+        // Salvar no banco
+        const saveRes = await fetch('/api/push-subscriptions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -323,13 +331,20 @@ const Settings = ({
             auth: (subJson.keys as any)?.auth
           })
         });
+        const saveData = await saveRes.json();
+        console.log('[Push] Salvo:', saveData);
 
         // Enviar push de confirmação
-        await fetch('/api/push-subscriptions/test', {
+        const testRes = await fetch('/api/push-subscriptions/test', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ user_id: userId })
         });
+        const testData = await testRes.json();
+        console.log('[Push] Teste enviado:', testData);
+
+        setNotifActive(true);
+        setNotifCardHidden(true);
       }
     } catch (e) {
       console.error('[Notif] Erro:', e);
