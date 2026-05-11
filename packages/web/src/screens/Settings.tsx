@@ -347,6 +347,9 @@ const Settings = ({
         const saveData = await saveRes.json();
         console.log('[Push] Salvo:', saveData);
 
+        // Aguardar 2s para garantir que a subscription foi processada
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
         // Enviar push de confirmação
         const testRes = await fetch('/api/push-subscriptions/test', {
           method: 'POST',
