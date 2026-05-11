@@ -119,6 +119,7 @@ const Settings = ({
   const [goals,   setGoals]   = useState<any[]>([]);
   const [notifPermission, setNotifPermission] = useState<NotificationPermission | null>(null);
   const [notifLoading, setNotifLoading] = useState(false);
+  const [notifActive, setNotifActive] = useState(false);
   const [budgets, setBudgets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const cachedActive = localStorage.getItem(`tithe_active_${userId}`);
@@ -200,6 +201,13 @@ const Settings = ({
   useEffect(() => {
     if ('Notification' in window) {
       setNotifPermission(Notification.permission);
+      if (Notification.permission === 'granted' && 'serviceWorker' in navigator) {
+        navigator.serviceWorker.ready.then(reg => {
+          reg.pushManager.getSubscription().then(sub => {
+            setNotifActive(!!sub);
+          });
+        });
+      }
     }
   }, []);
 
@@ -276,6 +284,7 @@ const Settings = ({
       setNotifPermission(permission);
 
       if (permission === 'granted') {
+        setNotifActive(true);
         // Registrar subscription
         const reg = await navigator.serviceWorker.ready;
         const existing = await reg.pushManager.getSubscription();
@@ -308,6 +317,43 @@ const Settings = ({
       console.error('[Notif] Erro:', e);
     } finally {
       setNotifLoading(false);
+    }
+  };
+
+  const handleToggleNotifications = async (active: boolean) => {
+    setNotifActive(active);
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      if (active) {
+        const sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: import.meta.env.VITE_VAPID_PUBLIC_KEY
+        });
+        const subJson = sub.toJSON();
+        await fetch('/api/push-subscriptions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: userId,
+            endpoint: subJson.endpoint,
+            p256dh: (subJson.keys as any)?.p256dh,
+            auth: (subJson.keys as any)?.auth
+          })
+        });
+        await fetch('/api/push-subscriptions/test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_id: userId })
+        });
+      } else {
+        const existing = await reg.pushManager.getSubscription();
+        if (existing) {
+          await existing.unsubscribe();
+        }
+      }
+    } catch (e) {
+      console.error(e);
+      setNotifActive(!active);
     }
   };
 
@@ -431,9 +477,23 @@ const Settings = ({
             <h3 className="font-headline text-xl font-extrabold tracking-tight text-on-background">
               Notificações
             </h3>
+            {notifPermission === 'granted' && (
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  checked={notifActive} 
+                  onChange={() => handleToggleNotifications(!notifActive)}
+                  className="sr-only peer" 
+                />
+                <div className="w-11 h-6 bg-outline-variant rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all shadow-inner"></div>
+                <span className="ms-3 text-[10px] font-black uppercase tracking-widest text-on-surface-variant">
+                  {notifActive ? 'Ativo' : 'Inativo'}
+                </span>
+              </label>
+            )}
           </div>
 
-          <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-surface-container/50 flex items-center justify-between gap-4">
+          <div className={`bg-white rounded-[2rem] shadow-sm border border-surface-container/50 flex items-center justify-between gap-4 transition-all overflow-hidden ${notifPermission === 'granted' && !notifActive ? 'opacity-40 max-h-0 py-0 border-none' : 'p-6 opacity-100 max-h-[500px]'}`}>
             <div className="flex-1">
               <p className="font-bold text-on-surface text-base">Vencimentos e atrasos</p>
               <p className="text-xs text-on-surface-variant mt-0.5">
@@ -455,7 +515,7 @@ const Settings = ({
               </button>
             )}
 
-            {notifPermission === 'granted' && (
+            {notifPermission === 'granted' && notifActive && (
               <div className="w-10 h-10 rounded-full bg-tertiary-container flex items-center justify-center flex-shrink-0">
                 <CheckCircle2 size={20} className="text-tertiary" />
               </div>
