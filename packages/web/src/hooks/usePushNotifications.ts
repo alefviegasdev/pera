@@ -71,6 +71,12 @@ async function registerSubscription(userId: string) {
       )
     });
     await saveSubscription(userId, subscription);
+    
+    await fetch('/api/push-subscriptions/test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId })
+    });
   } catch (e) {
     console.error('[Push] Erro ao registrar:', e);
   }
