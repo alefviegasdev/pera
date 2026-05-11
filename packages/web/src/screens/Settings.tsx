@@ -8,6 +8,7 @@ import NewBudgetModal from '../components/NewBudgetModal';
 import NewGoalModal from '../components/NewGoalModal';
 
 const BANKS = ['Nubank', 'Itaú', 'Bradesco', 'Inter', 'C6 Bank', 'Santander', 'Caixa', 'Banco do Brasil', 'XP', 'BTG'];
+const NOTIF_ACTIVE_KEY = 'pera_notif_active';
 
 const SectionHeader = ({ title, onAdd }: { title: string; onAdd?: () => void }) => (
   <div className="flex items-center justify-between mb-4">
@@ -212,17 +213,29 @@ const Settings = ({
   }, [userId]);
 
   useEffect(() => {
-    if ('Notification' in window) {
-      setNotifPermission(Notification.permission);
-      if (Notification.permission === 'granted' && 'serviceWorker' in navigator) {
+    if (!('Notification' in window)) {
+      setNotifCardHidden(false);
+      return;
+    }
+
+    setNotifPermission(Notification.permission);
+
+    if (Notification.permission === 'granted' && 'serviceWorker' in navigator) {
+      const savedActive = localStorage.getItem(NOTIF_ACTIVE_KEY);
+      // Se nunca foi salvo, verificar service worker
+      if (savedActive === null) {
         navigator.serviceWorker.ready.then(reg => {
           reg.pushManager.getSubscription().then(sub => {
-            setNotifActive(!!sub);
-            setNotifCardHidden(!!sub);
+            const active = !!sub;
+            setNotifActive(active);
+            setNotifCardHidden(active);
+            localStorage.setItem(NOTIF_ACTIVE_KEY, String(active));
           });
         });
       } else {
-        setNotifCardHidden(false);
+        const active = savedActive === 'true';
+        setNotifActive(active);
+        setNotifCardHidden(active);
       }
     } else {
       setNotifCardHidden(false);
@@ -345,6 +358,7 @@ const Settings = ({
 
         setNotifActive(true);
         setNotifCardHidden(true);
+        localStorage.setItem(NOTIF_ACTIVE_KEY, 'true');
       }
     } catch (e) {
       console.error('[Notif] Erro:', e);
@@ -354,17 +368,20 @@ const Settings = ({
   };
 
   const handleToggleNotifications = async (active: boolean) => {
-    setNotifActive(active);
-    if (!active) {
-      setNotifCardHidden(false);
-    }
     try {
       const reg = await navigator.serviceWorker.ready;
+
       if (active) {
-        const sub = await reg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(import.meta.env.VITE_VAPID_PUBLIC_KEY)
-        });
+        // Reativar
+        let sub = await reg.pushManager.getSubscription();
+        if (!sub) {
+          sub = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(
+              import.meta.env.VITE_VAPID_PUBLIC_KEY
+            )
+          });
+        }
         const subJson = sub.toJSON();
         await fetch('/api/push-subscriptions', {
           method: 'POST',
@@ -381,19 +398,27 @@ const Settings = ({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ user_id: userId })
         });
-        setTimeout(() => {
-          setNotifCardHidden(true);
-        }, 5000);
+        setNotifActive(true);
+        setNotifCardHidden(true);
+        localStorage.setItem(NOTIF_ACTIVE_KEY, 'true');
       } else {
-        const existing = await reg.pushManager.getSubscription();
-        if (existing) {
-          await existing.unsubscribe();
+        // Desativar
+        const sub = await reg.pushManager.getSubscription();
+        if (sub) {
+          await sub.unsubscribe();
+          // Remover do banco
+          await fetch('/api/push-subscriptions/remove', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId })
+          });
         }
+        setNotifActive(false);
+        setNotifCardHidden(false);
+        localStorage.setItem(NOTIF_ACTIVE_KEY, 'false');
       }
     } catch (e) {
-      console.error(e);
-      setNotifActive(!active);
-      if (!active) setNotifCardHidden(true);
+      console.error('[Toggle Notif] Erro:', e);
     }
   };
 

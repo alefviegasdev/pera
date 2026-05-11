@@ -219,6 +219,19 @@ app.post('/push-subscriptions/test', async (req, res) => {
   }
 });
 
+app.post('/push-subscriptions/remove', async (req, res) => {
+  try {
+    const { user_id } = req.body;
+    if (!user_id) return res.status(400).json({ error: 'Missing user_id' });
+    await supabase.from('push_subscriptions')
+      .delete()
+      .eq('user_id', user_id);
+    res.json({ success: true });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.get('/', (req, res) => {
   res.json({ status: 'ok' });
 });
