@@ -2,8 +2,15 @@ import express from 'express';
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import path from 'path';
+import webpush from 'web-push';
 
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
+
+webpush.setVapidDetails(
+  'mailto:contato@pera.app',
+  process.env.VAPID_PUBLIC_KEY!,
+  process.env.VAPID_PRIVATE_KEY!
+);
 
 function generateShortCode(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -159,6 +166,21 @@ function getDueDate(billingMonth: Date, dueDay: number): Date {
 }
 
 // Routes
+app.post('/push-subscriptions', async (req, res) => {
+  try {
+    const { user_id, endpoint, p256dh, auth } = req.body;
+    if (!user_id || !endpoint) return res.status(400).json({ error: 'Missing fields' });
+
+    await supabase.from('push_subscriptions').upsert({
+      user_id, endpoint, p256dh, auth
+    }, { onConflict: 'user_id,endpoint' });
+
+    res.json({ success: true });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.get('/', (req, res) => {
   res.json({ status: 'ok' });
 });
@@ -1275,6 +1297,122 @@ app.get('/credit-cards/:id/summary', async (req, res) => {
     });
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
+
+async function sendBillNotifications() {
+  const now = new Date();
+  const todayBR = new Date(now.getTime() - 3 * 60 * 60 * 1000);
+  const todayDay = todayBR.getDate();
+  const currentMonth = todayBR.getMonth() + 1;
+  const currentYear = todayBR.getFullYear();
+
+  // Buscar todas as bills não pagas com telegram_id do usuário
+  const { data: bills } = await supabase
+    .from('monthly_bills')
+    .select('*, user_profiles!inner(telegram_id, user_id)')
+    .eq('paid', false)
+    .eq('month', currentMonth)
+    .eq('year', currentYear);
+
+  if (!bills?.length) return;
+
+  // Buscar faturas de cartão não pagas
+  const { data: ccBills } = await supabase
+    .from('credit_card_bills')
+    .select('*, credit_cards(bank), user_profiles!inner(telegram_id, user_id)')
+    .eq('paid', false);
+
+  const allBills = [
+    ...(bills || []).map(b => ({
+      user_id: b.user_profiles.user_id,
+      name: b.name,
+      due_day: b.due_day,
+      month: currentMonth,
+      year: currentYear,
+      value: b.value
+    })),
+    ...(ccBills || []).map(b => ({
+      user_id: b.user_profiles.user_id,
+      name: `Fatura ${b.credit_cards?.bank || 'Cartão'}`,
+      due_day: new Date(b.due_date).getDate(),
+      month: new Date(b.due_date).getMonth() + 1,
+      year: new Date(b.due_date).getFullYear(),
+      value: b.amount
+    }))
+  ];
+
+  for (const bill of allBills) {
+    const dueDate = new Date(bill.year, bill.month - 1, bill.due_day);
+    const diffDays = Math.round(
+      (dueDate.getTime() - todayBR.getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    // Notificar: 1, 2, 3 dias antes; vence hoje (0); atrasado (negativo par)
+    const shouldNotify =
+      diffDays === 3 ||
+      diffDays === 2 ||
+      diffDays === 1 ||
+      diffDays === 0 ||
+      (diffDays < 0 && Math.abs(diffDays) % 2 === 0);
+
+    if (!shouldNotify) continue;
+
+    let title = '';
+    let body = '';
+
+    if (diffDays > 0) {
+      title = '📅 Conta para vencer';
+      body = `${bill.name} vence dia ${bill.due_day}. Faltam ${diffDays} dia${diffDays > 1 ? 's' : ''}.`;
+    } else if (diffDays === 0) {
+      title = '⚠️ Conta vence hoje!';
+      body = `${bill.name} vence hoje! Não esqueça de pagar.`;
+    } else {
+      title = '🔴 Conta atrasada';
+      body = `${bill.name} está atrasada há ${Math.abs(diffDays)} dia${Math.abs(diffDays) > 1 ? 's' : ''}.`;
+    }
+
+    // Buscar subscriptions do usuário
+    const { data: subs } = await supabase
+      .from('push_subscriptions')
+      .select('*')
+      .eq('user_id', bill.user_id);
+
+    if (!subs?.length) continue;
+
+    for (const sub of subs) {
+      try {
+        await webpush.sendNotification(
+          {
+            endpoint: sub.endpoint,
+            keys: { p256dh: sub.p256dh, auth: sub.auth }
+          },
+          JSON.stringify({ title, body, url: '/' })
+        );
+      } catch (e: any) {
+        // Subscription expirada — remover
+        if (e.statusCode === 410) {
+          await supabase.from('push_subscriptions').delete().eq('id', sub.id);
+        }
+      }
+    }
+  }
+}
+
+// Cron job — verificar a cada hora, enviar nos horários certos
+setInterval(async () => {
+  const nowBR = new Date(new Date().getTime() - 3 * 60 * 60 * 1000);
+  const hour = nowBR.getHours();
+  const minute = nowBR.getMinutes();
+
+  // Executar às 8h, 12h30 e 21h (com margem de 5 minutos)
+  const isNotificationTime =
+    (hour === 8 && minute < 5) ||
+    (hour === 12 && minute >= 30 && minute < 35) ||
+    (hour === 21 && minute < 5);
+
+  if (isNotificationTime) {
+    await sendBillNotifications().catch(console.error);
+  }
+}, 60 * 1000); // verificar a cada minuto
 
 app.listen(port, () => {
   console.log(`API Pera rodando na porta ${port}`);

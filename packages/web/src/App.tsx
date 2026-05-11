@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { usePushNotifications } from './hooks/usePushNotifications';
 import Home from './screens/Home';
 import Analysis from './screens/Analysis';
 import History from './screens/History';
@@ -15,6 +16,7 @@ const App = () => {
   const [activeTab, setActiveTab] = useState<Tab>('home');
   const screenRef = useRef<HTMLDivElement>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  usePushNotifications(userId);
   const [userMetadata, setUserMetadata] = useState<{ name?: string; avatar?: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [needsTelegramLink, setNeedsTelegramLink] = useState(false);
