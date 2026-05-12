@@ -141,6 +141,7 @@ const Settings = ({
   // Modal states
   const [showNewBill, setShowNewBill] = useState(false);
   const [showNewGoal, setShowNewGoal] = useState(false);
+  const [editingBill, setEditingBill] = useState<any>(null);
   const [showNewBudget, setShowNewBudget] = useState(false);
 
   // Credit card states
@@ -302,6 +303,18 @@ const Settings = ({
   useEffect(() => {
     localStorage.setItem(`budget_categories_order_${userId}`, JSON.stringify(categories.map(c => c.name)));
   }, [categories, userId]);
+
+  useEffect(() => {
+    if (showCardModal) {
+      document.body.style.overflow = 'hidden';
+      const appShell = document.getElementById('app-shell');
+      if (appShell) appShell.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+      const appShell = document.getElementById('app-shell');
+      if (appShell) appShell.style.overflow = '';
+    }
+  }, [showCardModal]);
 
   const handleUpdateLimit = async () => {
     if (!editBudget) return;
@@ -620,10 +633,25 @@ const Settings = ({
                     </div>
                     <div>
                       <p className="font-bold text-on-background text-[15px]">{f.name}</p>
-                      <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Todo dia {f.due_day}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Todo dia {f.due_day}</p>
+                        {f.variable_value && (
+                          <span className="text-[9px] font-black uppercase tracking-widest bg-primary/10 text-primary px-1.5 py-0.5 rounded-md">
+                            Variável
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  <p className="font-headline font-black text-on-background">{fmt(f.value)}</p>
+                  <div className="flex items-center gap-3">
+                    <p className="font-headline font-black text-on-background">{fmt(f.value)}</p>
+                    <button
+                      onClick={() => setEditingBill(f)}
+                      className="p-2 bg-white rounded-full text-on-surface-variant/40 hover:text-primary hover:shadow-sm transition-all active:scale-90"
+                    >
+                      <Pencil size={16} />
+                    </button>
+                  </div>
                 </div>
               ))
             )}
@@ -699,38 +727,31 @@ const Settings = ({
             className="w-full max-w-lg bg-surface rounded-t-[2.5rem] flex flex-col"
             style={{ height: '85dvh', transform: cardDragOffset > 0 ? `translateY(${cardDragOffset}px)` : undefined, transition: cardDragOffset > 0 ? 'none' : 'transform 0.3s ease' }}
             onClick={e => e.stopPropagation()}
-            onTouchStart={e => setCardDragStartY(e.touches[0].clientY)}
-            onTouchMove={e => {
-              if (cardModalContentRef.current && cardModalContentRef.current.scrollTop > 0) return;
-              if (cardDragStartY !== null) {
-                const delta = e.touches[0].clientY - cardDragStartY;
-                if (delta > 0) setCardDragOffset(delta);
-              }
-            }}
-            onTouchEnd={() => {
-              if (cardDragOffset > 120) setShowCardModal(false);
-              setCardDragOffset(0); setCardDragStartY(null);
-            }}
           >
-            <div className="w-12 h-1.5 bg-outline-variant/30 rounded-full mx-auto mt-4 mb-2 flex-shrink-0" />
-            <div ref={cardModalContentRef} className="flex-1 overflow-y-auto px-6 pb-8 space-y-6">
-              <div className="pt-2">
+            <div 
+              className="pt-3 pb-6 flex-shrink-0"
+              onTouchStart={e => setCardDragStartY(e.touches[0].clientY)}
+              onTouchMove={e => {
+                if (cardModalContentRef.current && cardModalContentRef.current.scrollTop > 0) return;
+                if (cardDragStartY !== null) {
+                  const delta = e.touches[0].clientY - cardDragStartY;
+                  if (delta > 0) setCardDragOffset(delta);
+                }
+              }}
+              onTouchEnd={() => {
+                if (cardDragOffset > 120) setShowCardModal(false);
+                setCardDragOffset(0); setCardDragStartY(null);
+              }}
+            >
+              <div className="w-12 h-1.5 bg-outline-variant/30 rounded-full mx-auto mt-1 mb-6 flex-shrink-0" />
+              <div className="px-6">
                 <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary mb-1">{editingCard ? 'Editar Cartão' : 'Novo Cartão'}</p>
                 <h2 className="font-headline text-2xl font-black text-on-surface tracking-tight">{editingCard ? 'Editar Cartão' : 'Adicionar Cartão'}</h2>
               </div>
+            </div>
 
+            <div ref={cardModalContentRef} className="flex-1 overflow-y-auto px-6 pb-8 space-y-6 scrollbar-hide">
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant opacity-60">Nome do Cartão</label>
-                  <input
-                    type="text"
-                    value={cardName}
-                    onChange={e => setCardName(e.target.value)}
-                    placeholder="Ex: Meu Nubank"
-                    className="w-full h-14 bg-surface-container-low rounded-2xl px-4 font-bold text-on-surface border-none focus:ring-2 focus:ring-primary/20"
-                  />
-                </div>
-
                 <div className="space-y-2">
                   <label className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant opacity-60">Banco</label>
                   <select
@@ -792,7 +813,7 @@ const Settings = ({
                           method: 'PATCH',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({
-                            name: cardName || cardBank,
+                            name: cardBank,
                             bank: cardBank,
                             card_limit: parseFloat(cardLimit) || 0,
                             closing_day: cardClosingDay,
@@ -805,7 +826,7 @@ const Settings = ({
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({
                             user_id: userId,
-                            name: cardName || cardBank,
+                            name: cardBank,
                             bank: cardBank,
                             card_limit: parseFloat(cardLimit) || 0,
                             closing_day: cardClosingDay,
@@ -869,11 +890,12 @@ const Settings = ({
       )}
 
       {/* Modals */}
-      {showNewBill && (
+      {(showNewBill || editingBill) && (
         <NewBillModal 
           userId={userId} 
-          onClose={() => setShowNewBill(false)} 
-          onSuccess={fetchData} 
+          initialData={editingBill}
+          onClose={() => { setShowNewBill(false); setEditingBill(null); }} 
+          onSuccess={() => { fetchData(); setEditingBill(null); setShowNewBill(false); }} 
         />
       )}
       {showNewBudget && (

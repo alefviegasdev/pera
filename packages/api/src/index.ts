@@ -512,6 +512,22 @@ app.post('/fixed-expenses', async (req, res) => {
   }
 });
 
+app.patch('/fixed-expenses/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, value, due_day, category, variable_value } = req.body;
+    
+    const { data, error } = await supabase.from('fixed_expenses').update({
+      name, value, due_day, category, variable_value: variable_value || false
+    }).eq('id', id).select();
+
+    if (error) throw error;
+    res.json(data[0]);
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.get('/goals', async (req, res) => {
   try {
     const { user_id } = req.query;

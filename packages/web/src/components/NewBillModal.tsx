@@ -5,6 +5,7 @@ interface NewBillModalProps {
   userId: string;
   onClose: () => void;
   onSuccess: () => void;
+  initialData?: any;
 }
 
 const CATEGORIES = [
@@ -14,13 +15,26 @@ const CATEGORIES = [
   { id: 'Transporte', icon: Car, label: 'Transporte' },
 ];
 
-const NewBillModal: React.FC<NewBillModalProps> = ({ userId, onClose, onSuccess }) => {
-  const [name, setName] = useState('');
-  const [value, setValue] = useState('');
-  const [dueDay, setDueDay] = useState('05');
-  const [category, setCategory] = useState('Moradia');
-  const [variableValue, setVariableValue] = useState(false);
+const NewBillModal: React.FC<NewBillModalProps> = ({ userId, onClose, onSuccess, initialData }) => {
+  const [name, setName] = useState(initialData?.name || '');
+  const [value, setValue] = useState(initialData?.value ? String(initialData.value) : '');
+  const [dueDay, setDueDay] = useState(initialData?.due_day ? String(initialData.due_day).padStart(2, '0') : '05');
+  const [category, setCategory] = useState(initialData?.category || 'Moradia');
+  const [variableValue, setVariableValue] = useState(initialData?.variable_value || false);
   const [loading, setLoading] = useState(false);
+  
+  const [dragOffset, setDragOffset] = useState(0);
+  const [dragStartY, setDragStartY] = useState<number | null>(null);
+
+  React.useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    const appShell = document.getElementById('app-shell');
+    if (appShell) appShell.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = '';
+      if (appShell) appShell.style.overflow = '';
+    };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,8 +46,11 @@ const NewBillModal: React.FC<NewBillModalProps> = ({ userId, onClose, onSuccess 
 
     setLoading(true);
     try {
-      const res = await fetch('/api/fixed-expenses', {
-        method: 'POST',
+      const url = initialData?.id ? `/api/fixed-expenses/${initialData.id}` : '/api/fixed-expenses';
+      const method = initialData?.id ? 'PATCH' : 'POST';
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user_id: userId,
@@ -64,20 +81,40 @@ const NewBillModal: React.FC<NewBillModalProps> = ({ userId, onClose, onSuccess 
   return (
     <div className="modal-overlay" onClick={onClose} style={{ zIndex: 9999 }}>
       <div 
-        className="modal-card bg-surface-container-lowest" 
+        className="modal-card bg-surface-container-lowest flex flex-col" 
         onClick={(e) => e.stopPropagation()}
-        style={{ borderRadius: '3.5rem 3.5rem 0 0', padding: '12px 32px 48px' }}
+        style={{ 
+          borderRadius: '3.5rem 3.5rem 0 0', 
+          height: '85dvh',
+          transform: dragOffset > 0 ? `translateY(${dragOffset}px)` : undefined, 
+          transition: dragOffset > 0 ? 'none' : 'transform 0.3s ease'
+        }}
       >
-        <div className="modal-handle bg-surface-container-high w-16 h-1.5" />
-        
-        <div className="mt-4 mb-8">
-          <h2 className="font-headline text-2xl font-extrabold tracking-tight text-on-surface">Nova Conta Fixa</h2>
+        <div 
+          className="pt-3 pb-6 px-8 flex-shrink-0"
+          onTouchStart={e => setDragStartY(e.touches[0].clientY)}
+          onTouchMove={e => {
+            if (dragStartY !== null) {
+              const delta = e.touches[0].clientY - dragStartY;
+              if (delta > 0) setDragOffset(delta);
+            }
+          }}
+          onTouchEnd={() => {
+            if (dragOffset > 120) onClose();
+            setDragOffset(0); setDragStartY(null);
+          }}
+        >
+          <div className="modal-handle bg-surface-container-high w-16 h-1.5 mx-auto mb-6 rounded-full" />
+          <h2 className="font-headline text-2xl font-extrabold tracking-tight text-on-surface">
+            {initialData ? 'Editar Conta Fixa' : 'Nova Conta Fixa'}
+          </h2>
           <p className="font-body text-sm text-on-surface-variant/70 leading-relaxed max-w-[85%] mt-1">
             Cadastre seus compromissos recorrentes para melhor previsão mensal.
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-8">
+        <div className="flex-1 overflow-y-auto px-8 pb-12 scrollbar-hide">
+          <form onSubmit={handleSubmit} className="space-y-8">
           <div className="relative group">
             <label className="block font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60 mb-2">NOME DA CONTA</label>
             <input 
@@ -181,7 +218,7 @@ const NewBillModal: React.FC<NewBillModalProps> = ({ userId, onClose, onSuccess 
               disabled={loading}
               className="w-full bg-primary text-on-primary py-5 rounded-full font-headline font-bold text-base shadow-[0_10px_25px_rgba(93,63,211,0.25)] hover:opacity-90 active:scale-95 transition-all disabled:opacity-50"
             >
-              {loading ? 'Adicionando...' : 'Adicionar Conta'}
+              {loading ? 'Salvando...' : (initialData ? 'Salvar Alterações' : 'Adicionar Conta')}
             </button>
             <button 
               type="button"
@@ -192,6 +229,7 @@ const NewBillModal: React.FC<NewBillModalProps> = ({ userId, onClose, onSuccess 
             </button>
           </div>
         </form>
+        </div>
       </div>
     </div>
   );
