@@ -720,11 +720,11 @@ const Settings = ({
       {/* Card Modal */}
       {showCardModal && (
         <div
-          className="fixed inset-0 bg-black/50 z-[200] flex items-end justify-center"
+          className="fixed inset-0 bg-black/50 z-[9999] flex items-end justify-center"
           onClick={() => setShowCardModal(false)}
         >
           <div
-            className="w-full max-w-lg bg-surface rounded-t-[2.5rem] flex flex-col"
+            className="w-full max-w-lg bg-surface rounded-t-[3.5rem] flex flex-col"
             style={{ height: '85dvh', transform: cardDragOffset > 0 ? `translateY(${cardDragOffset}px)` : undefined, transition: cardDragOffset > 0 ? 'none' : 'transform 0.3s ease' }}
             onClick={e => e.stopPropagation()}
           >

@@ -79,9 +79,9 @@ const NewBillModal: React.FC<NewBillModalProps> = ({ userId, onClose, onSuccess,
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-[200] flex items-end justify-center" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/50 z-[9999] flex items-end justify-center" onClick={onClose}>
       <div 
-        className="w-full max-w-lg bg-surface-container-lowest flex flex-col" 
+        className="w-full max-w-lg bg-surface flex flex-col" 
         onClick={(e) => e.stopPropagation()}
         style={{ 
           borderRadius: '3.5rem 3.5rem 0 0', 
