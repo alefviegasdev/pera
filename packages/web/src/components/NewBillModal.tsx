@@ -161,8 +161,6 @@ const NewBillModal: React.FC<NewBillModalProps> = ({ userId, onClose, onSuccess,
             </div>
           </div>
 
-          </div>
-
           <div className="flex items-center justify-between py-3">
             <div>
               <p className="font-bold text-on-surface text-sm">Valor variável</p>
