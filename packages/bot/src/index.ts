@@ -40,8 +40,8 @@ REGRAS DE CLASSIFICAÇÃO:
    - "unique": Despesas pontuais sem recorrência (alimentação fora, lazer, compras avulsas).
 2. "urgency":
    - "urgent": Emergências, imprevistos, saúde urgente, conserto de carro, remédio urgente, contas fixas obrigatórias.
-   - "necessity": Gastos necessários para sobrevivência — alimentação, transporte, saúde básica, higiene.
-   - "secondary": Todo o resto — lazer, vestuário, eletrônicos, streaming, etc.
+   - "necessity": Gastos necessários para sobrevivência — alimentação, transporte público (ônibus, metrô, trem), saúde básica, higiene.
+   - "secondary": Todo o resto — lazer, transporte de aplicativos (uber, 99, etc), vestuário, eletrônicos, streaming, etc.
 3. CASOS ESPECÍFICOS:
    - "Dízimo" -> subtype: "fixed".
    - "Oferta" ou "Ofertas" -> subtype: "variable".
@@ -124,7 +124,7 @@ Adicionar campo "subcategory" ao JSON para as seguintes categorias:
   - "Padaria": padaria, pão, bolo, salgado, confeitaria, pão de queijo
 
 "Lazer":
-  - "Fast Food": pizza, hambúrguer, lanchonete, cafeteria, fast food genérico, refeição rápida
+  - "Fast Food": pizza, hambúrguer, refrigerante, energético, lanchonete, cafeteria, fast food genérico, refeição rápida
   - "Delivery": ifood, rappi, uber eats, pedido online, delivery
   - "Restaurante": restaurante, almoço, jantar, self-service, rodízio
   - "Lanchonete": hambúrguer, pizza, hot dog, lanche, burguer
@@ -343,30 +343,30 @@ Envie o código de 6 dígitos que aparece no app para vincular sua conta. 📲`)
 
 bot.command("broadcast", async (ctx) => {
   const senderId = ctx.from?.id.toString();
-  
+
   if (senderId !== ADMIN_TELEGRAM_ID) {
     return ctx.reply('❌ Você não tem permissão para usar este comando.');
   }
-  
+
   const message = ctx.message.text.replace('/broadcast', '').trim();
-  
+
   if (!message) {
     return ctx.reply('⚠️ Use: /broadcast sua mensagem aqui');
   }
-  
+
   // Buscar todos os telegram_ids cadastrados
   const { data: profiles, error } = await supabase
     .from('user_profiles')
     .select('telegram_id')
     .not('telegram_id', 'is', null);
-  
+
   if (error || !profiles?.length) {
     return ctx.reply('❌ Erro ao buscar usuários ou nenhum usuário cadastrado.');
   }
-  
+
   let success = 0;
   let failed = 0;
-  
+
   for (const profile of profiles) {
     try {
       await bot.api.sendMessage(profile.telegram_id, message, { parse_mode: 'Markdown' });
@@ -376,18 +376,18 @@ bot.command("broadcast", async (ctx) => {
       console.error(`Falha ao enviar para ${profile.telegram_id}:`, e);
     }
   }
-  
+
   return ctx.reply(`✅ Broadcast enviado!\n✔️ ${success} entregues\n❌ ${failed} falhas`);
 });
 
 function isDizimo(text: string): boolean {
   const t = text.toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g, ''); // remove acentos
-  
+
   // Palavras-chave exatas ou contidas
   const keywords = ['dizimo', 'tithe', 'oferta', 'dizmo', 'dismo', 'dizino'];
   if (keywords.some(k => t.includes(k))) return true;
-  
+
   // Similaridade simples — aceita até 2 erros em palavras de 5+ chars
   function levenshtein(a: string, b: string): number {
     const dp = Array.from({ length: a.length + 1 }, (_, i) =>
@@ -395,12 +395,12 @@ function isDizimo(text: string): boolean {
     );
     for (let i = 1; i <= a.length; i++)
       for (let j = 1; j <= b.length; j++)
-        dp[i][j] = a[i-1] === b[j-1]
-          ? dp[i-1][j-1]
-          : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+        dp[i][j] = a[i - 1] === b[j - 1]
+          ? dp[i - 1][j - 1]
+          : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
     return dp[a.length][b.length];
   }
-  
+
   const words = t.split(/\s+/);
   return words.some(w => w.length >= 4 && levenshtein(w, 'dizimo') <= 2);
 }
@@ -421,7 +421,7 @@ function parseMonth(text: string): number | null {
     ['novembro', 'nov'],
     ['dezembro', 'dez']
   ];
-  
+
   for (let i = 0; i < months.length; i++) {
     if (months[i].some(m => t.includes(m))) {
       return i + 1;
@@ -502,9 +502,9 @@ function levenshteinDistance(a: string, b: string): number {
   );
   for (let i = 1; i <= a.length; i++)
     for (let j = 1; j <= b.length; j++)
-      dp[i][j] = a[i-1] === b[j-1]
-        ? dp[i-1][j-1]
-        : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+      dp[i][j] = a[i - 1] === b[j - 1]
+        ? dp[i - 1][j - 1]
+        : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
   return dp[a.length][b.length];
 }
 
@@ -557,7 +557,7 @@ async function registerCreditTransaction(
   dueDay: number
 ) {
   const billingMonth = getBillingMonth(closingDay);
-  
+
   // Calcular due_date
   const bm = new Date(billingMonth);
   const dueDate = new Date(bm.getFullYear(), bm.getMonth(), dueDay)
@@ -804,11 +804,11 @@ bot.on("message:text", async (ctx) => {
       .maybeSingle();
 
     const supabaseUserId = profile?.user_id;
- 
+
     // Verifica se é um código de vinculação (6 dígitos)
     if (/^\d{6}$/.test(text)) {
       console.log(`[DEBUG] Recebido código de vínculo: ${text}`);
-      
+
       const { data, error } = await supabase
         .from('user_profiles')
         .select('*')
@@ -818,7 +818,7 @@ bot.on("message:text", async (ctx) => {
       if (error) {
         throw error;
       }
-      
+
       if (data) {
         const isAlreadyPending = pendingConfirmations.get(userId) === text;
 
@@ -852,13 +852,13 @@ bot.on("message:text", async (ctx) => {
         // 2. Atualiza estritamente a mesma linha localizada usando ID garantido do banco
         await supabase
           .from('user_profiles')
-          .update({ 
-            telegram_id: userId, 
-            linked_at: new Date().toISOString() 
+          .update({
+            telegram_id: userId,
+            linked_at: new Date().toISOString()
           })
           .eq('user_id', data.user_id);
-        
-        
+
+
         await ctx.reply(`✅ Conta vinculada com sucesso! 🍐
 
 Agora você pode me enviar seus gastos assim:
@@ -1116,25 +1116,25 @@ Quanto mais detalhes você der, melhor eu classifico!
     const dayMatch = text.match(dayRegex1) || text.match(dayRegex2);
 
     if (dayMatch) {
-        const code = dayMatch[1].toUpperCase();
-        const newDay = parseInt(dayMatch[2], 10);
+      const code = dayMatch[1].toUpperCase();
+      const newDay = parseInt(dayMatch[2], 10);
 
-        if (isNaN(newDay) || newDay < 1 || newDay > 31) {
-            return ctx.reply('⚠️ Dia inválido. Use um número entre 1 e 31.');
-        }
+      if (isNaN(newDay) || newDay < 1 || newDay > 31) {
+        return ctx.reply('⚠️ Dia inválido. Use um número entre 1 e 31.');
+      }
 
-        const { data: updated, error } = await supabase
-            .from('monthly_bills')
-            .update({ due_day: newDay })
-            .eq('short_code', code)
-            .eq('user_id', supabaseUserId)
-            .select()
-            .maybeSingle();
+      const { data: updated, error } = await supabase
+        .from('monthly_bills')
+        .update({ due_day: newDay })
+        .eq('short_code', code)
+        .eq('user_id', supabaseUserId)
+        .select()
+        .maybeSingle();
 
-        if (error) throw error;
-        if (!updated) return ctx.reply(`❓ Não encontrei nenhuma conta com o código #${code}.`);
+      if (error) throw error;
+      if (!updated) return ctx.reply(`❓ Não encontrei nenhuma conta com o código #${code}.`);
 
-        return ctx.reply(`✅ #${code} atualizado! Novo vencimento: dia ${newDay}. 🍐`);
+      return ctx.reply(`✅ #${code} atualizado! Novo vencimento: dia ${newDay}. 🍐`);
     }
 
     const replyMsg = ctx.message.reply_to_message;
@@ -1142,16 +1142,16 @@ Quanto mais detalhes você der, melhor eu classifico!
       const codeMatch = replyMsg.text.match(/#(id[a-zA-Z0-9]{4})/i);
       if (codeMatch) {
         const replyCode = codeMatch[1];
-        
+
         const { data: tData } = await supabase.from("transactions").select("*").ilike("short_code", replyCode).eq("user_id", supabaseUserId).maybeSingle();
         const { data: iData } = await supabase.from("installments").select("*").ilike("short_code", replyCode).eq("user_id", supabaseUserId).maybeSingle();
         const { data: bData } = await supabase.from("monthly_bills").select("*").ilike("short_code", replyCode).eq("user_id", supabaseUserId).maybeSingle();
         const { data: tpData } = await supabase.from("tithe_payments").select("*").ilike("short_code", replyCode).eq("user_id", supabaseUserId).maybeSingle();
-        
+
         const record = tData || iData || bData || tpData;
         const table = tData ? "transactions" : (iData ? "installments" : (bData ? "monthly_bills" : (tpData ? "tithe_payments" : null)));
 
-        const SUBCAT_TO_CAT: Record<string, {category: string, subcategory: string}> = {
+        const SUBCAT_TO_CAT: Record<string, { category: string, subcategory: string }> = {
           'mercado': { category: 'Alimentação', subcategory: 'Mercado' },
           'padaria': { category: 'Alimentação', subcategory: 'Padaria' },
           'delivery': { category: 'Lazer', subcategory: 'Delivery' },
@@ -1193,11 +1193,11 @@ Quanto mais detalhes você der, melhor eu classifico!
         });
         const aiText = result.candidates?.[0]?.content?.parts?.[0]?.text?.trim().replace(/```json|```/g, "") || "";
         const aiData = JSON.parse(aiText);
-        
+
         if (record && table) {
           if (aiData.delete === true) {
             await supabase.from(table).delete().eq("id", record.id);
-            
+
             // Cascading Deletions
             if (table === 'transactions') {
               // Resetar monthly_bill se existir com esse short_code
@@ -1219,7 +1219,7 @@ Quanto mais detalhes você der, melhor eu classifico!
 
             // Atualizar fatura do cartão se era transação de crédito
             if (table === 'transactions' && record.payment_method === 'credit'
-                && record.credit_card_id && record.billing_month) {
+              && record.credit_card_id && record.billing_month) {
               const { data: ccBill } = await supabase
                 .from('credit_card_bills')
                 .select('id, amount')
@@ -1236,10 +1236,10 @@ Quanto mais detalhes você der, melhor eu classifico!
                 }
               }
             }
-            
+
             return ctx.reply(`🗑️ Transação #${replyCode} apagada.`);
           }
-          
+
           const updates: any = {};
           if (aiData.value !== null && aiData.value !== undefined) updates.value = aiData.value;
           if (aiData.description !== null && aiData.description !== undefined) {
@@ -1249,7 +1249,7 @@ Quanto mais detalhes você der, melhor eu classifico!
           if (aiData.category !== null && aiData.category !== undefined) updates.category = aiData.category;
           if (aiData.subtype !== null && aiData.subtype !== undefined) updates.subtype = aiData.subtype;
           if (aiData.urgency !== null && aiData.urgency !== undefined && table !== 'monthly_bills') updates.urgency = aiData.urgency;
-          
+
           if (Object.keys(updates).length > 0) {
             const changeSummary = Object.entries(updates)
               .map(([key, val]) => {
@@ -1264,21 +1264,21 @@ Quanto mais detalhes você der, melhor eu classifico!
               .filter(Boolean)
               .join('\n');
             await supabase.from(table).update(updates).eq("short_code", replyCode);
-            
+
             // Cascading Updates
             if (table === 'monthly_bills' && updates.value !== undefined) {
               await supabase.from('transactions').update({ value: updates.value }).eq('short_code', replyCode).eq('user_id', supabaseUserId);
-              
+
               if (record.subtype === 'fixed') {
                 const { data: fixedExpenses } = await supabase.from('fixed_expenses').select('*').eq('user_id', supabaseUserId).eq('active', true);
                 const keywords = (record.name || '').toLowerCase().split(' ').filter((w: string) => w.length > 2);
                 const matchedFixed = fixedExpenses?.find(f => keywords.some((kw: string) => f.name.toLowerCase().includes(kw)));
                 if (matchedFixed) {
-                   await supabase.from('fixed_expenses').update({ value: updates.value }).eq('id', matchedFixed.id);
+                  await supabase.from('fixed_expenses').update({ value: updates.value }).eq('id', matchedFixed.id);
                 }
               }
             } else if (table === 'transactions' && updates.value !== undefined) {
-               await supabase.from('monthly_bills').update({ value: updates.value }).eq('short_code', replyCode).eq('user_id', supabaseUserId);
+              await supabase.from('monthly_bills').update({ value: updates.value }).eq('short_code', replyCode).eq('user_id', supabaseUserId);
             }
 
             return ctx.reply(`✏️ #${replyCode} atualizado!\n${changeSummary}`);
@@ -1298,7 +1298,7 @@ Quanto mais detalhes você der, melhor eu classifico!
     if (cmdMatch) {
       console.log("Tipo detectado: comando/correção (IA)");
       const code = cmdMatch[1].replace('#', '');
-      
+
       const result = await fetchGemini(geminiKey, {
         contents: [{ parts: [{ text: CORRECTION_PROMPT + text }] }]
       });
@@ -1327,7 +1327,7 @@ Possíveis motivos:
       // --- Caso: APAGAR ---
       if (aiData.delete === true) {
         await supabase.from(table).delete().eq("id", record.id);
-        
+
         // Cascading Deletions
         if (table === 'transactions') {
           // Resetar monthly_bill se existir com esse short_code
@@ -1349,7 +1349,7 @@ Possíveis motivos:
 
         // Atualizar fatura do cartão se era transação de crédito
         if (table === 'transactions' && record.payment_method === 'credit'
-            && record.credit_card_id && record.billing_month) {
+          && record.credit_card_id && record.billing_month) {
           const { data: ccBill } = await supabase
             .from('credit_card_bills')
             .select('id, amount')
@@ -1366,7 +1366,7 @@ Possíveis motivos:
             }
           }
         }
-        
+
         return ctx.reply(`🗑️ Transação #${code} apagada.`);
       }
 
@@ -1392,36 +1392,36 @@ Possíveis motivos:
       // --- Lógica Especial: Conversão ou Alteração de Parcelamento ---
       if (aiData.installments !== null) {
         const totalInstallments = aiData.installments;
-        
+
         if (table === "transactions") {
-           const finalValue = updates.value !== undefined ? updates.value : record.value;
-           const instValue = finalValue / totalInstallments;
-           
-           const { error: insErr } = await supabase.from("installments").insert({
-             user_id: supabaseUserId,
-             description: updates.description || record.description,
-             total_value: finalValue,
-             installment_value: instValue,
-             total_installments: totalInstallments,
-             category: (updates.category || record.category) || 'Outros',
-             short_code: code
-           });
+          const finalValue = updates.value !== undefined ? updates.value : record.value;
+          const instValue = finalValue / totalInstallments;
 
-           if (insErr) throw insErr;
-           await supabase.from("transactions").delete().eq("id", record.id);
+          const { error: insErr } = await supabase.from("installments").insert({
+            user_id: supabaseUserId,
+            description: updates.description || record.description,
+            total_value: finalValue,
+            installment_value: instValue,
+            total_installments: totalInstallments,
+            category: (updates.category || record.category) || 'Outros',
+            short_code: code
+          });
 
-           return ctx.reply(`🔄 Convertido para parcelamento! #${code}
+          if (insErr) throw insErr;
+          await supabase.from("transactions").delete().eq("id", record.id);
+
+          return ctx.reply(`🔄 Convertido para parcelamento! #${code}
 📝 ${updates.description || record.description}
 💰 Total: R$ ${Number(finalValue).toFixed(2)}
 📆 ${totalInstallments}x de R$ ${Number(instValue).toFixed(2)}`);
 
         } else if (table === "installments") {
-           const finalTotalValue = updates.value !== undefined ? updates.value : record.total_value;
-           const newInstValue = finalTotalValue / totalInstallments;
-           
-           updates.total_installments = totalInstallments;
-           updates.installment_value = newInstValue;
-           changeLogs.push(`📆 parcelas: ${record.total_installments}x → ${totalInstallments}x de R$ ${Number(newInstValue).toFixed(2)}`);
+          const finalTotalValue = updates.value !== undefined ? updates.value : record.total_value;
+          const newInstValue = finalTotalValue / totalInstallments;
+
+          updates.total_installments = totalInstallments;
+          updates.installment_value = newInstValue;
+          changeLogs.push(`📆 parcelas: ${record.total_installments}x → ${totalInstallments}x de R$ ${Number(newInstValue).toFixed(2)}`);
         }
       }
 
@@ -1453,17 +1453,17 @@ O que você pode mudar:
       // Cascading Updates
       if (table === 'monthly_bills' && updates.value !== undefined) {
         await supabase.from('transactions').update({ value: updates.value }).eq('short_code', code).eq('user_id', supabaseUserId);
-        
+
         if (record.subtype === 'fixed') {
           const { data: fixedExpenses } = await supabase.from('fixed_expenses').select('*').eq('user_id', supabaseUserId).eq('active', true);
           const keywords = (record.name || '').toLowerCase().split(' ').filter((w: string) => w.length > 2);
           const matchedFixed = fixedExpenses?.find(f => keywords.some((kw: string) => f.name.toLowerCase().includes(kw)));
           if (matchedFixed) {
-             await supabase.from('fixed_expenses').update({ value: updates.value }).eq('id', matchedFixed.id);
+            await supabase.from('fixed_expenses').update({ value: updates.value }).eq('id', matchedFixed.id);
           }
         }
       } else if (table === 'transactions' && updates.value !== undefined) {
-         await supabase.from('monthly_bills').update({ value: updates.value }).eq('short_code', code).eq('user_id', supabaseUserId);
+        await supabase.from('monthly_bills').update({ value: updates.value }).eq('short_code', code).eq('user_id', supabaseUserId);
       }
 
       return ctx.reply(`✅ #${code} atualizado! 🍐\n${changeLogs.join('\n')}`);
@@ -1505,7 +1505,7 @@ O que você pode mudar:
             checked: false
           }));
           await supabase.from('shopping_list').insert(inserts);
-          
+
           const itemsList = shoppingData.items.map((i: string) => `• ${i}`).join('\n');
           return ctx.reply(`🛒 Adicionado à lista de compras!\n\n${itemsList}\n\nVeja no app em Histórico > Lista de Compras`);
         }
@@ -1520,9 +1520,9 @@ O que você pode mudar:
       contents: [{ parts: [{ text: SYSTEM_PROMPT + text }] }]
     });
     const responseText = result.candidates?.[0]?.content?.parts?.[0]?.text?.trim().replace(/```json|```/g, "") || "";
-    
+
     if (!responseText) throw new Error("Resposta vazia do Gemini");
-    
+
     const data = JSON.parse(responseText);
 
     if (data.error === "not_financial") {
@@ -1552,9 +1552,9 @@ Exemplos que funcionam:
 
     for (const item of items) {
       const shortCode = generateShortCode();
-      const urgencyLabel = item.urgency === 'urgent' ? '🔴 Urgente' 
-        : item.urgency === 'necessity' ? '🟢 Necessidade' 
-        : '🔵 Secundário';
+      const urgencyLabel = item.urgency === 'urgent' ? '🔴 Urgente'
+        : item.urgency === 'necessity' ? '🟢 Necessidade'
+          : '🔵 Secundário';
 
       if (item.is_installment && item.installment_count > 1) {
         pendingInstallmentSetup.set(supabaseUserId, {
@@ -1583,7 +1583,7 @@ Exemplos que funcionam:
         // --- Lógica Especial: Dízimo ---
         if (isDizimo(item.description)) {
           const summary = await getTitheSummary(supabaseUserId);
-          
+
           if (summary.length === 0) {
             return ctx.reply(`✅ Seu dízimo já está em dia! 🍐`);
           }
@@ -1603,7 +1603,7 @@ Exemplos que funcionam:
           if (selectedMonth) {
             const shortCode = selectedMonth.short_code || generateShortCode();
             const valueToPay = item.value !== undefined ? item.value : selectedMonth.balance_due;
-            
+
             await supabase.from('tithe_payments').insert({
               user_id: supabaseUserId,
               value: valueToPay,
@@ -1654,7 +1654,7 @@ Exemplos que funcionam:
 
         if (findError) throw findError;
 
-        const bill = bills?.find(b => 
+        const bill = bills?.find(b =>
           keywords.some(kw => b.name.toLowerCase().includes(kw))
         );
 
@@ -1702,7 +1702,7 @@ Exemplos que funcionam:
             .eq("id", bill.id);
 
           if (payError) throw payError;
-          
+
           const shortCode = bill.short_code || generateShortCode();
 
           if (!bill.short_code) {
@@ -1712,11 +1712,11 @@ Exemplos que funcionam:
           }
 
           if (item.value !== undefined && item.value !== bill.value && bill.subtype === 'fixed') {
-             const { data: fixedExpenses } = await supabase.from('fixed_expenses').select('*').eq('user_id', supabaseUserId).eq('active', true);
-             const matchedFixed = fixedExpenses?.find(f => keywords.some(kw => f.name.toLowerCase().includes(kw)));
-             if (matchedFixed) {
-                await supabase.from('fixed_expenses').update({ value: finalValue }).eq('id', matchedFixed.id);
-             }
+            const { data: fixedExpenses } = await supabase.from('fixed_expenses').select('*').eq('user_id', supabaseUserId).eq('active', true);
+            const matchedFixed = fixedExpenses?.find(f => keywords.some(kw => f.name.toLowerCase().includes(kw)));
+            if (matchedFixed) {
+              await supabase.from('fixed_expenses').update({ value: finalValue }).eq('id', matchedFixed.id);
+            }
           }
 
           const { error: txError } = await supabase.from("transactions").insert({
@@ -1749,7 +1749,7 @@ Exemplos que funcionam:
 
           if (instError) throw instError;
 
-          const installment = installments?.find(inst => 
+          const installment = installments?.find(inst =>
             keywords.length > 0 && keywords.some(kw => inst.description.toLowerCase().includes(kw))
           );
 
@@ -1760,7 +1760,7 @@ Exemplos que funcionam:
 
             await supabase
               .from("installments")
-              .update({ 
+              .update({
                 current_installment: currentCount,
                 active: !isFinished
               })
@@ -1774,8 +1774,8 @@ Exemplos que funcionam:
               category: installment.category,
               subtype: sanitizeSubtype('semifixed'),
               urgency: 'necessity',
-              description: isFinished 
-                ? `${installment.description} (Final)` 
+              description: isFinished
+                ? `${installment.description} (Final)`
                 : `${installment.description} (Parcela ${currentCount}/${installment.total_installments})`,
               source: 'text',
               short_code: shortCode
@@ -1802,7 +1802,7 @@ Exemplos que funcionam:
       } else if (item.type === 'bill') {
         const now = new Date();
         const finalValue = item.value !== undefined ? item.value : 0;
-        
+
         if (!item.due_day || item.due_day < 1 || item.due_day > 31) {
           // Não é uma conta fixa válida, tratar como expense normal
           await supabase.from('transactions').insert({
@@ -2326,7 +2326,7 @@ bot.on('callback_query:data', async (ctx) => {
     const parts = data.replace('card_select_', '').split('_');
     const cardId = parts[0];
     const shortCode = parts.slice(1).join('_');
-    
+
     const userId = ctx.from.id.toString();
     const { data: profile } = await supabase
       .from('user_profiles')
@@ -2336,8 +2336,8 @@ bot.on('callback_query:data', async (ctx) => {
     const supabaseUserId = profile?.user_id;
 
     if (!supabaseUserId) {
-        await ctx.answerCallbackQuery();
-        return ctx.editMessageText('❌ Usuário não encontrado.');
+      await ctx.answerCallbackQuery();
+      return ctx.editMessageText('❌ Usuário não encontrado.');
     }
 
     const pending = pendingCardSelection.get(supabaseUserId);
@@ -2376,15 +2376,15 @@ bot.on('callback_query:data', async (ctx) => {
   if (data.startsWith('tithe_yes_') || data.startsWith('tithe_no_')) {
     const shortCode = data.replace('tithe_yes_', '').replace('tithe_no_', '');
     const countsForTithe = data.startsWith('tithe_yes_');
-    
+
     await supabase
       .from('transactions')
       .update({ counts_for_tithe: countsForTithe })
       .eq('short_code', shortCode);
-    
+
     await ctx.answerCallbackQuery();
     await ctx.editMessageText(
-      (ctx.callbackQuery.message?.text?.split('\n\n')[0] || '✅ Receita atualizada') + 
+      (ctx.callbackQuery.message?.text?.split('\n\n')[0] || '✅ Receita atualizada') +
       `\n\n${countsForTithe ? '✅ Conta para o dízimo' : '❌ Não conta para o dízimo'}`
     );
   }
@@ -2392,7 +2392,7 @@ bot.on('callback_query:data', async (ctx) => {
   if (data.startsWith('tithe_month_select_')) {
     const monthKey = data.replace('tithe_month_select_', ''); // Format: YYYY-MM
     const userId = ctx.from.id.toString();
-    
+
     const { data: profile } = await supabase
       .from('user_profiles')
       .select('user_id')
