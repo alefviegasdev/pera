@@ -101,6 +101,8 @@ const getDateRange = (period: string, start_date?: string, end_date?: string) =>
 
 // Helper: Sync monthly bills from fixed expenses and installments
 const syncMonthlyBills = async (user_id: string, month: number, year: number) => {
+  console.log('[SYNC] Iniciando syncMonthlyBills...');
+
   // Check existing fixed bills for this month/year to avoid duplicates
   const { data: existing } = await supabase
     .from('monthly_bills')
@@ -111,17 +113,19 @@ const syncMonthlyBills = async (user_id: string, month: number, year: number) =>
     .eq('subtype', 'fixed');
 
   // Fetch fixed expenses
-  const { data: fixed } = await supabase
+  const { data: expenses } = await supabase
     .from('fixed_expenses')
     .select('*')
     .eq('user_id', user_id)
     .eq('active', true);
 
+  console.log(`[SYNC] ${expenses?.length || 0} contas fixas encontradas`);
+
   const existingNames = new Set((existing || []).map(b => b.name));
   const billsToInsert: any[] = [];
 
-  if (fixed) {
-    fixed.forEach(f => {
+  if (expenses) {
+    expenses.forEach(f => {
       if (!existingNames.has(f.name)) {
         billsToInsert.push({
           user_id,
@@ -141,7 +145,10 @@ const syncMonthlyBills = async (user_id: string, month: number, year: number) =>
 
   if (billsToInsert.length > 0) {
     await supabase.from('monthly_bills').insert(billsToInsert);
+    console.log(`[SYNC] Bills criadas para usuário ${user_id}`);
   }
+
+  console.log('[SYNC] syncMonthlyBills concluído');
 };
 
 // Helper: Calculate billing month for a credit card
@@ -701,7 +708,7 @@ app.get('/monthly-bills', async (req, res) => {
       await syncMonthlyBills(user_id as string, m, y);
     }
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('monthly_bills')
       .select('*')
       .eq('user_id', user_id)
@@ -710,6 +717,21 @@ app.get('/monthly-bills', async (req, res) => {
       .order('due_day', { ascending: true });
 
     if (error) throw error;
+
+    // Se não encontrou bills para o mês atual, forçar sync e buscar novamente
+    if (!data || data.length === 0) {
+      await syncMonthlyBills(user_id as string, m, y);
+      const refetch = await supabase
+        .from('monthly_bills')
+        .select('*')
+        .eq('user_id', user_id)
+        .eq('month', m)
+        .eq('year', y)
+        .order('due_day', { ascending: true });
+      if (refetch.error) throw refetch.error;
+      data = refetch.data;
+    }
+
     res.json(data);
   } catch (e: any) {
     res.status(500).json({ error: e.message });
