@@ -202,7 +202,7 @@ const Settings = ({
     if (!silent) setLoading(true);
     try {
       const [fRes, gRes, bRes, sRes, profileRes, titheSummaryRes, ccRes] = await Promise.all([
-        fetch(`/api/monthly-bills?user_id=${userId}`),
+        fetch(`/api/fixed-expenses?user_id=${userId}`),
         fetch(`/api/goals?user_id=${userId}`),
         fetch(`/api/budgets?user_id=${userId}`),
         fetch(`/api/transactions/summary?user_id=${userId}&period=month`),
