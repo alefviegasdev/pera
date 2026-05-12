@@ -647,9 +647,9 @@ const Settings = ({
                     <p className="font-headline font-black text-on-background">{fmt(f.value)}</p>
                     <button
                       onClick={() => setEditingBill(f)}
-                      className="p-2 bg-white rounded-full text-on-surface-variant/40 hover:text-primary hover:shadow-sm transition-all active:scale-90"
+                      className="p-2.5 bg-surface-container-high rounded-full text-on-surface-variant hover:text-primary hover:bg-primary/10 hover:shadow-sm transition-all active:scale-90"
                     >
-                      <Pencil size={16} />
+                      <Pencil size={18} />
                     </button>
                   </div>
                 </div>

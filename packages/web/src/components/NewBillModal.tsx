@@ -79,9 +79,9 @@ const NewBillModal: React.FC<NewBillModalProps> = ({ userId, onClose, onSuccess,
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose} style={{ zIndex: 9999 }}>
+    <div className="fixed inset-0 bg-black/50 z-[200] flex items-end justify-center" onClick={onClose}>
       <div 
-        className="modal-card bg-surface-container-lowest flex flex-col" 
+        className="w-full max-w-lg bg-surface-container-lowest flex flex-col" 
         onClick={(e) => e.stopPropagation()}
         style={{ 
           borderRadius: '3.5rem 3.5rem 0 0', 
@@ -153,41 +153,14 @@ const NewBillModal: React.FC<NewBillModalProps> = ({ userId, onClose, onSuccess,
                   value={dueDay}
                   onChange={(e) => setDueDay(e.target.value)}
                 >
-                  <option value="01">01</option>
-                  <option value="05">05</option>
-                  <option value="10">10</option>
-                  <option value="15">15</option>
-                  <option value="20">20</option>
-                  <option value="25">25</option>
-                  <option value="30">30</option>
+                  {Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0')).map(d => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
                 </select>
               </div>
             </div>
           </div>
 
-          <div className="space-y-4">
-            <label className="block font-label text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">CATEGORIA</label>
-            <div className="flex gap-3 overflow-x-auto scrollbar-hide -mx-2 px-2 py-1">
-              {CATEGORIES.map((cat) => {
-                const isActive = category === cat.id;
-                const Icon = cat.icon;
-                return (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => setCategory(cat.id)}
-                    className={`flex-shrink-0 flex items-center gap-2 px-5 py-3 rounded-full transition-all active:scale-95 ${
-                      isActive 
-                        ? 'bg-primary text-white shadow-lg shadow-primary/20' 
-                        : 'bg-surface-container-low text-on-surface hover:bg-surface-container-high'
-                    }`}
-                  >
-                    <Icon size={14} />
-                    <span className="font-body text-xs font-bold">{cat.label}</span>
-                  </button>
-                );
-              })}
-            </div>
           </div>
 
           <div className="flex items-center justify-between py-3">
@@ -201,14 +174,14 @@ const NewBillModal: React.FC<NewBillModalProps> = ({ userId, onClose, onSuccess,
               <input
                 type="checkbox"
                 checked={variableValue}
-                onChange={() => setVariableValue(!variableValue)}
+                onChange={(e) => setVariableValue(e.target.checked)}
                 className="sr-only peer"
               />
-              <div className="w-11 h-6 bg-outline-variant rounded-full peer
+              <div className="w-11 h-6 bg-outline-variant/30 rounded-full peer
                 peer-checked:after:translate-x-full peer-checked:bg-primary
                 after:content-[''] after:absolute after:top-[2px] after:left-[2px]
-                after:bg-white after:rounded-full after:h-5 after:w-5
-                after:transition-all shadow-inner"></div>
+                after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5
+                after:transition-all"></div>
             </label>
           </div>
 
@@ -216,10 +189,32 @@ const NewBillModal: React.FC<NewBillModalProps> = ({ userId, onClose, onSuccess,
             <button 
               type="submit"
               disabled={loading}
-              className="w-full bg-primary text-on-primary py-5 rounded-full font-headline font-bold text-base shadow-[0_10px_25px_rgba(93,63,211,0.25)] hover:opacity-90 active:scale-95 transition-all disabled:opacity-50"
+              className="w-full bg-primary text-on-primary py-4 rounded-full font-headline font-bold text-base shadow-[0_10px_25px_rgba(93,63,211,0.25)] hover:opacity-90 active:scale-95 transition-all disabled:opacity-50"
             >
               {loading ? 'Salvando...' : (initialData ? 'Salvar Alterações' : 'Adicionar Conta')}
             </button>
+            {initialData && (
+              <button 
+                type="button"
+                onClick={async () => {
+                  if(confirm('Deseja realmente excluir esta conta fixa? Isso não afetará as transações já pagas.')) {
+                    setLoading(true);
+                    try {
+                      await fetch(`/api/fixed-expenses/${initialData.id}`, { method: 'DELETE' });
+                      onSuccess();
+                      onClose();
+                    } catch (e) {
+                      console.error(e);
+                      setLoading(false);
+                    }
+                  }
+                }}
+                disabled={loading}
+                className="w-full bg-error/10 text-error py-4 rounded-full font-headline font-bold text-sm hover:bg-error/20 active:scale-95 transition-all disabled:opacity-50"
+              >
+                Excluir Conta Fixa
+              </button>
+            )}
             <button 
               type="button"
               onClick={onClose}

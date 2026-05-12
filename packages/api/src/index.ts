@@ -528,6 +528,18 @@ app.patch('/fixed-expenses/:id', async (req, res) => {
   }
 });
 
+app.delete('/fixed-expenses/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { error } = await supabase.from('fixed_expenses').update({ active: false }).eq('id', id);
+
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.get('/goals', async (req, res) => {
   try {
     const { user_id } = req.query;
