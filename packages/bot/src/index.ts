@@ -23,6 +23,12 @@ const ADMIN_TELEGRAM_ID = '5637235532'; // substituir pelo seu ID
 
 const MONTH_NAMES_PT = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 
+function sanitizeSubtype(subtype: string): string {
+  if (subtype === 'variable') return 'unique';
+  if (['fixed', 'semifixed', 'unique'].includes(subtype)) return subtype;
+  return 'unique';
+}
+
 const SYSTEM_PROMPT = `
 Você é um assistente financeiro inteligente chamado Pera.
 Sua tarefa é extrair informações financeiras de mensagens de texto e retornar SEMPRE um ARRAY de objetos JSON válidos.
@@ -537,7 +543,7 @@ async function registerCreditTransaction(
     value: item.value,
     type: item.type,
     category: item.category || 'Outros',
-    subtype: item.subtype || 'variable',
+    subtype: sanitizeSubtype(item.subtype || 'unique'),
     urgency: item.urgency || 'variable',
     description: item.description || 'Sem descrição',
     source: 'text',
@@ -1528,7 +1534,7 @@ Exemplos que funcionam:
               value: valueToPay,
               type: 'expense',
               category: 'Dízimo/Oferta',
-              subtype: 'fixed',
+              subtype: sanitizeSubtype('fixed'),
               urgency: 'necessity',
               description: `Dízimo ${MONTH_NAMES_PT[selectedMonth.month - 1]}`,
               source: 'text',
@@ -1600,7 +1606,7 @@ Exemplos que funcionam:
             value: finalValue,
             type: 'expense',
             category: 'Contas',
-            subtype: 'fixed',
+            subtype: sanitizeSubtype('fixed'),
             urgency: 'necessity',
             description: bill.name,
             source: 'text',
@@ -1648,7 +1654,7 @@ Exemplos que funcionam:
               value: installment.installment_value,
               type: 'expense',
               category: installment.category,
-              subtype: 'semifixed',
+              subtype: sanitizeSubtype('semifixed'),
               urgency: 'necessity',
               description: isFinished 
                 ? `${installment.description} (Final)` 
@@ -1806,7 +1812,7 @@ Exemplos que funcionam:
           value: item.value,
           type: item.type,
           category: item.category || 'Outros',
-          subtype: item.subtype || 'variable',
+          subtype: sanitizeSubtype(item.subtype || 'unique'),
           urgency: item.urgency || 'necessity',
           description: item.description || item.category || 'Sem descrição',
           source: 'text',
@@ -2076,7 +2082,7 @@ bot.on('callback_query:data', async (ctx) => {
           value: item.value,
           type: 'expense',
           category: item.category || 'Outros',
-          subtype: 'unique',
+          subtype: sanitizeSubtype('unique'),
           urgency: 'necessity',
           description: item.description,
           source: 'text',
@@ -2238,7 +2244,7 @@ bot.on('callback_query:data', async (ctx) => {
       value: valueToPay,
       type: 'expense',
       category: 'Dízimo/Oferta',
-      subtype: 'fixed',
+      subtype: sanitizeSubtype('fixed'),
       urgency: 'necessity',
       description: `Dízimo ${MONTH_NAMES_PT[selectedMonth.month - 1]}`,
       source: 'text',
@@ -2261,12 +2267,20 @@ server.listen(port, '0.0.0.0', () => {
   console.log(`Servidor HTTP rodando na porta ${port}`);
 });
 
-bot.start().catch((err) => {
-  if (err?.error_code === 409) {
-    console.log('Conflito de instância detectado, aguardando...');
-    setTimeout(() => bot.start().catch(console.error), 5000);
-  } else {
-    console.error(err);
+async function startBot(attempts = 0) {
+  try {
+    await bot.start();
+  } catch (err: any) {
+    if (err?.error_code === 409) {
+      const delay = Math.min(5000 * (attempts + 1), 30000);
+      console.log(`Conflito 409, tentando novamente em ${delay}ms...`);
+      setTimeout(() => startBot(attempts + 1), delay);
+    } else {
+      console.error('Erro fatal no bot:', err);
+      process.exit(1);
+    }
   }
-});
+}
+
+startBot();
 console.log("Bot Pera iniciando...");
