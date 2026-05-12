@@ -244,10 +244,21 @@ Regras:
 - Se mencionar apagar/deletar/excluir/remover/cancelar → delete: true
 - Retorna null nos campos não mencionados
 
+REGRA CRÍTICA DE URGÊNCIA:
+Quando o usuário mencionar apenas uma categoria ou subcategoria
+(ex: 'lazer', 'alimentação', 'fast food', 'mercado', 'padaria'),
+retornar SOMENTE o campo category e/ou subcategory.
+NÃO retornar urgency a menos que o usuário mencione explicitamente
+palavras como 'urgente', 'urgência', 'necessário', 'necessidade',
+'secundário', 'essencial'.
+Nota: 'lazer' deve atualizar category, NÃO urgency.
+
 Exemplos:
 - "3" → { "value": 3, ... }
 - "foi 90" → { "value": 90, ... }
 - "deletar" → { "delete": true, ... }
+- "lazer" → { "category": "Lazer", "urgency": null, ... }
+- "alimentação" → { "category": "Alimentação", "urgency": null, ... }
 
 MÉTODO DE PAGAMENTO:
 Se a mensagem mencionar "crédito", "no crédito", "cartão",
@@ -655,7 +666,8 @@ Retorne APENAS um array JSON válido:
     "description": "nome simples do produto",
     "value": número decimal com ponto,
     "category": "categoria",
-    "subcategory": "subcategoria se aplicável"
+    "subcategory": "subcategoria se aplicável",
+    "urgency": "urgent" | "necessity" | "secondary"
   }
 ]
 
@@ -668,6 +680,20 @@ SUBCATEGORIAS:
   Cafeteria, Doces, Petiscos
 - Saúde: Farmácia, Médico, Academia, Exames
 - Transporte: Uber/Táxi, Combustível, Transporte Público
+
+URGÊNCIA (campo obrigatório para cada item):
+- "urgent": remédios, emergências, consultas médicas urgentes
+- "necessity": alimentação básica (mercado, padaria, feijão,
+  arroz, frango, carne, pão, leite, ovos, frutas, verduras),
+  higiene, transporte, contas
+- "secondary": refrigerante, suco, cerveja, sorvete, doces,
+  petiscos, salgadinho, biscoito, chocolate, fast food,
+  delivery, restaurante, lazer, vestuário, eletrônicos
+
+ATENÇÃO: Supermercado tem itens de ambas as categorias.
+Classifique item a item:
+- Arroz, feijão, frango, ovos → necessity + Alimentação/Mercado
+- Refrigerante, cerveja, salgadinho → secondary + Lazer/Petiscos
 
 Se não identificar itens, retorne [].
 `;
@@ -1251,18 +1277,43 @@ Quanto mais detalhes você der, melhor eu classifico!
           if (aiData.urgency !== null && aiData.urgency !== undefined && table !== 'monthly_bills') updates.urgency = aiData.urgency;
 
           if (Object.keys(updates).length > 0) {
-            const changeSummary = Object.entries(updates)
-              .map(([key, val]) => {
-                if (key === 'value') return `💰 valor: R$ ${Number(record.value || 0).toFixed(2)} → R$ ${Number(val).toFixed(2)}`;
-                if (key === 'category') return `📂 categoria: ${record.category} → ${val}`;
-                if (key === 'subcategory') return `📌 subcategoria: ${record.subcategory || 'nenhuma'} → ${val}`;
-                if (key === 'description' || key === 'name') return `📝 descrição: ${record.description || record.name} → ${val}`;
-                if (key === 'subtype') return `🏷️ tipo: ${record.subtype} → ${val}`;
-                if (key === 'urgency') return `urgência: ${record.urgency} → ${val}`;
-                return null;
+            const fieldLabels: Record<string, string> = {
+              value: 'valor',
+              description: 'descrição',
+              name: 'descrição',
+              category: 'categoria',
+              subcategory: 'subcategoria',
+              subtype: 'tipo',
+              urgency: 'urgência',
+              type: 'tipo de transação'
+            };
+            const urgencyLabels: Record<string, string> = {
+              urgent: 'urgente',
+              necessity: 'necessidade',
+              secondary: 'secundário'
+            };
+            const subtypeLabels: Record<string, string> = {
+              fixed: 'fixo',
+              semifixed: 'parcelado',
+              unique: 'único'
+            };
+            const formatValue = (field: string, val: any) => {
+              if (field === 'urgency') return urgencyLabels[val] || val;
+              if (field === 'subtype') return subtypeLabels[val] || val;
+              if (field === 'value') return `R$ ${Number(val).toFixed(2)}`;
+              return val;
+            };
+
+            const changes = Object.entries(updates)
+              .filter(([k]) => !['user_id', 'occurred_at'].includes(k))
+              .map(([k, v]) => {
+                const label = fieldLabels[k] || k;
+                const oldVal = formatValue(k, (record as any)[k]);
+                const newVal = formatValue(k, v);
+                return `${label}: ${oldVal} → ${newVal}`;
               })
-              .filter(Boolean)
               .join('\n');
+
             await supabase.from(table).update(updates).eq("short_code", replyCode);
 
             // Cascading Updates
@@ -1281,7 +1332,8 @@ Quanto mais detalhes você der, melhor eu classifico!
               await supabase.from('monthly_bills').update({ value: updates.value }).eq('short_code', replyCode).eq('user_id', supabaseUserId);
             }
 
-            return ctx.reply(`✏️ #${replyCode} atualizado!\n${changeSummary}`);
+            await ctx.reply(`✅ #${record.short_code} atualizado!\n${changes}`);
+            return;
           } else {
             return ctx.reply(`🤔 Não entendi o que alterar. Tente: "foi 90", "deletar", "categoria Saúde"`);
           }
