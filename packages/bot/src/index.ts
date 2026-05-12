@@ -31,7 +31,7 @@ REGRAS DE CLASSIFICAÇÃO:
 1. "subtype":
    - "fixed": Despesas recorrentes obrigatórias sem prazo de fim (aluguel, internet, luz, água, dízimo, plano de saúde, condomínio).
    - "semifixed": Despesas recorrentes com prazo de fim ou temporárias (terapia, curso, parcelamentos, tratamentos, assinaturas temporárias).
-   - "variable": Despesas pontuais sem recorrência (alimentação fora, lazer, compras avulsas).
+   - "unique": Despesas pontuais sem recorrência (alimentação fora, lazer, compras avulsas).
 2. "urgency":
    - "urgent": Emergências, imprevistos, saúde urgente, conserto de carro, remédio urgente, contas fixas obrigatórias.
    - "necessity": Gastos necessários para sobrevivência — alimentação, transporte, saúde básica, higiene.
@@ -1150,14 +1150,14 @@ Quanto mais detalhes você der, melhor eu classifico!
           }
           
           const updates: any = {};
-          if (aiData.value !== null) updates.value = aiData.value;
-          if (aiData.description !== null) {
+          if (aiData.value !== null && aiData.value !== undefined) updates.value = aiData.value;
+          if (aiData.description !== null && aiData.description !== undefined) {
             if (table === 'monthly_bills') updates.name = aiData.description;
             else updates.description = aiData.description;
           }
-          if (aiData.category !== null) updates.category = aiData.category;
-          if (aiData.subtype !== null) updates.subtype = aiData.subtype;
-          if (aiData.urgency !== null && table !== 'monthly_bills') updates.urgency = aiData.urgency;
+          if (aiData.category !== null && aiData.category !== undefined) updates.category = aiData.category;
+          if (aiData.subtype !== null && aiData.subtype !== undefined) updates.subtype = aiData.subtype;
+          if (aiData.urgency !== null && aiData.urgency !== undefined && table !== 'monthly_bills') updates.urgency = aiData.urgency;
           
           if (Object.keys(updates).length > 0) {
             const changeSummary = Object.entries(updates)
@@ -1167,7 +1167,7 @@ Quanto mais detalhes você der, melhor eu classifico!
                 if (key === 'subcategory') return `📌 subcategoria: ${record.subcategory || 'nenhuma'} → ${val}`;
                 if (key === 'description' || key === 'name') return `📝 descrição: ${record.description || record.name} → ${val}`;
                 if (key === 'subtype') return `🏷️ tipo: ${record.subtype} → ${val}`;
-                if (key === 'urgency') return `⏱️ urgência: ${record.urgency} → ${val}`;
+                if (key === 'urgency') return `urgência: ${record.urgency} → ${val}`;
                 return null;
               })
               .filter(Boolean)
@@ -1283,20 +1283,20 @@ Possíveis motivos:
       const updates: any = {};
       const changeLogs: string[] = [];
 
-      if (aiData.value !== null) updates.value = aiData.value;
-      if (aiData.description !== null) {
+      if (aiData.value !== null && aiData.value !== undefined) updates.value = aiData.value;
+      if (aiData.description !== null && aiData.description !== undefined) {
         if (table === 'monthly_bills') updates.name = aiData.description;
         else updates.description = aiData.description;
       }
       const CATS_WITH_SUBCATEGORY = ['Alimentação', 'Lazer', 'Saúde', 'Transporte'];
-      if (aiData.category !== null) {
+      if (aiData.category !== null && aiData.category !== undefined) {
         updates.category = aiData.category;
         if (!CATS_WITH_SUBCATEGORY.includes(aiData.category)) {
           updates.subcategory = null;
         }
       }
-      if (aiData.subtype !== null) updates.subtype = aiData.subtype;
-      if (aiData.urgency !== null && table !== 'monthly_bills') updates.urgency = aiData.urgency;
+      if (aiData.subtype !== null && aiData.subtype !== undefined) updates.subtype = aiData.subtype;
+      if (aiData.urgency !== null && aiData.urgency !== undefined && table !== 'monthly_bills') updates.urgency = aiData.urgency;
 
       // --- Lógica Especial: Conversão ou Alteração de Parcelamento ---
       if (aiData.installments !== null) {
@@ -1350,7 +1350,7 @@ O que você pode mudar:
       // Gerar Logs e Aplicar
       if (updates.value !== undefined && (table === "transactions" || table === "monthly_bills")) changeLogs.push(`💰 valor: R$ ${record.value || 0} → R$ ${updates.value}`);
       if (updates.value !== undefined && table === "installments" && aiData.installments === null) changeLogs.push(`💰 total: R$ ${record.total_value} → R$ ${updates.value}`);
-      if (updates.urgency !== undefined) changeLogs.push(`⏱️ urgência: ${record.urgency} → ${updates.urgency}`);
+      if (updates.urgency !== undefined) changeLogs.push(`urgência: ${record.urgency} → ${updates.urgency}`);
       if (updates.subtype !== undefined) changeLogs.push(`🏷️ tipo: ${record.subtype} → ${updates.subtype}`);
       if (updates.category !== undefined) changeLogs.push(`📂 categoria: ${record.category} → ${updates.category}`);
       if (updates.description !== undefined) changeLogs.push(`📝 descrição: ${record.description} → ${updates.description}`);
@@ -1462,8 +1462,8 @@ Exemplos que funcionam:
     for (const item of items) {
       const shortCode = generateShortCode();
       const urgencyLabel = item.urgency === 'urgent' ? '🔴 Urgente' 
-        : item.urgency === 'necessity' ? '🟡 Necessidade' 
-        : '⚪ Secundário';
+        : item.urgency === 'necessity' ? '🟢 Necessidade' 
+        : '🔵 Secundário';
       const subtypeMap: any = { fixed: 'Fixo', variable: 'Variável', semifixed: 'Semi-fixo' };
       const subtypeLabel = subtypeMap[item.subtype] || 'Variável';
 
@@ -1845,7 +1845,7 @@ Exemplos que funcionam:
 📂 ${item.category}${subcatLine}
 📝 ${item.description || item.category || 'Sem descrição'}
 🏷️ ${subtypeLabel}
-⏱️ ${urgencyLabel}`);
+${urgencyLabel}`);
       }
     }
 
