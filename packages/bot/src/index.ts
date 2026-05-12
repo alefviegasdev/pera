@@ -1671,13 +1671,24 @@ Exemplos que funcionam:
 
           if (isVariableBill && item.value === undefined) {
             // Perguntar o valor
+            const previousValue = Number(bill.value || 0);
             pendingBillValue.set(supabaseUserId, { bill, supabaseUserId });
 
-            const keyboard = new InlineKeyboard()
-              .text('❌ Cancelar', 'bill_value_cancel');
+            const keyboard = new InlineKeyboard();
+            if (previousValue > 0) {
+              keyboard.text(
+                `✅ Mesmo valor (R$ ${previousValue.toFixed(2)})`,
+                `bill_value_same_${bill.id}`
+              ).row();
+            }
+            keyboard.text('❌ Cancelar', 'bill_value_cancel');
+
+            const prevLabel = previousValue > 0
+              ? `\n\nMês anterior: *R$ ${previousValue.toFixed(2)}*`
+              : '';
 
             await ctx.reply(
-              `💡 A conta *${bill.name}* tem valor variável.\n\nQual foi o valor este mês? (ex: 87,50)`,
+              `💡 A conta *${bill.name}* tem valor variável.${prevLabel}\n\nQual foi o valor este mês? (ex: 87,50)`,
               { parse_mode: 'Markdown', reply_markup: keyboard }
             );
             continue;
@@ -2127,6 +2138,53 @@ bot.on('callback_query:data', async (ctx) => {
       .eq('telegram_id', userId).maybeSingle();
     if (profile?.user_id) pendingBillValue.delete(profile.user_id);
     await ctx.editMessageText('❌ Pagamento cancelado.');
+  }
+
+  if (data.startsWith('bill_value_same_')) {
+    await ctx.answerCallbackQuery();
+    const userId = ctx.from.id.toString();
+    const { data: profile } = await supabase
+      .from('user_profiles').select('user_id')
+      .eq('telegram_id', userId).maybeSingle();
+    const supabaseUserId = profile?.user_id;
+    const pending = pendingBillValue.get(supabaseUserId);
+    if (!pending) return;
+
+    const value = Number(pending.bill.value || 0);
+    const { bill } = pending;
+    pendingBillValue.delete(supabaseUserId);
+
+    const shortCode = bill.short_code || generateShortCode();
+
+    if (!bill.short_code) {
+      await supabase.from('monthly_bills')
+        .update({ short_code: shortCode })
+        .eq('id', bill.id);
+    }
+
+    await supabase.from('monthly_bills')
+      .update({ paid: true, paid_at: new Date().toISOString() })
+      .eq('id', bill.id);
+
+    const { error: txError } = await supabase.from('transactions').insert({
+      user_id: supabaseUserId,
+      value,
+      type: 'expense',
+      category: bill.category || 'Contas',
+      subtype: 'fixed',
+      urgency: 'necessity',
+      description: bill.name,
+      source: 'text',
+      short_code: shortCode
+    });
+
+    if (txError) {
+      return ctx.reply(`⚠️ Erro ao registrar: ${txError.message}`);
+    }
+
+    await ctx.editMessageText(
+      `✅ Conta paga! #${shortCode}\n📝 ${bill.name}\n💰 R$ ${value.toFixed(2)}`
+    );
   }
 
   // EDITAR item da nota fiscal

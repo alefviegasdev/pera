@@ -830,15 +830,27 @@ app.patch('/installments/:id', async (req, res) => {
       .eq('id', id)
       .single();
 
+    const updates: any = {};
+    if (req.body.total_value !== undefined) updates.total_value = req.body.total_value;
+    if (req.body.installment_value !== undefined) updates.installment_value = req.body.installment_value;
+    if (req.body.total_installments !== undefined) updates.total_installments = req.body.total_installments;
+    if (req.body.credit_card_id !== undefined) updates.credit_card_id = req.body.credit_card_id;
+    if (req.body.current_installment !== undefined) updates.current_installment = req.body.current_installment;
+    if (req.body.active !== undefined) updates.active = req.body.active;
+
     const { data, error } = await supabase
       .from('installments')
-      .update({ current_installment, active })
+      .update(updates)
       .eq('id', id)
       .select();
 
     if (error) throw error;
 
-    if (inst && (user_id || inst.user_id)) {
+    // Only create a transaction when registering a paid installment (current_installment changed)
+    const isPayingInstallment = req.body.current_installment !== undefined && req.body.active !== undefined
+      && Object.keys(updates).length <= 2;
+
+    if (isPayingInstallment && inst && (user_id || inst.user_id)) {
       const uid = user_id || inst.user_id;
       const isFinished = current_installment >= inst.total_installments;
       const shortCode = generateShortCode();

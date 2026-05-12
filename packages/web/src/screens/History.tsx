@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, ChevronDown, ChevronUp, X, Eye, EyeOff, ArrowUpRight } from 'lucide-react';
+import { Calendar, ChevronDown, ChevronUp, X, Eye, EyeOff, ArrowUpRight, Pencil } from 'lucide-react';
 import { catColor, catEmoji } from '../utils/categories';
 import TransactionModal from '../components/TransactionModal';
 import InstallmentsModal from '../components/InstallmentsModal';
 import DateRangeModal from '../components/DateRangeModal';
 import CategoryDetailsModal from '../components/CategoryDetailsModal';
+import EditInstallmentModal from '../components/EditInstallmentModal';
 
 const History = ({ 
   userId, 
@@ -26,6 +27,8 @@ const History = ({
   const periodDropdownRef = React.useRef<HTMLDivElement>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [summary, setSummary] = useState<any>(null);
+  const [editingInst, setEditingInst] = useState<any>(null);
+  const [creditCards, setCreditCards] = useState<any[]>([]);
   
   // Persistência via localStorage
   const [hideHistory, setHideHistory] = useState(false);
@@ -55,12 +58,12 @@ const History = ({
   const maskValue = (value: string, hide: boolean) => hide ? '•••••' : value;
 
   useEffect(() => {
-    if (selectedTx || showInstallments || showDateModal) {
+    if (selectedTx || showInstallments || showDateModal || editingInst) {
       onModalOpen?.();
     } else {
       onModalClose?.();
     }
-  }, [selectedTx, showInstallments, showDateModal, onModalOpen, onModalClose]);
+  }, [selectedTx, showInstallments, showDateModal, editingInst, onModalOpen, onModalClose]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -92,13 +95,14 @@ const History = ({
       const txUrl = period === 'custom' && customStartDate && customEndDate
         ? `/api/transactions?user_id=${userId}&start_date=${customStartDate}&end_date=${customEndDate}`
         : `/api/transactions?user_id=${userId}&period=${period}`;
-      const [txRes, summaryRes, instRes] = await Promise.all([
+      const [txRes, summaryRes, instRes, ccRes] = await Promise.all([
         fetch(txUrl),
         fetch(period === 'custom' && customStartDate && customEndDate
           ? `/api/transactions/summary?user_id=${userId}&start_date=${customStartDate}&end_date=${customEndDate}`
           : `/api/transactions/summary?user_id=${userId}&period=${period}`
         ),
-        fetch(`/api/installments?user_id=${userId}`)
+        fetch(`/api/installments?user_id=${userId}`),
+        fetch(`/api/credit-cards?user_id=${userId}`)
       ]);
       const txData = await txRes.json();
       const summaryData = await summaryRes.json();
@@ -108,6 +112,7 @@ const History = ({
       setTotal(txData.total_expense || 0);
       setSummary(summaryData);
       setInsts(Array.isArray(instData) ? instData : []);
+      try { const ccData = await ccRes.json(); setCreditCards(Array.isArray(ccData) ? ccData : []); } catch { setCreditCards([]); }
     } catch (e) {
       console.error(e);
     } finally {
@@ -219,6 +224,12 @@ const History = ({
                       <circle cx="10" cy="90" fill="white" r="30" />
                     </svg>
                   </div>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setEditingInst(inst); }}
+                    className="absolute top-4 right-4 z-20 p-2 rounded-full bg-on-primary/20 active:scale-90 transition-all"
+                  >
+                    <Pencil size={14} className="text-on-primary" />
+                  </button>
                   <div className="relative z-10 space-y-6">
                     <div className="flex justify-between items-start">
                       <div>
@@ -390,6 +401,16 @@ const History = ({
             setShowDateModal(false);
           }}
           onClose={() => setShowDateModal(false)}
+        />
+      )}
+
+      {editingInst && (
+        <EditInstallmentModal
+          inst={editingInst}
+          creditCards={creditCards}
+          userId={userId}
+          onClose={() => setEditingInst(null)}
+          onSuccess={() => { setEditingInst(null); fetchAll(true); }}
         />
       )}
     </div>
