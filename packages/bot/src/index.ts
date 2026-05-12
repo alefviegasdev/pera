@@ -64,7 +64,28 @@ REGRAS DE CLASSIFICAÇÃO:
    - "internet 120 vence todo dia 5"
    - "dia 20 luz 200"
    
-   A presença de "dia X" na mensagem é o sinal principal para type: "bill".
+   OBRIGATÓRIO: A mensagem SÓ deve retornar type: "bill" se
+   contiver EXPLICITAMENTE um dia de vencimento (ex: "dia 13",
+   "todo dia 5", "vence dia 10", "dia 20").
+
+   SEM dia de vencimento = NÃO é bill.
+
+   EXEMPLOS que NÃO devem retornar type: "bill":
+   - "0,03 contas" → type: "expense", category: "Contas"
+   - "15 luz" → type: "expense", category: "Contas"
+   - "10 gemini" → type: "expense", category: "Contas"
+   - "5 claude" → type: "expense", category: "Contas"
+   - "20 netflix" → type: "expense", category: "Lazer"
+
+   EXEMPLOS que devem retornar type: "bill":
+   - "luz 150 dia 10" → type: "bill"
+   - "internet 120 vence todo dia 5" → type: "bill"
+   - "gemini 50 dia 15" → type: "bill", variable_value: true
+   - "claude 20 dia 1" → type: "bill", variable_value: true
+
+   REGRA DE IAs (Gemini, Claude, GPT, Copilot, etc):
+   - Sem data → type: "expense", category: "Contas"
+   - Com data → type: "bill", variable_value: true
 
 6. CATEGORIAS PADRONIZADAS (OBRIGATÓRIO):
    A categoria DEVE ser uma destas exatamente:
@@ -138,7 +159,7 @@ JSON Structure (dentro do array):
   "urgency": "urgent" | "necessity" | "secondary",
   "description": string curta,
   "name": string (apenas se for type: bill),
-  "due_day": número (apenas se for type: bill),
+  "due_day": número OBRIGATÓRIO se type: "bill", null caso contrário,
   "is_installment": boolean,
   "installment_count": número (opcional),
   "subcategory": string (opcional),
@@ -508,6 +529,11 @@ const pendingReceiptReview = new Map<string, {
   }>;
   paymentMethod: string;
   editingItemId?: string;
+}>();
+
+const pendingBillValue = new Map<string, {
+  bill: any;
+  supabaseUserId: string;
 }>();
 
 function getBillingMonth(closingDay: number): string {
@@ -1024,6 +1050,65 @@ Quanto mais detalhes você der, melhor eu classifico!
       return;
     }
 
+    const billValuePending = pendingBillValue.get(supabaseUserId);
+    if (billValuePending && billValuePending.supabaseUserId === supabaseUserId) {
+      const value = parseFloat(text.replace(',', '.'));
+      if (isNaN(value) || value <= 0) {
+        return ctx.reply('⚠️ Valor inválido. Digite apenas o número, ex: 87,50');
+      }
+
+      const { bill } = billValuePending;
+      pendingBillValue.delete(supabaseUserId);
+
+      // Processar pagamento com o valor informado
+      const shortCode = bill.short_code || generateShortCode();
+
+      if (!bill.short_code) {
+        await supabase.from('monthly_bills')
+          .update({ short_code: shortCode })
+          .eq('id', bill.id);
+      }
+
+      await supabase.from('monthly_bills')
+        .update({ paid: true, paid_at: new Date().toISOString(), value })
+        .eq('id', bill.id);
+
+      // Atualizar fixed_expenses com o novo valor (referência próximo mês)
+      const { data: fixedExpenses } = await supabase
+        .from('fixed_expenses').select('*')
+        .eq('user_id', supabaseUserId).eq('active', true);
+      const keywords = bill.name.toLowerCase().split(' ')
+        .filter((w: string) => w.length > 2);
+      const matchedFixed = fixedExpenses?.find(f =>
+        keywords.some((kw: string) => f.name.toLowerCase().includes(kw))
+      );
+      if (matchedFixed) {
+        await supabase.from('fixed_expenses')
+          .update({ value })
+          .eq('id', matchedFixed.id);
+      }
+
+      // Criar transação
+      const { error: txError } = await supabase.from('transactions').insert({
+        user_id: supabaseUserId,
+        value,
+        type: 'expense',
+        category: bill.category || 'Contas',
+        subtype: sanitizeSubtype('fixed'),
+        urgency: 'necessity',
+        description: bill.name,
+        source: 'text',
+        short_code: shortCode
+      });
+
+      if (txError) {
+        console.error('[BILL VALUE] Erro:', txError);
+        return ctx.reply(`⚠️ Erro ao registrar: ${txError.message}`);
+      }
+
+      return ctx.reply(`✅ Conta paga! #${shortCode}\n📝 ${bill.name}\n💰 R$ ${value.toFixed(2)}\n📅 Valor atualizado para o próximo mês`);
+    }
+
     // --- CORREÇÃO RÁPIDA DE DIA DE VENCIMENTO (Regex) ---
     // Padrões: #CODE 10 dia ou #CODE dia 10
     const dayRegex1 = /^#?(?:id)?([a-zA-Z0-9]{4})\s+(\d{1,2})\s+dia$/i;
@@ -1470,8 +1555,6 @@ Exemplos que funcionam:
       const urgencyLabel = item.urgency === 'urgent' ? '🔴 Urgente' 
         : item.urgency === 'necessity' ? '🟢 Necessidade' 
         : '🔵 Secundário';
-      const subtypeMap: any = { fixed: 'Fixo', variable: 'Variável', semifixed: 'Semi-fixo' };
-      const subtypeLabel = subtypeMap[item.subtype] || 'Variável';
 
       if (item.is_installment && item.installment_count > 1) {
         pendingInstallmentSetup.set(supabaseUserId, {
@@ -1576,6 +1659,30 @@ Exemplos que funcionam:
         );
 
         if (bill) {
+          // Verificar se conta tem valor variável e não foi informado valor
+          const VARIABLE_CATEGORIES = ['água', 'agua', 'luz', 'energia',
+            'internet', 'gás', 'gas', 'condomínio', 'condominio',
+            'telefone', 'iptu', 'ipva'];
+
+          const isVariableBill = bill.variable_value === true ||
+            VARIABLE_CATEGORIES.some((cat: string) =>
+              bill.name.toLowerCase().includes(cat)
+            );
+
+          if (isVariableBill && item.value === undefined) {
+            // Perguntar o valor
+            pendingBillValue.set(supabaseUserId, { bill, supabaseUserId });
+
+            const keyboard = new InlineKeyboard()
+              .text('❌ Cancelar', 'bill_value_cancel');
+
+            await ctx.reply(
+              `💡 A conta *${bill.name}* tem valor variável.\n\nQual foi o valor este mês? (ex: 87,50)`,
+              { parse_mode: 'Markdown', reply_markup: keyboard }
+            );
+            continue;
+          }
+
           const finalValue = item.value !== undefined ? item.value : bill.value;
 
           const { error: payError } = await supabase
@@ -1685,6 +1792,23 @@ Exemplos que funcionam:
         const now = new Date();
         const finalValue = item.value !== undefined ? item.value : 0;
         
+        if (!item.due_day || item.due_day < 1 || item.due_day > 31) {
+          // Não é uma conta fixa válida, tratar como expense normal
+          await supabase.from('transactions').insert({
+            user_id: supabaseUserId,
+            value: item.value || 0,
+            type: 'expense',
+            category: item.category || 'Contas',
+            subtype: 'unique',
+            urgency: 'necessity',
+            description: item.name || item.description || 'Conta',
+            source: 'text',
+            short_code: shortCode
+          });
+          await ctx.reply(`✅ Registrado! #${shortCode}\n💰 R$ ${Number(item.value || 0).toFixed(2)}\n📂 ${item.category || 'Contas'}\n📝 ${item.name || item.description || 'Conta'}`);
+          continue;
+        }
+
         await supabase.from('fixed_expenses').insert({
           user_id: supabaseUserId,
           name: item.name,
@@ -1850,7 +1974,6 @@ Exemplos que funcionam:
 💰 R$ ${Number(item.value).toFixed(2)}
 📂 ${item.category}${subcatLine}
 📝 ${item.description || item.category || 'Sem descrição'}
-🏷️ ${subtypeLabel}
 ${urgencyLabel}`);
       }
     }
@@ -1996,6 +2119,16 @@ bot.on('callback_query:data', async (ctx) => {
     await ctx.editMessageText('❌ Cadastro de cartão cancelado.');
   }
 
+  if (data === 'bill_value_cancel') {
+    await ctx.answerCallbackQuery();
+    const userId = ctx.from.id.toString();
+    const { data: profile } = await supabase
+      .from('user_profiles').select('user_id')
+      .eq('telegram_id', userId).maybeSingle();
+    if (profile?.user_id) pendingBillValue.delete(profile.user_id);
+    await ctx.editMessageText('❌ Pagamento cancelado.');
+  }
+
   // EDITAR item da nota fiscal
   if (data.startsWith('receipt_edit_')) {
     await ctx.answerCallbackQuery();
@@ -2071,7 +2204,7 @@ bot.on('callback_query:data', async (ctx) => {
               cards[0].due_day
             );
             const subcatLine = item.subcategory ? ` | ${item.subcategory}` : '';
-            registeredMessages.push(`✅ #${shortCode}\n📝 ${item.description}\n💰 R$ ${Number(item.value).toFixed(2)}\n📂 ${item.category}${subcatLine}\n💳 ${cards[0].bank} (crédito)`);
+            registeredMessages.push(`✅ Registrado! #${shortCode}\n💰 R$ ${Number(item.value).toFixed(2)}\n📂 ${item.category}${subcatLine}\n📝 ${item.description}\n🟢 Necessidade\n💳 ${cards[0].bank} (crédito)`);
             registered++;
             continue;
           }
@@ -2098,7 +2231,7 @@ bot.on('callback_query:data', async (ctx) => {
         }
 
         const subcatLine = item.subcategory ? ` | ${item.subcategory}` : '';
-        registeredMessages.push(`✅ #${shortCode}\n📝 ${item.description}\n💰 R$ ${Number(item.value).toFixed(2)}\n📂 ${item.category}${subcatLine}`);
+        registeredMessages.push(`✅ Registrado! #${shortCode}\n💰 R$ ${Number(item.value).toFixed(2)}\n📂 ${item.category}${subcatLine}\n📝 ${item.description}\n🟢 Necessidade`);
         registered++;
 
       } catch (e) {

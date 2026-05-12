@@ -132,7 +132,8 @@ const syncMonthlyBills = async (user_id: string, month: number, year: number) =>
           subtype: 'fixed',
           month,
           year,
-          short_code: generateShortCode()
+          short_code: generateShortCode(),
+          variable_value: f.variable_value || false
         });
       }
     });
@@ -496,11 +497,12 @@ app.get('/fixed-expenses', async (req, res) => {
 
 app.post('/fixed-expenses', async (req, res) => {
   try {
-    const { user_id, name, value, due_day, category } = req.body;
+    const { user_id, name, value, due_day, category, variable_value } = req.body;
     if (!user_id) return res.status(400).json({ error: "user_id is required" });
 
     const { data, error } = await supabase.from('fixed_expenses').insert({
-      user_id, name, value, due_day, category, active: true
+      user_id, name, value, due_day, category, active: true,
+      variable_value: variable_value || false
     }).select();
 
     if (error) throw error;

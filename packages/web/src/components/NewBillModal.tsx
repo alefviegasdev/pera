@@ -19,6 +19,7 @@ const NewBillModal: React.FC<NewBillModalProps> = ({ userId, onClose, onSuccess 
   const [value, setValue] = useState('');
   const [dueDay, setDueDay] = useState('05');
   const [category, setCategory] = useState('Moradia');
+  const [variableValue, setVariableValue] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -39,7 +40,8 @@ const NewBillModal: React.FC<NewBillModalProps> = ({ userId, onClose, onSuccess 
           name,
           value: parseFloat(value),
           due_day: parseInt(dueDay),
-          category
+          category,
+          variable_value: variableValue
         })
       });
 
@@ -149,6 +151,28 @@ const NewBillModal: React.FC<NewBillModalProps> = ({ userId, onClose, onSuccess 
                 );
               })}
             </div>
+          </div>
+
+          <div className="flex items-center justify-between py-3">
+            <div>
+              <p className="font-bold text-on-surface text-sm">Valor variável</p>
+              <p className="text-xs text-on-surface-variant mt-0.5">
+                O valor pode mudar todo mês (ex: água, luz, internet)
+              </p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={variableValue}
+                onChange={() => setVariableValue(!variableValue)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-outline-variant rounded-full peer
+                peer-checked:after:translate-x-full peer-checked:bg-primary
+                after:content-[''] after:absolute after:top-[2px] after:left-[2px]
+                after:bg-white after:rounded-full after:h-5 after:w-5
+                after:transition-all shadow-inner"></div>
+            </label>
           </div>
 
           <div className="flex flex-col gap-3 pt-4">
