@@ -144,8 +144,17 @@ const syncMonthlyBills = async (user_id: string, month: number, year: number) =>
   }
 
   if (billsToInsert.length > 0) {
-    await supabase.from('monthly_bills').insert(billsToInsert);
-    console.log(`[SYNC] Bills criadas para usuário ${user_id}`);
+    console.log('[SYNC] Tentando inserir bills:', JSON.stringify(billsToInsert));
+
+    const { error: insertError } = await supabase
+      .from('monthly_bills')
+      .insert(billsToInsert);
+
+    if (insertError) {
+      console.error('[SYNC] Erro ao inserir bills:', insertError);
+    } else {
+      console.log(`[SYNC] Bills criadas para usuário ${user_id}`);
+    }
   }
 
   console.log('[SYNC] syncMonthlyBills concluído');
