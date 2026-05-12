@@ -304,17 +304,21 @@ const Settings = ({
     localStorage.setItem(`budget_categories_order_${userId}`, JSON.stringify(categories.map(c => c.name)));
   }, [categories, userId]);
 
+  const anyModalOpen = showCardModal || showNewBill || !!editingBill || showNewGoal || showNewBudget || !!editBudget || pendingPct !== null || showLogoutConfirm || !!deletingCardId;
+
   useEffect(() => {
-    if (showCardModal) {
+    if (anyModalOpen) {
       document.body.style.overflow = 'hidden';
       const appShell = document.getElementById('app-shell');
       if (appShell) appShell.style.overflow = 'hidden';
+      onModalOpen?.();
     } else {
       document.body.style.overflow = '';
       const appShell = document.getElementById('app-shell');
       if (appShell) appShell.style.overflow = '';
+      onModalClose?.();
     }
-  }, [showCardModal]);
+  }, [anyModalOpen, onModalOpen, onModalClose]);
 
   const handleUpdateLimit = async () => {
     if (!editBudget) return;
