@@ -163,20 +163,27 @@ const Settings = ({
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     setTelegramCode(code);
 
-    const { error } = await supabase
-      .from('user_profiles')
-      .upsert({ 
-        user_id: userId, 
-        link_code: code,
-        telegram_id: null,
-        linked_at: null 
-      }, { onConflict: 'user_id' });
-
-    if (error) {
+    try {
+      const response = await fetch('/api/user-profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          user_id: userId, 
+          link_code: code,
+          telegram_id: null,
+          linked_at: null 
+        })
+      });
+      const data = await response.json();
+      if (data.error) {
+        throw new Error(data.error);
+      }
+    } catch (error) {
       console.error('Falha ao gerar código do Telegram:', error);
       setTelegramError('Falha ao gerar o código. Tente novamente.');
+    } finally {
+      setTelegramLoading(false);
     }
-    setTelegramLoading(false);
   };
 
   const startTelegramPolling = () => {

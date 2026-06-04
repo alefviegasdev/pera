@@ -942,6 +942,9 @@ app.patch('/user-profile', async (req, res) => {
     if (tithe_percentage_changed_at !== undefined) updates.tithe_percentage_changed_at = tithe_percentage_changed_at;
     if (tithe_percentage_previous !== undefined) updates.tithe_percentage_previous = tithe_percentage_previous;
     if (req.body.default_payment !== undefined) updates.default_payment = req.body.default_payment;
+    if (req.body.telegram_id !== undefined) updates.telegram_id = req.body.telegram_id;
+    if (req.body.link_code !== undefined) updates.link_code = req.body.link_code;
+    if (req.body.linked_at !== undefined) updates.linked_at = req.body.linked_at;
 
     const { data: existing } = await supabase.from('user_profiles').select('id').eq('user_id', user_id).single();
 
