@@ -618,7 +618,7 @@ async function registerCreditTransaction(
 }
 
 async function fetchGemini(geminiKey: string, body: object, retries = 3): Promise<any> {
-  const url = `${geminiBaseUrl}/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${geminiKey}`;
+  const url = `${geminiBaseUrl}/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${geminiKey}`;
   for (let i = 0; i < retries; i++) {
     const res = await fetch(url, {
       method: "POST",
@@ -766,7 +766,7 @@ bot.on("message:photo", async (ctx) => {
     const mimeType = 'image/jpeg';
 
     const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${geminiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${geminiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
