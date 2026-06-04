@@ -30,8 +30,26 @@ function sanitizeSubtype(subtype: string): string {
   return 'unique';
 }
 
-const SYSTEM_PROMPT = `
-Você é um assistente financeiro inteligente chamado Pera.
+const UNIFIED_PROMPT = `
+Você é um assistente financeiro chamado Pera.
+Analise a mensagem e retorne UM dos seguintes tipos de resposta:
+
+TIPO 1 — LISTA DE COMPRAS:
+Se a mensagem for apenas um produto sem valor, ou tiver
+verbo de intenção de compra (comprar, pegar, buscar, precisar,
+lembra de), retorne:
+{ "type": "shopping", "items": ["item1", "item2"] }
+
+TIPO 2 — AMBÍGUO:
+Se tiver verbo de ação no PASSADO + produto SEM valor monetário
+(ex: "comprei amendoim", "peguei leite", "trouxe pão"),
+retorne:
+{ "type": "ambiguous", "verb": "comprar", "product": "amendoim" }
+
+TIPO 3 — FINANCEIRO:
+Para todo o resto, retorne um array de transações financeiras
+no formato abaixo.
+
 Sua tarefa é extrair informações financeiras de mensagens de texto e retornar SEMPRE um ARRAY de objetos JSON válidos.
 
 REGRAS DE CLASSIFICAÇÃO:
@@ -207,9 +225,10 @@ EXEMPLOS:
 - "50 hamburguer débito" → { ..., "payment_method": "debit" }
 - "50 hamburguer" → { ... } (sem payment_method)
 
-Se a mensagem não contiver informações financeiras, retorne: {"error": "not_financial"}.
-
 MENSAGEM DO USUÁRIO:
+
+Se não for nenhum dos três casos, retorne:
+{ "type": "not_financial" }
 `;
 
 const CORRECTION_PROMPT = `
@@ -273,67 +292,6 @@ EXEMPLOS:
 - "50 hamburguer crédito" → { ..., "payment_method": "credit" }
 - "50 hamburguer débito" → { ..., "payment_method": "debit" }
 - "50 hamburguer" → { ... } (sem payment_method)
-
-MENSAGEM:
-`;
-
-const SHOPPING_PROMPT = `
-Você detecta intenção de adicionar itens a uma lista de compras.
-Retorne SEMPRE um JSON.
-
-REGRA PRINCIPAL:
-- Se a mensagem for APENAS o nome de um produto SEM número → lista
-- Se tiver verbo de intenção de compra + produto (com ou sem número) → lista
-- Se tiver "preciso" + produto (com ou sem número) → lista
-- Se tiver número + produto SEM verbo de intenção → NÃO é lista (é transação)
-
-Verbos de intenção: comprar, pegar, buscar, trazer, adquirir, obter,
-precisar comprar, quero comprar, vou comprar, lembra de pegar, etc.
-
-EXEMPLOS que devem retornar is_shopping: true:
-- "desodorante" → { "is_shopping": true, "items": ["desodorante"] }
-- "leite" → { "is_shopping": true, "items": ["leite"] }
-- "comprar 10 desodorante" → { "is_shopping": true, "items": ["desodorante (10)"] }
-- "preciso de ovos" → { "is_shopping": true, "items": ["ovos"] }
-- "preciso comprar 5 ovos" → { "is_shopping": true, "items": ["ovos (5)"] }
-- "lembra de pegar leite" → { "is_shopping": true, "items": ["leite"] }
-- "kmprar pão" → { "is_shopping": true, "items": ["pão"] }
-- "arroz e feijão" → { "is_shopping": true, "items": ["arroz", "feijão"] }
-
-EXEMPLOS que devem retornar is_shopping: false (são transações):
-- "0,47 limão" → { "is_shopping": false }
-- "3 limão" → { "is_shopping": false }
-- "10 desodorante" → { "is_shopping": false }
-- "5 ovos" → { "is_shopping": false }
-- "gastei 50 no mercado" → { "is_shopping": false }
-- "recebi 3000" → { "is_shopping": false }
-
-Aceite erros de digitação e gramática. Foque na intenção.
-Se não for lista de compras, retorne: { "is_shopping": false }
-
-MENSAGEM:
-`;
-
-const AMBIGUOUS_PROMPT = `
-Detecta mensagens com verbo de ação no passado + produto
-SEM valor monetário. Exemplos: "comprei amendoim",
-"peguei leite", "trouxe pão", "fui na farmácia buscar shampoo".
-
-Se detectar esse padrão → retorne:
-{
-  "is_ambiguous": true,
-  "verb_used": "comprei",
-  "verb_infinitive": "comprar",
-  "product": "amendoim"
-}
-
-Se não for esse padrão → retorne: { "is_ambiguous": false }
-
-Não considerar ambíguo quando:
-- Tiver valor monetário: "comprei amendoim por 2,29"
-- For infinitivo: "comprar amendoim"
-- For só o produto: "amendoim"
-- Tiver "paguei" + valor (é transação clara)
 
 MENSAGEM:
 `;
@@ -1524,63 +1482,38 @@ O que você pode mudar:
       return ctx.reply(`✅ #${code} atualizado! 🍐\n${changeLogs.join('\n')}`);
     }
 
-    // 2a. DETECÇÃO DE MENSAGEM AMBÍGUA (verbo passado sem valor)
-    const ambiguousResult = await fetchGemini(geminiKey, {
-      contents: [{ parts: [{ text: AMBIGUOUS_PROMPT + text }] }]
-    }).catch(() => null);
-    if (ambiguousResult) {
-      const ambiguousText = ambiguousResult.candidates?.[0]?.content?.parts?.[0]?.text
-        ?.trim().replace(/```json|```/g, "") || "";
-      try {
-        const ambiguousData = JSON.parse(ambiguousText);
-        if (ambiguousData.is_ambiguous) {
-          const verb = ambiguousData.verb_infinitive || 'comprar';
-          const product = ambiguousData.product || 'item';
-          return ctx.reply(`⚠️ Não consegui identificar o que você quis dizer.\n\nSe foi uma transação, reenvie incluindo o valor:\n- "${verb} ${product}" → ex: "2,29 ${product}" ou "gastei 2,29 em ${product}"\n\nSe quiser adicionar à lista de compras, use o infinitivo ou só o nome:\n- "${verb} ${product}" ou apenas "${product}"`);
-        }
-      } catch (e) {
-        // não era ambíguo, continuar
-      }
-    }
-
-    // 2b. DETECÇÃO DE LISTA DE COMPRAS
-    const shoppingResult = await fetchGemini(geminiKey, {
-      contents: [{ parts: [{ text: SHOPPING_PROMPT + text }] }]
-    }).catch(() => null);
-    if (shoppingResult) {
-      const shoppingText = shoppingResult.candidates?.[0]?.content?.parts?.[0]?.text
-        ?.trim().replace(/```json|```/g, "") || "";
-      try {
-        const shoppingData = JSON.parse(shoppingText);
-        if (shoppingData.is_shopping && shoppingData.items?.length > 0) {
-          // Inserir todos os itens na tabela
-          const inserts = shoppingData.items.map((item: string) => ({
-            user_id: supabaseUserId,
-            text: item,
-            checked: false
-          }));
-          await supabase.from('shopping_list').insert(inserts);
-
-          const itemsList = shoppingData.items.map((i: string) => `• ${i}`).join('\n');
-          return ctx.reply(`🛒 Adicionado à lista de compras!\n\n${itemsList}\n\nVeja no app em Histórico > Lista de Compras`);
-        }
-      } catch (e) {
-        // não era lista de compras, continuar
-      }
-    }
-
-    // 2. PROCESSAMENTO FINANCEIRO COM GEMINI
     console.log("Tipo detectado: financeiro");
     const result = await fetchGemini(geminiKey, {
-      contents: [{ parts: [{ text: SYSTEM_PROMPT + text }] }]
+      contents: [{ parts: [{ text: UNIFIED_PROMPT + text }] }]
     });
-    const responseText = result.candidates?.[0]?.content?.parts?.[0]?.text?.trim().replace(/```json|```/g, "") || "";
+    const responseText = result.candidates?.[0]?.content?.parts?.[0]?.text
+      ?.trim().replace(/```json|```/g, "") || "";
 
     if (!responseText) throw new Error("Resposta vazia do Gemini");
 
     const data = JSON.parse(responseText);
 
-    if (data.error === "not_financial") {
+    // Tratar tipo shopping
+    if (data.type === 'shopping' && data.items?.length > 0) {
+      const inserts = data.items.map((item: string) => ({
+        user_id: supabaseUserId,
+        text: item,
+        checked: false
+      }));
+      await supabase.from('shopping_list').insert(inserts);
+      const itemsList = data.items.map((i: string) => `• ${i}`).join('\n');
+      return ctx.reply(`🛒 Adicionado à lista de compras!\n\n${itemsList}\n\nVeja no app em Histórico > Lista de Compras`);
+    }
+
+    // Tratar tipo ambíguo
+    if (data.type === 'ambiguous') {
+      const verb = data.verb || 'comprar';
+      const product = data.product || 'item';
+      return ctx.reply(`⚠️ Não consegui identificar o que você quis dizer.\n\nSe foi uma transação, reenvie incluindo o valor:\n- ex: "2,29 ${product}" ou "gastei 2,29 em ${product}"\n\nSe quiser adicionar à lista de compras, use o infinitivo ou só o nome:\n- "${verb} ${product}" ou apenas "${product}"`);
+    }
+
+    // Tratar not_financial
+    if (data.type === 'not_financial' || data.error === 'not_financial') {
       const lowerText = text.toLowerCase();
       let hint = "";
 
@@ -1592,16 +1525,10 @@ O que você pode mudar:
         hint = `Não entendi essa mensagem como gasto ou receita. Sua mensagem foi: "${text}" — tente reformular incluindo valor e descrição.`;
       }
 
-      return ctx.reply(`🍐 ${hint}
-
-Exemplos que funcionam:
-- 'gastei 45 no iFood'
-- 'paguei 1500 de aluguel'
-- 'recebi 3000 de salário'
-- 'parcelei jaqueta 300 em 3x'
-- 'dízimo 300'`);
+      return ctx.reply(`🍐 ${hint}\n\nExemplos que funcionam:\n- 'gastei 45 no iFood'\n- 'paguei 1500 de aluguel'\n- 'recebi 3000 de salário'\n- 'parcelei jaqueta 300 em 3x'\n- 'dízimo 300'`);
     }
 
+    // Tratar array de transações financeiras
     const items = Array.isArray(data) ? data : [data];
     if (items.length === 0) return ctx.reply("🍐 Não identifiquei nenhuma transação clara nessa mensagem.");
 
