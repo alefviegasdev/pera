@@ -626,8 +626,10 @@ async function fetchGemini(geminiKey: string, body: object, retries = 3): Promis
       body: JSON.stringify(body)
     });
     if (res.ok) return res.json();
-    if (res.status === 503 && i < retries - 1) {
-      await new Promise(r => setTimeout(r, 2000 * (i + 1)));
+    if ((res.status === 503 || res.status === 429) && i < retries - 1) {
+      const delay = res.status === 429 ? 30000 : 2000 * (i + 1);
+      console.log(`[GEMINI] Rate limit (${res.status}), aguardando ${delay}ms...`);
+      await new Promise(r => setTimeout(r, delay));
       continue;
     }
     const err = await res.json().catch(() => ({}));
