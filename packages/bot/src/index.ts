@@ -10,6 +10,7 @@ const token = process.env.TELEGRAM_BOT_TOKEN;
 const geminiKey = process.env.GEMINI_API_KEY;
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SECRET_KEY;
+const geminiBaseUrl = process.env.GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com';
 
 if (!token || !geminiKey || !supabaseUrl || !supabaseKey) {
   throw new Error("Missing environment variables (TELEGRAM_BOT_TOKEN, GEMINI_API_KEY, SUPABASE_URL, or SUPABASE_SECRET_KEY)");
@@ -617,7 +618,7 @@ async function registerCreditTransaction(
 }
 
 async function fetchGemini(geminiKey: string, body: object, retries = 3): Promise<any> {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${geminiKey}`;
+  const url = `${geminiBaseUrl}/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${geminiKey}`;
   for (let i = 0; i < retries; i++) {
     const res = await fetch(url, {
       method: "POST",
