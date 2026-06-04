@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Reorder, useDragControls } from 'framer-motion';
-import { Target, Calendar, ChevronRight, User, Heart, LogOut, PlusCircle, Home, Wifi, Utensils, Zap, HelpCircle, Coffee, Car, HeartPulse, Gamepad2, BookOpen, ReceiptText, Shirt, Smartphone, Hand, CircleEllipsis, Pencil, GripVertical, CreditCard, Trash2, X, CheckCircle2 } from 'lucide-react';
+import { Target, Calendar, ChevronRight, User, Heart, LogOut, PlusCircle, Home, Wifi, Utensils, Zap, HelpCircle, Coffee, Car, HeartPulse, Gamepad2, BookOpen, ReceiptText, Shirt, Smartphone, Hand, CircleEllipsis, Pencil, GripVertical, CreditCard, Trash2, X, CheckCircle2, Copy, MessageCircle, ShieldCheck } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { BANK_COLORS } from '../utils/categories';
 import NewBillModal from '../components/NewBillModal';
@@ -138,6 +138,113 @@ const Settings = ({
     cachedPct !== null ? parseInt(cachedPct) : 10
   );
 
+  // Telegram Integration states
+  const [telegramId, setTelegramId] = useState<string | null>(null);
+  const [showTelegramModal, setShowTelegramModal] = useState(false);
+  const [telegramCode, setTelegramCode] = useState<string>('');
+  const [telegramLoading, setTelegramLoading] = useState(false);
+  const [telegramChecking, setTelegramChecking] = useState(false);
+  const [telegramCopied, setTelegramCopied] = useState(false);
+  const [telegramError, setTelegramError] = useState('');
+  const [telegramSuccess, setTelegramSuccess] = useState(false);
+  const telegramPollingRef = useRef<any>(null);
+
+  useEffect(() => {
+    return () => {
+      if (telegramPollingRef.current) clearInterval(telegramPollingRef.current);
+    };
+  }, []);
+
+  const generateNewTelegramCode = async () => {
+    setTelegramLoading(true);
+    setTelegramError('');
+    setTelegramSuccess(false);
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    setTelegramCode(code);
+
+    const { error } = await supabase
+      .from('user_profiles')
+      .upsert({ 
+        user_id: userId, 
+        link_code: code,
+        telegram_id: null,
+        linked_at: null 
+      }, { onConflict: 'user_id' });
+
+    if (error) {
+      console.error('Falha ao gerar código do Telegram:', error);
+      setTelegramError('Falha ao gerar o código. Tente novamente.');
+    }
+    setTelegramLoading(false);
+  };
+
+  const startTelegramPolling = () => {
+    console.log('[TELEGRAM POLLING] iniciando...');
+    if (telegramPollingRef.current) clearInterval(telegramPollingRef.current);
+    
+    setTelegramChecking(true);
+    setTelegramError('');
+    setTelegramSuccess(false);
+    let attempts = 0;
+
+    const interval = setInterval(async () => {
+      attempts++;
+      try {
+        const { data, error } = await supabase
+          .from('user_profiles')
+          .select('telegram_id')
+          .eq('user_id', userId)
+          .maybeSingle();
+        
+        console.log('[TELEGRAM POLLING] data:', JSON.stringify(data));
+        
+        if (data?.telegram_id) {
+          clearInterval(interval);
+          telegramPollingRef.current = null;
+          setTelegramChecking(false);
+          setTelegramId(data.telegram_id);
+          setTelegramSuccess(true);
+          setTimeout(() => {
+            setShowTelegramModal(false);
+            setTelegramSuccess(false);
+          }, 2000);
+        } else if (attempts >= 60) {
+          clearInterval(interval);
+          telegramPollingRef.current = null;
+          setTelegramChecking(false);
+          setTelegramError('O tempo se esgotou. Envie o código no Telegram e tente novamente.');
+        }
+      } catch (e) { 
+        console.log('Telegram polling error:', e); 
+      }
+    }, 3000);
+    
+    telegramPollingRef.current = interval;
+  };
+
+  const stopTelegramPolling = () => {
+    if (telegramPollingRef.current) {
+      clearInterval(telegramPollingRef.current);
+      telegramPollingRef.current = null;
+    }
+    setTelegramChecking(false);
+  };
+
+  const handleCloseTelegramModal = () => {
+    stopTelegramPolling();
+    setShowTelegramModal(false);
+    setTelegramError('');
+    setTelegramSuccess(false);
+  };
+
+  const handleCopyTelegramCode = () => {
+    if (!telegramCode) return;
+    navigator.clipboard.writeText(telegramCode);
+    setTelegramCopied(true);
+    setTimeout(() => setTelegramCopied(false), 2000);
+  };
+
   // Modal states
   const [showNewBill, setShowNewBill] = useState(false);
   const [showNewGoal, setShowNewGoal] = useState(false);
@@ -236,6 +343,13 @@ const Settings = ({
         setTitheActive(profileData.tithe_active);
         localStorage.setItem(`tithe_active_${userId}`, String(profileData.tithe_active));
       }
+
+      const { data: tgData } = await supabase
+        .from('user_profiles')
+        .select('telegram_id')
+        .eq('user_id', userId)
+        .maybeSingle();
+      setTelegramId(tgData?.telegram_id || null);
     } catch (e) {
       console.error(e);
     } finally {
@@ -304,7 +418,7 @@ const Settings = ({
     localStorage.setItem(`budget_categories_order_${userId}`, JSON.stringify(categories.map(c => c.name)));
   }, [categories, userId]);
 
-  const anyModalOpen = showCardModal || showNewBill || !!editingBill || showNewGoal || showNewBudget || !!editBudget || pendingPct !== null || showLogoutConfirm || !!deletingCardId;
+  const anyModalOpen = showCardModal || showNewBill || !!editingBill || showNewGoal || showNewBudget || !!editBudget || pendingPct !== null || showLogoutConfirm || !!deletingCardId || showTelegramModal;
 
   useEffect(() => {
     if (anyModalOpen) {
@@ -719,6 +833,38 @@ const Settings = ({
           </Reorder.Group>
         </section>
 
+        {/* Telegram Integration Section */}
+        <section className="space-y-4">
+          <div className="flex items-center justify-between px-1">
+            <h3 className="font-headline text-xl font-extrabold tracking-tight text-on-background">Telegram</h3>
+            {telegramId ? (
+              <span className="chip chip-success">Conectado</span>
+            ) : (
+              <span className="chip chip-warning">Não conectado</span>
+            )}
+          </div>
+          
+          <div className="bg-white rounded-[2.5rem] p-7 shadow-sm border border-surface-container flex flex-col gap-4">
+            <p className="text-xs text-on-surface-variant leading-relaxed font-medium">
+              {telegramId 
+                ? 'Seu app Pera está conectado ao Telegram. Você pode reintegrar com outro chat ou refazer a conexão a qualquer momento.'
+                : 'Conecte o Pera ao seu Telegram para receber alertas, cadastrar transações por texto ou áudio e consultar relatórios instantâneos.'
+              }
+            </p>
+            
+            <button
+              onClick={() => {
+                setShowTelegramModal(true);
+                generateNewTelegramCode();
+              }}
+              className="w-full h-14 bg-primary text-on-primary rounded-full font-headline font-black text-base shadow-lg shadow-primary/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+            >
+              <span>🍐</span>
+              {telegramId ? 'Reintegrar Telegram' : 'Vincular Telegram'}
+            </button>
+          </div>
+        </section>
+
       </main>
 
       {/* Card Modal */}
@@ -1056,6 +1202,120 @@ const Settings = ({
               >
                 Cancelar
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showTelegramModal && (
+        <div className="fixed inset-0 bg-black/60 z-[120] flex items-center justify-center p-6 animate-in fade-in duration-300" onClick={() => handleCloseTelegramModal()}>
+          <div className="bg-white rounded-[2.5rem] w-full max-w-sm p-8 shadow-2xl animate-in zoom-in-95 duration-300 relative overflow-hidden" onClick={e => e.stopPropagation()}>
+            <button 
+              onClick={() => handleCloseTelegramModal()}
+              className="absolute top-6 right-6 p-2 rounded-full text-on-surface-variant/40 hover:text-on-surface hover:bg-surface-container transition-all"
+            >
+              <X size={20} />
+            </button>
+
+            <div className="text-center space-y-2 mb-6">
+              <span className="text-3xl">🍐</span>
+              <h2 className="font-headline text-2xl font-black text-on-surface tracking-tight">Conectar Telegram</h2>
+              <p className="text-xs text-on-surface-variant/70">
+                Siga os passos abaixo para vincular o bot.
+              </p>
+            </div>
+
+            {/* Code display */}
+            <div className="bg-surface-container-low p-6 rounded-3xl border border-surface-container relative overflow-hidden mb-6 text-center">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary mb-3">Seu código de vínculo</p>
+              
+              {telegramLoading ? (
+                <div className="h-12 flex items-center justify-center gap-2">
+                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce" />
+                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:0.2s]" />
+                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:0.4s]" />
+                </div>
+              ) : (
+                <div 
+                  onClick={handleCopyTelegramCode}
+                  className="flex items-center justify-center gap-3 cursor-pointer group hover:scale-[1.02] transition-transform"
+                >
+                  <div className="font-display text-4xl font-black tracking-[0.15em] text-on-surface">
+                    {telegramCode}
+                  </div>
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${telegramCopied ? 'bg-tertiary-container text-on-tertiary-container' : 'bg-surface-container text-primary group-hover:bg-primary group-hover:text-white'}`}>
+                    {telegramCopied ? <CheckCircle2 size={16} /> : <Copy size={14} />}
+                  </div>
+                </div>
+              )}
+              {telegramCopied && <p className="text-tertiary font-bold text-[9px] mt-1 animate-pulse">Código copiado!</p>}
+            </div>
+
+            {/* Steps */}
+            <div className="space-y-2.5 mb-6 text-left">
+              {[
+                { 
+                  icon: <MessageCircle size={16} />, 
+                  text: 'Abra o bot no Telegram', 
+                  color: 'bg-primary/10',
+                  link: 'https://t.me/pera_gardenbot'
+                },
+                { icon: <Zap size={16} />, text: 'Envie o código de 6 dígitos acima', color: 'bg-secondary-container/20' },
+                { icon: <ShieldCheck size={16} />, text: 'A conexão será feita de forma segura', color: 'bg-tertiary-container/20' }
+              ].map((step, i) => (
+                <div key={i} className="flex items-center gap-3 p-3 bg-surface-container-low border border-surface-container/50 rounded-2xl">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${step.color} text-primary`}>
+                    {step.icon}
+                  </div>
+                  <div className="flex-1 flex items-center justify-between gap-2">
+                    <p className="text-xs font-bold text-on-surface-variant leading-tight">{step.text}</p>
+                    {step.link && (
+                      <a 
+                        href={step.link} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-primary font-black text-[9px] uppercase tracking-widest bg-primary/5 px-2.5 py-1 rounded-full hover:bg-primary/10 transition-colors"
+                      >
+                        Abrir
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Actions & Polling Status */}
+            <div className="flex flex-col gap-2.5">
+              <button
+                onClick={startTelegramPolling}
+                disabled={telegramChecking || telegramLoading}
+                className="w-full h-14 bg-primary text-on-primary rounded-full font-headline font-black text-base shadow-lg shadow-primary/20 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {telegramChecking ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Verificando vínculo...</span>
+                  </>
+                ) : (
+                  <span>Já enviei o código</span>
+                )}
+              </button>
+
+              {telegramChecking && (
+                <button 
+                  onClick={stopTelegramPolling}
+                  className="text-on-secondary-container font-extrabold text-[9px] uppercase tracking-[0.2em] transition-all py-2 px-6 self-center bg-secondary-container rounded-full shadow-sm hover:bg-secondary-fixed cursor-pointer active:scale-95 animate-pulse"
+                >
+                  Parar verificação
+                </button>
+              )}
+
+              {telegramError && (
+                <p className="text-error font-bold text-[11px] text-center p-2.5 bg-error/5 border border-error/10 rounded-xl">{telegramError}</p>
+              )}
+
+              {telegramSuccess && (
+                <p className="text-tertiary font-bold text-[11px] text-center p-2.5 bg-tertiary-container/10 border border-tertiary-container/30 rounded-xl animate-pulse">🎉 Vinculado com sucesso!</p>
+              )}
             </div>
           </div>
         </div>
