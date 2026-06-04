@@ -212,10 +212,6 @@ const Settings = ({
           setTelegramChecking(false);
           setTelegramId(data.telegram_id);
           setTelegramSuccess(true);
-          setTimeout(() => {
-            setShowTelegramModal(false);
-            setTelegramSuccess(false);
-          }, 2000);
         } else if (attempts >= 60) {
           clearInterval(interval);
           telegramPollingRef.current = null;
@@ -1216,114 +1212,133 @@ const Settings = ({
       {showTelegramModal && (
         <div className="fixed inset-0 bg-black/60 z-[120] flex items-center justify-center p-6 animate-in fade-in duration-300" onClick={() => handleCloseTelegramModal()}>
           <div className="bg-white rounded-[2.5rem] w-full max-w-sm p-8 shadow-2xl animate-in zoom-in-95 duration-300 relative overflow-hidden" onClick={e => e.stopPropagation()}>
-            <button 
-              onClick={() => handleCloseTelegramModal()}
-              className="absolute top-6 right-6 p-2 rounded-full text-on-surface-variant/40 hover:text-on-surface hover:bg-surface-container transition-all"
-            >
-              <X size={20} />
-            </button>
 
-            <div className="text-center space-y-2 mb-6">
-              <span className="text-3xl">🍐</span>
-              <h2 className="font-headline text-2xl font-black text-on-surface tracking-tight">Conectar Telegram</h2>
-              <p className="text-xs text-on-surface-variant/70">
-                Siga os passos abaixo para vincular o bot.
-              </p>
-            </div>
-
-            {/* Code display */}
-            <div className="bg-surface-container-low p-6 rounded-3xl border border-surface-container relative overflow-hidden mb-6 text-center">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary mb-3">Seu código de vínculo</p>
-              
-              {telegramLoading ? (
-                <div className="h-12 flex items-center justify-center gap-2">
-                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce" />
-                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:0.2s]" />
-                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:0.4s]" />
+            {telegramSuccess ? (
+              /* ── SUCCESS STATE ── */
+              <div className="flex flex-col items-center text-center gap-6 py-4">
+                <div className="w-20 h-20 rounded-full bg-[#22c55e]/10 flex items-center justify-center">
+                  <CheckCircle2 size={40} className="text-[#22c55e]" />
                 </div>
-              ) : (
-                <div 
-                  onClick={handleCopyTelegramCode}
-                  className="flex items-center justify-center gap-3 cursor-pointer group hover:scale-[1.02] transition-transform"
+                <div className="space-y-1">
+                  <h2 className="font-headline text-2xl font-black text-on-surface tracking-tight">Telegram vinculado!</h2>
+                  <p className="text-sm text-on-surface-variant/70">Seu bot está pronto para usar. 🎉</p>
+                </div>
+                <button
+                  onClick={() => handleCloseTelegramModal()}
+                  className="w-full h-14 bg-[#22c55e] text-white rounded-full font-headline font-black text-base shadow-lg shadow-[#22c55e]/20 active:scale-95 transition-all"
                 >
-                  <div className="font-display text-4xl font-black tracking-[0.15em] text-on-surface">
-                    {telegramCode}
-                  </div>
-                  <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${telegramCopied ? 'bg-tertiary-container text-on-tertiary-container' : 'bg-surface-container text-primary group-hover:bg-primary group-hover:text-white'}`}>
-                    {telegramCopied ? <CheckCircle2 size={16} /> : <Copy size={14} />}
-                  </div>
-                </div>
-              )}
-              {telegramCopied && <p className="text-tertiary font-bold text-[9px] mt-1 animate-pulse">Código copiado!</p>}
-            </div>
-
-            {/* Steps */}
-            <div className="space-y-2.5 mb-6 text-left">
-              {[
-                { 
-                  icon: <MessageCircle size={16} />, 
-                  text: 'Abra o bot no Telegram', 
-                  color: 'bg-primary/10',
-                  link: 'https://t.me/pera_gardenbot'
-                },
-                { icon: <Zap size={16} />, text: 'Envie o código de 6 dígitos acima', color: 'bg-secondary-container/20' },
-                { icon: <ShieldCheck size={16} />, text: 'A conexão será feita de forma segura', color: 'bg-tertiary-container/20' }
-              ].map((step, i) => (
-                <div key={i} className="flex items-center gap-3 p-3 bg-surface-container-low border border-surface-container/50 rounded-2xl">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${step.color} text-primary`}>
-                    {step.icon}
-                  </div>
-                  <div className="flex-1 flex items-center justify-between gap-2">
-                    <p className="text-xs font-bold text-on-surface-variant leading-tight">{step.text}</p>
-                    {step.link && (
-                      <a 
-                        href={step.link} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-primary font-black text-[9px] uppercase tracking-widest bg-primary/5 px-2.5 py-1 rounded-full hover:bg-primary/10 transition-colors"
-                      >
-                        Abrir
-                      </a>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Actions & Polling Status */}
-            <div className="flex flex-col gap-2.5">
-              <button
-                onClick={startTelegramPolling}
-                disabled={telegramChecking || telegramLoading}
-                className="w-full h-14 bg-primary text-on-primary rounded-full font-headline font-black text-base shadow-lg shadow-primary/20 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                {telegramChecking ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Verificando vínculo...</span>
-                  </>
-                ) : (
-                  <span>Já enviei o código</span>
-                )}
-              </button>
-
-              {telegramChecking && (
-                <button 
-                  onClick={stopTelegramPolling}
-                  className="text-on-secondary-container font-extrabold text-[9px] uppercase tracking-[0.2em] transition-all py-2 px-6 self-center bg-secondary-container rounded-full shadow-sm hover:bg-secondary-fixed cursor-pointer active:scale-95 animate-pulse"
-                >
-                  Parar verificação
+                  Ótimo!
                 </button>
-              )}
+              </div>
+            ) : (
+              /* ── DEFAULT STATE ── */
+              <>
+                <button 
+                  onClick={() => handleCloseTelegramModal()}
+                  className="absolute top-6 right-6 p-2 rounded-full text-on-surface-variant/40 hover:text-on-surface hover:bg-surface-container transition-all"
+                >
+                  <X size={20} />
+                </button>
 
-              {telegramError && (
-                <p className="text-error font-bold text-[11px] text-center p-2.5 bg-error/5 border border-error/10 rounded-xl">{telegramError}</p>
-              )}
+                <div className="text-center space-y-2 mb-6">
+                  <span className="text-3xl">🍐</span>
+                  <h2 className="font-headline text-2xl font-black text-on-surface tracking-tight">Conectar Telegram</h2>
+                  <p className="text-xs text-on-surface-variant/70">
+                    Siga os passos abaixo para vincular o bot.
+                  </p>
+                </div>
 
-              {telegramSuccess && (
-                <p className="text-tertiary font-bold text-[11px] text-center p-2.5 bg-tertiary-container/10 border border-tertiary-container/30 rounded-xl animate-pulse">🎉 Vinculado com sucesso!</p>
-              )}
-            </div>
+                {/* Code display */}
+                <div className="bg-surface-container-low p-6 rounded-3xl border border-surface-container relative overflow-hidden mb-6 text-center">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary mb-3">Seu código de vínculo</p>
+                  
+                  {telegramLoading ? (
+                    <div className="h-12 flex items-center justify-center gap-2">
+                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce" />
+                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:0.2s]" />
+                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:0.4s]" />
+                    </div>
+                  ) : (
+                    <div 
+                      onClick={handleCopyTelegramCode}
+                      className="flex items-center justify-center gap-3 cursor-pointer group hover:scale-[1.02] transition-transform"
+                    >
+                      <div className="font-display text-4xl font-black tracking-[0.15em] text-on-surface">
+                        {telegramCode}
+                      </div>
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${telegramCopied ? 'bg-tertiary-container text-on-tertiary-container' : 'bg-surface-container text-primary group-hover:bg-primary group-hover:text-white'}`}>
+                        {telegramCopied ? <CheckCircle2 size={16} /> : <Copy size={14} />}
+                      </div>
+                    </div>
+                  )}
+                  {telegramCopied && <p className="text-tertiary font-bold text-[9px] mt-1">Código copiado!</p>}
+                </div>
+
+                {/* Steps */}
+                <div className="space-y-2.5 mb-6 text-left">
+                  {[
+                    { 
+                      icon: <MessageCircle size={16} />, 
+                      text: 'Abra o bot no Telegram', 
+                      color: 'bg-primary/10',
+                      link: 'https://t.me/pera_gardenbot'
+                    },
+                    { icon: <Zap size={16} />, text: 'Envie o código de 6 dígitos acima', color: 'bg-secondary-container/20' },
+                    { icon: <ShieldCheck size={16} />, text: 'A conexão será feita de forma segura', color: 'bg-tertiary-container/20' }
+                  ].map((step, i) => (
+                    <div key={i} className="flex items-center gap-3 p-3 bg-surface-container-low border border-surface-container/50 rounded-2xl">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${step.color} text-primary`}>
+                        {step.icon}
+                      </div>
+                      <div className="flex-1 flex items-center justify-between gap-2">
+                        <p className="text-xs font-bold text-on-surface-variant leading-tight">{step.text}</p>
+                        {step.link && (
+                          <a 
+                            href={step.link} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-primary font-black text-[9px] uppercase tracking-widest bg-primary/5 px-2.5 py-1 rounded-full hover:bg-primary/10 transition-colors"
+                          >
+                            Abrir
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Actions & Polling Status */}
+                <div className="flex flex-col gap-2.5">
+                  <button
+                    onClick={startTelegramPolling}
+                    disabled={telegramChecking || telegramLoading}
+                    className="w-full h-14 bg-primary text-on-primary rounded-full font-headline font-black text-base shadow-lg shadow-primary/20 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {telegramChecking ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Verificando vínculo...</span>
+                      </>
+                    ) : (
+                      <span>Já enviei o código</span>
+                    )}
+                  </button>
+
+                  {telegramChecking && (
+                    <button 
+                      onClick={stopTelegramPolling}
+                      className="text-white font-extrabold text-[9px] uppercase tracking-[0.2em] py-2 px-6 self-center bg-error rounded-full cursor-pointer active:scale-95 transition-transform"
+                    >
+                      Parar verificação
+                    </button>
+                  )}
+
+                  {telegramError && (
+                    <p className="text-error font-bold text-[11px] text-center p-2.5 bg-error/5 border border-error/10 rounded-xl">{telegramError}</p>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
