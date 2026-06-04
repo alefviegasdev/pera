@@ -178,6 +178,7 @@ const Settings = ({
       if (data.error) {
         throw new Error(data.error);
       }
+      setTelegramId(null);
     } catch (error) {
       console.error('Falha ao gerar código do Telegram:', error);
       setTelegramError('Falha ao gerar o código. Tente novamente.');
