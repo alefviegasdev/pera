@@ -651,10 +651,9 @@ URGÊNCIA (campo obrigatório para cada item):
   petiscos, salgadinho, biscoito, chocolate, fast food,
   delivery, restaurante, lazer, vestuário, eletrônicos
 
-ATENÇÃO: Supermercado tem itens de ambas as categorias.
-Classifique item a item:
-- Arroz, feijão, frango, ovos → necessity + Alimentação/Mercado
-- Refrigerante, cerveja, salgadinho → secondary + Lazer/Petiscos
+ATENÇÃO / REGRA DE MERCADO: Itens comprados em supermercado devem ser classificados individualmente pelo que são, não apenas pela categoria geral do estabelecimento.
+- Alimentos de necessidade básica (arroz, feijão, frango, carne, queijo mussarela, tomate, ovos, leite) → necessity + Alimentação/Mercado.
+- Geleia, refrigerante, cerveja, salgadinho, doces e similares → secondary + Lazer/Petiscos, mesmo que comprados no mercado.
 
 Se não identificar itens, retorne [].
 `;
