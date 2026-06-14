@@ -8,8 +8,9 @@ import { supabase } from './lib/supabase';
 import Login from './screens/Login';
 import TelegramLink from './screens/TelegramLink';
 import NewTransactionModal from './components/NewTransactionModal';
+import Cards from './screens/Cards';
 
-export type Tab = 'home' | 'analysis' | 'history' | 'settings';
+export type Tab = 'home' | 'analysis' | 'cards' | 'history' | 'settings';
 
 const App = () => {
   const [activeTab, setActiveTab] = useState<Tab>('home');
@@ -138,6 +139,7 @@ const App = () => {
     switch (activeTab) {
       case 'home':     return <Home {...commonProps} userMetadata={userMetadata} onTabChange={setActiveTab} />;
       case 'analysis': return <Analysis {...commonProps} />;
+      case 'cards':    return <Cards {...commonProps} />;
       case 'history':  return <History {...commonProps} />;
       case 'settings': return <Settings {...commonProps} onUserChange={(id) => { setUserId(id); }} userMetadata={userMetadata} />;
       default:         return <Home {...commonProps} userMetadata={userMetadata} onTabChange={setActiveTab} />;

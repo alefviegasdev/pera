@@ -1,11 +1,16 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import type { Tab } from '../App';
+import { CreditCard } from 'lucide-react';
 
-const TABS: { id: string; icon: string; label: string }[] = [
+const TABS: { id: string; icon: React.ReactNode; label: string }[] = [
   { id: 'home',     icon: 'home',         label: 'Início'   },
-  { id: 'cards',    icon: 'credit_card',  label: 'Cartões'  },
   { id: 'analysis', icon: 'analytics',    label: 'Análise'  },
+  {
+    id: 'cards',
+    icon: <CreditCard size={22} />,
+    label: 'Cartões'
+  },
   { id: 'history',  icon: 'history',      label: 'Histórico'},
   { id: 'settings', icon: 'settings',     label: 'Ajustes'  },
 ];
@@ -45,12 +50,18 @@ const BottomNav = ({
                 }}
               />
             )}
-            <span 
-              className="material-symbols-outlined text-[22px] relative z-20" 
-              style={{ fontVariationSettings: isActive ? '"FILL" 1' : '"FILL" 0' }}
-            >
-              {icon}
-            </span>
+            {typeof icon === 'string' ? (
+              <span 
+                className="material-symbols-outlined text-[22px] relative z-20" 
+                style={{ fontVariationSettings: isActive ? '"FILL" 1' : '"FILL" 0' }}
+              >
+                {icon}
+              </span>
+            ) : (
+              <span className="relative z-20 flex items-center justify-center">
+                {icon}
+              </span>
+            )}
           </button>
         );
       })}

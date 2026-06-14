@@ -201,67 +201,7 @@ const History = ({
           </div>
         </section>
 
-        {/* Active Installments Section */}
-        <section className="space-y-4">
-          <div className="flex justify-between items-center px-1">
-            <h3 className="font-headline font-extrabold text-lg tracking-tight text-on-surface">Parcelamentos Ativos</h3>
-            <button 
-              onClick={() => setShowInstallments(true)}
-              className="text-primary text-xs font-black uppercase tracking-wider hover:opacity-70 transition-opacity"
-            >
-              Ver todos
-            </button>
-          </div>
-          
-          {insts.length > 0 ? (
-            <div className="flex gap-4 overflow-x-auto scrollbar-hide -mx-6 px-6 pb-2 max-w-full">
-              {insts.slice(0, 3).map(inst => (
-                <div key={inst.id} className="min-w-[280px] bg-primary text-on-primary rounded-[2rem] p-7 relative overflow-hidden group shadow-md shadow-primary/10">
-                  {/* Abstract Pattern */}
-                  <div className="absolute inset-0 opacity-10 pointer-events-none">
-                    <svg className="w-full h-full" preserveAspectRatio="none" viewBox="0 0 100 100">
-                      <circle cx="90" cy="10" fill="white" r="40" />
-                      <circle cx="10" cy="90" fill="white" r="30" />
-                    </svg>
-                  </div>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setEditingInst(inst); }}
-                    className="absolute top-4 right-4 z-20 p-2 rounded-full bg-on-primary/20 active:scale-90 transition-all"
-                  >
-                    <Pencil size={14} className="text-on-primary" />
-                  </button>
-                  <div className="relative z-10 space-y-6">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className="text-on-primary/60 text-[10px] uppercase tracking-[0.2em] font-black mb-1.5">{inst.category}</p>
-                        <h4 className="font-headline font-bold text-xl leading-tight truncate max-w-[160px]">{inst.description}</h4>
-                      </div>
-                      <div className="bg-on-primary/15 backdrop-blur-md rounded-full px-3.5 py-1.5 text-[11px] font-black">
-                        {inst.current_installment}/{inst.total_installments}
-                      </div>
-                    </div>
-                    <div className="space-y-3">
-                      <div className="h-2 w-full bg-on-primary/20 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-tertiary-container rounded-full" 
-                          style={{ width: `${(inst.current_installment / inst.total_installments) * 100}%` }} 
-                        />
-                      </div>
-                      <div className="flex justify-between text-[11px] font-bold text-on-primary/80">
-                        <span>{fmt(inst.installment_value)}/mês</span>
-                        <span>Falta {fmt(inst.installment_value * (inst.total_installments - inst.current_installment))}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="bg-surface-container-low p-6 rounded-[2rem] border border-dashed border-outline-variant text-center">
-              <p className="text-xs font-medium text-on-surface-variant opacity-60">Nenhum parcelamento ativo no momento.</p>
-            </div>
-          )}
-        </section>
+
 
         {/* Maiores Categorias Breakdown */}
         <section className="space-y-6">
