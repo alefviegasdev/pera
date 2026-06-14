@@ -46,6 +46,18 @@ Se tiver verbo de ação no PASSADO + produto SEM valor monetário
 retorne:
 { "type": "ambiguous", "verb": "comprar", "product": "amendoim" }
 
+Não considerar ambíguo quando:
+- Tiver valor monetário: "comprei amendoim por 2,29"
+- O "produto" for apenas um número: "recebi 28",
+  "gastei 50", "paguei 30" → NÃO é ambíguo, é transação
+
+EXEMPLOS adicionais que devem retornar is_ambiguous: false:
+- "recebi 28" → { "is_ambiguous": false }
+- "recebi 28,00" → { "is_ambiguous": false }
+- "gastei 50" → { "is_ambiguous": false }
+- "paguei 30" → { "is_ambiguous": false }
+
+
 TIPO 3 — FINANCEIRO:
 Para todo o resto, retorne um array de transações financeiras
 no formato abaixo.
