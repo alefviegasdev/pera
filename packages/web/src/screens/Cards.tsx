@@ -124,7 +124,8 @@ const Cards = ({
   const billTransactions = activeBill
     ? transactions.filter(t =>
         t.credit_card_id === activeCard?.id &&
-        t.billing_month === activeBill.billing_month
+        t.billing_month === activeBill.billing_month &&
+        t.payment_method === 'credit'
       )
     : [];
 
@@ -163,21 +164,6 @@ const Cards = ({
     </div>
   );
 
-  if (creditCards.length === 0) return (
-    <div className="screen bg-surface">
-      <header className="page-header pt-12 pb-4 px-6">
-        <h1 className="font-headline tracking-tighter text-on-surface text-4xl font-black">Cartões</h1>
-      </header>
-      <div className="px-6 pt-20 flex flex-col items-center text-center gap-4">
-        <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center">
-          <CreditCard size={36} className="text-primary" />
-        </div>
-        <p className="font-headline font-black text-on-surface text-xl">Nenhum cartão cadastrado</p>
-        <p className="text-on-surface-variant text-sm">Adicione um cartão em Ajustes para ver suas faturas aqui.</p>
-      </div>
-    </div>
-  );
-
   return (
     <div className="screen bg-surface pb-32">
       <header className="w-full sticky top-0 z-40 bg-[#f7f6f1]/70 backdrop-blur-xl px-6 py-4">
@@ -188,80 +174,92 @@ const Cards = ({
 
         {/* Deck de cartões */}
         <section className="space-y-4">
-          <div
-            ref={cardSwipeRef}
-            className="relative w-full select-none"
-            style={{ height: 220, touchAction: 'pan-y pinch-zoom' }}
-          >
-            {creditCards.map((card, idx) => {
-              const bill = creditCardBills.find(b => b.credit_card_id === card.id && !b.paid);
-              const currentBill = Number(bill?.amount || 0);
-              const cardLimit = Number(card.card_limit || 0);
-              const cardAvailable = cardLimit - currentBill;
-              const usedPct = cardLimit > 0 ? Math.min(100, (currentBill / cardLimit) * 100) : 0;
-              const colors = BANK_COLORS[card.bank] || { from: '#1a1a2e', to: '#16213e', text: '#ffffff' };
-              const relIdx = (idx - activeCardIdx + creditCards.length) % creditCards.length;
-              const isFront = relIdx === 0;
-              const isSecond = relIdx === 1;
-              const isThird = relIdx === 2;
-              if (!isFront && !isSecond && !isThird) return null;
-              const zIndex = isFront ? 20 : isSecond ? 10 : 0;
-              const scale = isFront ? 1 : isSecond ? 0.94 : 0.88;
-              const baseTranslateX = isFront ? 0 : isSecond ? 25 : 45;
-              const opacity = isFront ? 1 : isSecond ? 0.7 : 0.4;
-              const dragOffset = isFront ? cardDragX : 0;
-              return (
-                <div
-                  key={card.id}
-                  className="absolute left-0 right-0 rounded-[2rem] overflow-hidden shadow-2xl border border-white/20"
-                  style={{
-                    zIndex,
-                    transform: `scale(${scale}) translateX(${dragOffset + baseTranslateX}px)`,
-                    transformOrigin: 'center right',
-                    opacity,
-                    transition: cardDragStart !== null && isFront ? 'none' : 'all 0.35s cubic-bezier(0.34,1.56,0.64,1)',
-                    background: `linear-gradient(135deg, ${colors.from}, ${colors.to})`,
-                    color: colors.text
-                  }}
-                >
-                  <div className="px-6 py-6">
-                    <div className="flex justify-between items-start mb-4">
-                      <p className="text-lg font-headline font-black" style={{ color: colors.text }}>{card.bank}</p>
-                      <div className="text-right">
-                        <p className="text-[9px] font-bold uppercase opacity-60 tracking-wider">Vencimento Dia {card.due_day}</p>
-                        <p className="text-[9px] font-bold uppercase opacity-60 tracking-wider">Fechamento Dia {card.closing_day}</p>
-                      </div>
-                    </div>
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-end">
-                        <div>
-                          <p className="text-[10px] font-bold uppercase opacity-70">Fatura atual</p>
-                          <p className="text-2xl font-headline font-black">{fmt(currentBill)}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-[10px] font-bold uppercase opacity-70">Disponível</p>
-                          <p className="text-sm font-bold">{fmt(cardAvailable)}</p>
-                        </div>
-                      </div>
-                      <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
-                        <div className="h-full rounded-full" style={{ width: `${usedPct}%`, backgroundColor: 'rgba(255,255,255,0.8)' }} />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          {creditCards.length > 1 && (
-            <div className="flex justify-center gap-1.5 -mt-2">
-              {creditCards.map((_, i) => (
-                <button key={i} onClick={() => setActiveCardIdx(i)}
-                  className="rounded-full transition-all duration-300"
-                  style={{ width: i === activeCardIdx ? 20 : 6, height: 6,
-                    backgroundColor: i === activeCardIdx ? '#5d3fd3' : '#adada9' }}
-                />
-              ))}
+          {creditCards.length === 0 ? (
+            <div className="bg-white rounded-[2rem] p-8 text-center shadow-sm border border-surface-container/30">
+              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CreditCard size={28} className="text-primary" />
+              </div>
+              <p className="font-headline font-bold text-on-surface text-lg">Nenhum cartão cadastrado</p>
+              <p className="text-on-surface-variant text-xs mt-1">Adicione um cartão em Ajustes para ver suas faturas aqui.</p>
             </div>
+          ) : (
+            <>
+              <div
+                ref={cardSwipeRef}
+                className="relative w-full select-none"
+                style={{ height: 220, touchAction: 'pan-y pinch-zoom' }}
+              >
+                {creditCards.map((card, idx) => {
+                  const bill = creditCardBills.find(b => b.credit_card_id === card.id && !b.paid);
+                  const currentBill = Number(bill?.amount || 0);
+                  const cardLimit = Number(card.card_limit || 0);
+                  const cardAvailable = cardLimit - currentBill;
+                  const usedPct = cardLimit > 0 ? Math.min(100, (currentBill / cardLimit) * 100) : 0;
+                  const colors = BANK_COLORS[card.bank] || { from: '#1a1a2e', to: '#16213e', text: '#ffffff' };
+                  const relIdx = (idx - activeCardIdx + creditCards.length) % creditCards.length;
+                  const isFront = relIdx === 0;
+                  const isSecond = relIdx === 1;
+                  const isThird = relIdx === 2;
+                  if (!isFront && !isSecond && !isThird) return null;
+                  const zIndex = isFront ? 20 : isSecond ? 10 : 0;
+                  const scale = isFront ? 1 : isSecond ? 0.94 : 0.88;
+                  const baseTranslateX = isFront ? 0 : isSecond ? 25 : 45;
+                  const opacity = isFront ? 1 : isSecond ? 0.7 : 0.4;
+                  const dragOffset = isFront ? cardDragX : 0;
+                  return (
+                    <div
+                      key={card.id}
+                      className="absolute left-0 right-0 rounded-[2rem] overflow-hidden shadow-2xl border border-white/20"
+                      style={{
+                        zIndex,
+                        transform: `scale(${scale}) translateX(${dragOffset + baseTranslateX}px)`,
+                        transformOrigin: 'center right',
+                        opacity,
+                        transition: cardDragStart !== null && isFront ? 'none' : 'all 0.35s cubic-bezier(0.34,1.56,0.64,1)',
+                        background: `linear-gradient(135deg, ${colors.from}, ${colors.to})`,
+                        color: colors.text
+                      }}
+                    >
+                      <div className="px-6 py-6">
+                        <div className="flex justify-between items-start mb-4">
+                          <p className="text-lg font-headline font-black" style={{ color: colors.text }}>{card.bank}</p>
+                          <div className="text-right">
+                            <p className="text-[9px] font-bold uppercase opacity-60 tracking-wider">Vencimento Dia {card.due_day}</p>
+                            <p className="text-[9px] font-bold uppercase opacity-60 tracking-wider">Fechamento Dia {card.closing_day}</p>
+                          </div>
+                        </div>
+                        <div className="space-y-4">
+                          <div className="flex justify-between items-end">
+                            <div>
+                              <p className="text-[10px] font-bold uppercase opacity-70">Fatura atual</p>
+                              <p className="text-2xl font-headline font-black">{fmt(currentBill)}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-[10px] font-bold uppercase opacity-70">Disponível</p>
+                              <p className="text-sm font-bold">{fmt(cardAvailable)}</p>
+                            </div>
+                          </div>
+                          <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
+                            <div className="h-full rounded-full" style={{ width: `${usedPct}%`, backgroundColor: 'rgba(255,255,255,0.8)' }} />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {creditCards.length > 1 && (
+                <div className="flex justify-center gap-1.5 -mt-2">
+                  {creditCards.map((_, i) => (
+                    <button key={i} onClick={() => setActiveCardIdx(i)}
+                      className="rounded-full transition-all duration-300"
+                      style={{ width: i === activeCardIdx ? 20 : 6, height: 6,
+                        backgroundColor: i === activeCardIdx ? '#5d3fd3' : '#adada9' }}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </section>
 
