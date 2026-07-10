@@ -3,6 +3,7 @@ import dotenv from 'dotenv'
 import { Bot, InlineKeyboard } from "grammy";
 import { createClient } from "@supabase/supabase-js";
 import http from "http";
+import { callAI, parseAIJson, UNIFIED_TOOL, RECEIPT_TOOL } from "./services/ai";
 
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') })
 
@@ -10,7 +11,6 @@ const token = process.env.TELEGRAM_BOT_TOKEN;
 const geminiKey = process.env.GEMINI_API_KEY;
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SECRET_KEY;
-const geminiBaseUrl = process.env.GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com';
 
 if (!token || !geminiKey || !supabaseUrl || !supabaseKey) {
   throw new Error("Missing environment variables (TELEGRAM_BOT_TOKEN, GEMINI_API_KEY, SUPABASE_URL, or SUPABASE_SECRET_KEY)");
@@ -587,27 +587,6 @@ async function registerCreditTransaction(
   }
 }
 
-async function fetchGemini(geminiKey: string, body: object, retries = 3): Promise<any> {
-  const url = `${geminiBaseUrl}/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${geminiKey}`;
-  for (let i = 0; i < retries; i++) {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body)
-    });
-    if (res.ok) return res.json();
-    if ((res.status === 503 || res.status === 429) && i < retries - 1) {
-      const delay = res.status === 429 ? 30000 : 2000 * (i + 1);
-      console.log(`[GEMINI] Rate limit (${res.status}), aguardando ${delay}ms...`);
-      await new Promise(r => setTimeout(r, delay));
-      continue;
-    }
-    const err = await res.json().catch(() => ({}));
-    throw new Error(`Gemini API error: ${res.status} ${JSON.stringify(err)}`);
-  }
-}
-
-
 const RECEIPT_PROMPT = `
 Analise esta imagem de nota fiscal brasileira e extraia
 os itens comprados.
@@ -736,31 +715,13 @@ bot.on("message:photo", async (ctx) => {
     const base64 = Buffer.from(fileBuffer).toString('base64');
     const mimeType = 'image/jpeg';
 
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${geminiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [
-              { text: RECEIPT_PROMPT },
-              { inline_data: { mime_type: mimeType, data: base64 } }
-            ]
-          }]
-        })
-      }
-    );
+    const rawText = await callAI({
+      prompt: RECEIPT_PROMPT,
+      image: { mimeType, base64 },
+      tool: RECEIPT_TOOL
+    });
 
-    if (!geminiRes.ok) {
-      throw new Error(`Gemini error: ${geminiRes.status}`);
-    }
-
-    const geminiData = await geminiRes.json();
-    const rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text
-      ?.trim().replace(/```json|```/g, '') || '[]';
-
-    const items = JSON.parse(rawText);
+    const items = parseAIJson<any[]>(rawText || '[]');
 
     if (!Array.isArray(items) || items.length === 0) {
       return ctx.reply('❌ Não consegui identificar itens na nota. Tente uma foto mais nítida.');
@@ -1186,11 +1147,8 @@ Quanto mais detalhes você der, melhor eu classifico!
           return ctx.reply(`✏️ #${replyCode} atualizado!\n📂 categoria: ${record.category} → ${mapped.category} | ${mapped.subcategory}`);
         }
 
-        const result = await fetchGemini(geminiKey, {
-          contents: [{ parts: [{ text: CORRECTION_PROMPT + text }] }]
-        });
-        const aiText = result.candidates?.[0]?.content?.parts?.[0]?.text?.trim().replace(/```json|```/g, "") || "";
-        const aiData = JSON.parse(aiText);
+        const aiText = await callAI({ prompt: CORRECTION_PROMPT + text });
+        const aiData = parseAIJson<any>(aiText);
 
         if (record && table) {
           if (aiData.delete === true) {
@@ -1323,11 +1281,8 @@ Quanto mais detalhes você der, melhor eu classifico!
       console.log("Tipo detectado: comando/correção (IA)");
       const code = cmdMatch[1].replace('#', '');
 
-      const result = await fetchGemini(geminiKey, {
-        contents: [{ parts: [{ text: CORRECTION_PROMPT + text }] }]
-      });
-      const aiText = result.candidates?.[0]?.content?.parts?.[0]?.text?.trim().replace(/```json|```/g, "") || "";
-      const aiData = JSON.parse(aiText);
+      const aiText = await callAI({ prompt: CORRECTION_PROMPT + text });
+      const aiData = parseAIJson<any>(aiText);
 
       // --- Localizar registro em todas as tabelas ---
       const { data: tData } = await supabase.from("transactions").select("*").ilike("short_code", code).eq("user_id", supabaseUserId).maybeSingle();
@@ -1494,15 +1449,8 @@ O que você pode mudar:
     }
 
     console.log("Tipo detectado: financeiro");
-    const result = await fetchGemini(geminiKey, {
-      contents: [{ parts: [{ text: UNIFIED_PROMPT + text }] }]
-    });
-    const responseText = result.candidates?.[0]?.content?.parts?.[0]?.text
-      ?.trim().replace(/```json|```/g, "") || "";
-
-    if (!responseText) throw new Error("Resposta vazia do Gemini");
-
-    const data = JSON.parse(responseText);
+    const responseText = await callAI({ prompt: UNIFIED_PROMPT + text, tool: UNIFIED_TOOL });
+    const data = parseAIJson<any>(responseText);
 
     // Tratar tipo shopping
     if (data.type === 'shopping' && data.items?.length > 0) {
